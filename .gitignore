@@ -1,0 +1,26 @@
+# Go
+server/server
+server/server.exe
+*.exe
+*.exe~
+
+# Unity (后续阶段)
+client/[Ll]ibrary/
+client/[Tt]emp/
+client/[Oo]bj/
+client/[Bb]uild/
+client/[Bb]uilds/
+client/[Ll]ogs/
+client/[Uu]ser[Ss]ettings/
+client/*.csproj
+client/*.sln
+client/*.unityproj
+client/.vs/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
