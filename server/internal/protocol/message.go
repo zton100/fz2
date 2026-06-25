@@ -13,6 +13,8 @@ type Envelope struct {
 const (
 	TypeLogin = "login" // 请求：登录
 	TypeSync  = "sync"  // 推送：全量同步
+	TypeLoot  = "loot"  // 推送：掉落装备
+	TypeFloor = "floor" // 推送：层数推进
 )
 
 // LoginRequest 登录请求体。
@@ -26,4 +28,27 @@ type SyncData struct {
 	Floor     int      `json:"floor"`     // 当前层数
 	Souls     int      `json:"souls"`     // 魂点
 	Inventory []string `json:"inventory"` // 背包物品 ID 占位
+}
+
+// LootData 掉落推送消息体。
+type LootData struct {
+	UID     string     `json:"uid"`     // 装备唯一 ID
+	BaseID  string     `json:"base_id"` // 基底 ID
+	Name    string     `json:"name"`    // 装备名
+	Slot    int        `json:"slot"`    // 槽位
+	Rarity  int        `json:"rarity"`  // 稀有度
+	Upgrade int        `json:"upgrade"` // 强化等级
+	Affixes []AffixDTO `json:"affixes"` // 词缀列表
+}
+
+// AffixDTO 词缀传输对象。
+type AffixDTO struct {
+	Type  string  `json:"type"`
+	Tier  int     `json:"tier"`
+	Value float64 `json:"value"`
+}
+
+// FloorData 层数推送消息体。
+type FloorData struct {
+	Floor int `json:"floor"` // 新层数
 }

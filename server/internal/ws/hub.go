@@ -2,11 +2,15 @@ package ws
 
 import (
 	"log"
+	"math/rand"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 
+	"equipment-idle-server/internal/dungeon"
+	"equipment-idle-server/internal/loot"
 	"equipment-idle-server/internal/save"
 )
 
@@ -19,6 +23,8 @@ type Session struct {
 	Conn    *websocket.Conn
 	Account string // 登录后填充
 	Send    chan []byte
+	runner  *dungeon.Runner // 登录后创建的战斗推进器
+	stopCh  chan struct{}   // 战斗循环停止信号
 }
 
 // Hub 管理所有连接与会话。
@@ -26,6 +32,7 @@ type Hub struct {
 	mu       sync.Mutex
 	sessions map[*Session]struct{}
 	store    *save.MemoryStore
+	gen      *loot.Generator
 }
 
 // NewHub 创建 Hub。
@@ -33,6 +40,7 @@ func NewHub(store *save.MemoryStore) *Hub {
 	return &Hub{
 		sessions: make(map[*Session]struct{}),
 		store:    store,
+		gen:      loot.NewGenerator(rand.New(rand.NewSource(time.Now().UnixNano()))),
 	}
 }
 
@@ -43,7 +51,7 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 		log.Printf("upgrade error: %v", err)
 		return
 	}
-	sess := &Session{Conn: conn, Send: make(chan []byte, 64)}
+	sess := &Session{Conn: conn, Send: make(chan []byte, 64), stopCh: make(chan struct{})}
 	h.register(sess)
 	go h.writePump(sess)
 	h.readPump(sess)
@@ -60,6 +68,13 @@ func (h *Hub) unregister(sess *Session) {
 	delete(h.sessions, sess)
 	h.mu.Unlock()
 	close(sess.Send)
+	if sess.stopCh != nil {
+		select {
+		case <-sess.stopCh: // 已关闭
+		default:
+			close(sess.stopCh)
+		}
+	}
 }
 
 // readPump 读取客户端消息并路由到 handler。
