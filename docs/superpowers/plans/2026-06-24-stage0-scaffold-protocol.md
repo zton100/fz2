@@ -4,9 +4,16 @@
 
 **Goal:** 搭建 Go 服务端 + Unity 客户端骨架，定义 WebSocket JSON 消息协议，打通"客户端连接 → 登录 → 全量同步"链路。
 
-**Architecture:** 服务端用 Go + gorilla/websocket 起一个本地 WebSocket 服务器，维护内存中的玩家状态，处理登录与全量同步。客户端用 Unity 6 (C#) + NativeWebSocket 建立 WebSocket 连接，发送登录请求，接收并显示全量同步消息。消息统一为 `{ "t": "<type>", "id": "<reqId>", "data": {...} }` 格式。
+**Architecture:** 服务端用 Go + gorilla/websocket 起一个本地 WebSocket 服务器，维护内存中的玩家状态，处理登录与全量同步。客户端用 Unity 6 (C#) 建立 WebSocket 连接，发送登录请求，接收并显示全量同步消息。消息统一为 `{ "t": "<type>", "id": "<reqId>", "data": {...} }` 格式。
 
-**Tech Stack:** Go 1.26、gorilla/websocket、Unity 6 LTS（C#）、NativeWebSocket、Newtonsoft.Json。
+**Tech Stack:** Go 1.26、gorilla/websocket、Unity 6 LTS（C#）。
+
+> **实现备注（2026-06-25）**：原计划客户端用 NativeWebSocket + Newtonsoft.Json 两个第三方包。实际执行时当前环境无法访问 packages.unity.com 与 github.com（SSL/TLS 握手失败），遂改为**零第三方依赖方案**：
+> - WebSocket → .NET 内置 `System.Net.WebSockets.ClientWebSocket`（后台线程接收 + 主线程队列分发）
+> - JSON → Unity 内置 `JsonUtility` + 轻量手写信封解析（见 `Message.cs`）
+> - UI → IMGUI (`OnGUI`)，无需 uGUI 包
+>
+> 下文 Task 7~11 的代码块仍保留原 NativeWebSocket/Newtonsoft 版本作为设计参考；**实际落库的代码以仓库 `client/Assets/Scripts/` 为准**（已按零依赖方案实现并端到端验证通过）。
 
 **前置条件：** Go 1.26 已安装；Unity Hub + Unity 6 LTS 编辑器已安装。
 

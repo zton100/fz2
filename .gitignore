@@ -20,6 +20,7 @@ client/.vs/
 # OS
 Thumbs.db
 .DS_Store
+nul
 
 # IDE
 .idea/

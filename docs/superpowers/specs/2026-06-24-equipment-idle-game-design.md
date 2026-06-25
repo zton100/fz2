@@ -152,7 +152,7 @@ client/                          # Unity 项目根（Assets 内组织如下）
 └─ Assets/
    ├─ Scripts/
    │   ├─ Data/                  # 镜像服务端静态数据（词缀/怪物/配方）用于表现
-   │   ├─ Net/                   # WebSocket 客户端 + 消息收发（NativeWebSocket 库）
+   │   ├─ Net/                   # WebSocket 客户端 + 消息收发（.NET 内置 ClientWebSocket，零第三方依赖）
    │   ├─ State/                 # 本地缓存的服务端状态
    │   ├─ Systems/               # 客户端侧战斗插值/飘字/UI 数据桥接
    │   └─ UI/                    # 战斗场景/背包/对比/合成/强化/转生面板
