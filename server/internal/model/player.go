@@ -10,6 +10,7 @@ type Player struct {
 	Inventory []string                 // 背包物品 ID 占位（保留兼容阶段0同步）
 	EquipBag  []*Equipment             // 装备背包（掉落/未穿戴的装备）
 	Equipped  map[data.Slot]*Equipment // 已穿戴装备，按槽位
+	Materials map[data.MaterialType]int // 材料库存
 }
 
 // NewPlayer 创建新玩家，默认第 1 层、0 魂、空背包。
@@ -21,6 +22,7 @@ func NewPlayer(account string) *Player {
 		Inventory: []string{},
 		EquipBag:  []*Equipment{},
 		Equipped:  map[data.Slot]*Equipment{},
+		Materials: map[data.MaterialType]int{},
 	}
 }
 
@@ -41,4 +43,22 @@ func (p *Player) EquippedList() []*Equipment {
 		}
 	}
 	return out
+}
+
+// AddMaterial 增加材料。
+func (p *Player) AddMaterial(mt data.MaterialType, n int) {
+	p.Materials[mt] += n
+}
+
+// HasMaterial 检查是否有足够材料。
+func (p *Player) HasMaterial(mt data.MaterialType, n int) bool {
+	return p.Materials[mt] >= n
+}
+
+// SpendMaterial 消耗材料（调用前应先 HasMaterial 检查）。
+func (p *Player) SpendMaterial(mt data.MaterialType, n int) {
+	p.Materials[mt] -= n
+	if p.Materials[mt] < 0 {
+		p.Materials[mt] = 0
+	}
 }

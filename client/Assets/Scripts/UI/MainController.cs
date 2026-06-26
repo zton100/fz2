@@ -86,20 +86,37 @@ namespace EquipmentIdle.UI
             GUILayout.Space(8);
             GUILayout.Label("Backpack (" + _gameState.Bag.Count + " items):");
 
-            _bagScroll = GUILayout.BeginScrollView(_bagScroll, GUILayout.Height(220));
+            _bagScroll = GUILayout.BeginScrollView(_bagScroll, GUILayout.Height(180));
             foreach (var eq in _gameState.Bag)
             {
                 GUILayout.BeginHorizontal(GUI.skin.box);
                 int affCount = eq.affixes != null ? eq.affixes.Length : 0;
                 string info = $"[{RarityName(eq.rarity)}] {eq.name} +{eq.upgrade} ({SlotName(eq.slot)}) {affCount}aff";
-                GUILayout.Label(info, GUILayout.Width(320));
-                if (GUILayout.Button("Equip", GUILayout.Width(80)))
-                {
-                    _gameState.Equip(eq.uid);
-                }
+                GUILayout.Label(info, GUILayout.Width(280));
+                if (GUILayout.Button("Equip", GUILayout.Width(55))) _gameState.Equip(eq.uid);
+                if (GUILayout.Button("Dec", GUILayout.Width(42))) _gameState.Decompose(eq.uid);
+                if (GUILayout.Button("Ref", GUILayout.Width(42))) _gameState.Reforge(eq.uid);
+                if (GUILayout.Button("Up", GUILayout.Width(42))) _gameState.Upgrade(eq.uid);
                 GUILayout.EndHorizontal();
             }
             GUILayout.EndScrollView();
+
+            // 工坊区
+            GUILayout.Space(6);
+            GUILayout.Label("--- Workshop ---");
+            string matStr = "Mats: ";
+            foreach (var kv in _gameState.Materials)
+                matStr += kv.Key + "=" + kv.Value + " ";
+            GUILayout.Label(matStr);
+
+            GUILayout.Label("Compose (cost 10 base_mat):");
+            GUILayout.BeginHorizontal();
+            for (int s = 0; s < 8; s++)
+            {
+                if (GUILayout.Button(SlotName(s), GUILayout.Width(48)))
+                    _gameState.Compose(s);
+            }
+            GUILayout.EndHorizontal();
 
             GUILayout.EndArea();
         }

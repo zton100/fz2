@@ -18,6 +18,12 @@ namespace EquipmentIdle.Net
         public const string TypeUnequip = "unequip";
         public const string TypeBag = "bag";
         public const string TypePower = "power";
+        public const string TypeDecompose = "decompose";
+        public const string TypeCompose = "compose";
+        public const string TypeReforge = "reforge";
+        public const string TypeUpgrade = "upgrade";
+        public const string TypeMaterials = "materials";
+        public const string TypeCraftResult = "craft_result";
 
         /// <summary>编码登录请求为信封 JSON 字符串。</summary>
         public static string EncodeLogin(string id, string account)
@@ -38,6 +44,61 @@ namespace EquipmentIdle.Net
         {
             string dataJson = "{\"slot\":" + slot + "}";
             return "{\"t\":\"" + TypeUnequip + "\",\"id\":\"" + Escape(id) + "\",\"data\":" + dataJson + "}";
+        }
+
+        /// <summary>编码分解请求。</summary>
+        public static string EncodeDecompose(string id, string uid)
+        {
+            string dataJson = "{\"uid\":\"" + Escape(uid) + "\"}";
+            return "{\"t\":\"" + TypeDecompose + "\",\"id\":\"" + Escape(id) + "\",\"data\":" + dataJson + "}";
+        }
+
+        /// <summary>编码合成请求。</summary>
+        public static string EncodeCompose(string id, int slot)
+        {
+            string dataJson = "{\"slot\":" + slot + "}";
+            return "{\"t\":\"" + TypeCompose + "\",\"id\":\"" + Escape(id) + "\",\"data\":" + dataJson + "}";
+        }
+
+        /// <summary>编码重铸请求。</summary>
+        public static string EncodeReforge(string id, string uid)
+        {
+            string dataJson = "{\"uid\":\"" + Escape(uid) + "\"}";
+            return "{\"t\":\"" + TypeReforge + "\",\"id\":\"" + Escape(id) + "\",\"data\":" + dataJson + "}";
+        }
+
+        /// <summary>编码强化请求。</summary>
+        public static string EncodeUpgrade(string id, string uid)
+        {
+            string dataJson = "{\"uid\":\"" + Escape(uid) + "\"}";
+            return "{\"t\":\"" + TypeUpgrade + "\",\"id\":\"" + Escape(id) + "\",\"data\":" + dataJson + "}";
+        }
+
+        /// <summary>解析 materials 推送的 JSON，返回 key->count 字典。</summary>
+        public static System.Collections.Generic.Dictionary<string, int> ParseMaterials(string dataJson)
+        {
+            var dict = new System.Collections.Generic.Dictionary<string, int>();
+            int i = 0;
+            while (i < dataJson.Length)
+            {
+                int q1 = dataJson.IndexOf('"', i);
+                if (q1 < 0) break;
+                int q2 = dataJson.IndexOf('"', q1 + 1);
+                if (q2 < 0) break;
+                string key = dataJson.Substring(q1 + 1, q2 - q1 - 1);
+                int colon = dataJson.IndexOf(':', q2);
+                if (colon < 0) break;
+                int comma = dataJson.IndexOf(',', colon);
+                int brace = dataJson.IndexOf('}', colon);
+                int end = comma;
+                if (comma < 0 || (brace >= 0 && brace < comma)) end = brace;
+                if (end < 0) end = dataJson.Length;
+                string valStr = dataJson.Substring(colon + 1, end - colon - 1).Trim();
+                int val;
+                if (int.TryParse(valStr, out val)) dict[key] = val;
+                i = end + 1;
+            }
+            return dict;
         }
 
         /// <summary>解析收到的信封文本。失败返回 null。</summary>
@@ -185,5 +246,15 @@ namespace EquipmentIdle.Net
     public class PowerData
     {
         public float power;
+    }
+
+    /// <summary>养成操作结果推送。</summary>
+    [Serializable]
+    public class CraftResultData
+    {
+        public bool ok;
+        public string msg;
+        public string uid;
+        public int upgrade;
     }
 }

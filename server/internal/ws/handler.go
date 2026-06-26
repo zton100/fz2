@@ -6,12 +6,14 @@ import (
 	"time"
 
 	"equipment-idle-server/internal/combat"
+	"equipment-idle-server/internal/crafting"
 	"equipment-idle-server/internal/data"
 	"equipment-idle-server/internal/dungeon"
 	"equipment-idle-server/internal/inventory"
 	"equipment-idle-server/internal/loot"
 	"equipment-idle-server/internal/model"
 	"equipment-idle-server/internal/protocol"
+	"equipment-idle-server/internal/upgrade"
 )
 
 func (h *Hub) handleMessage(sess *Session, raw []byte) {
@@ -27,6 +29,14 @@ func (h *Hub) handleMessage(sess *Session, raw []byte) {
 		h.handleEquip(sess, env)
 	case protocol.TypeUnequip:
 		h.handleUnequip(sess, env)
+	case protocol.TypeDecompose:
+		h.handleDecompose(sess, env)
+	case protocol.TypeCompose:
+		h.handleCompose(sess, env)
+	case protocol.TypeReforge:
+		h.handleReforge(sess, env)
+	case protocol.TypeUpgrade:
+		h.handleUpgrade(sess, env)
 	default:
 		log.Printf("unknown message type: %s", env.T)
 	}
@@ -57,6 +67,7 @@ func (h *Hub) handleLogin(sess *Session, env protocol.Envelope) {
 	// 推送当前背包与战力
 	h.pushBag(sess, player)
 	h.pushPower(sess, player)
+	h.pushMaterials(sess, player)
 
 	// 启动战斗循环
 	drop := loot.NewDropTable(h.gen)
@@ -210,4 +221,141 @@ func toAffixDTOs(affixes []model.AffixInstance) []protocol.AffixDTO {
 		}
 	}
 	return out
+}
+
+// findBagIndex 在背包按 UID 找索引。
+func findBagIndex(p *model.Player, uid string) int {
+	for i, eq := range p.EquipBag {
+		if eq.UID == uid {
+			return i
+		}
+	}
+	return -1
+}
+
+// handleDecompose 分解请求：从背包找装备→分解→推送材料+背包。
+func (h *Hub) handleDecompose(sess *Session, env protocol.Envelope) {
+	if sess.Account == "" {
+		return
+	}
+	player := h.store.LoadOrCreate(sess.Account)
+	var req protocol.DecomposeRequest
+	if err := json.Unmarshal(env.Data, &req); err != nil {
+		return
+	}
+	idx := findBagIndex(player, req.UID)
+	if idx < 0 {
+		h.pushCraftResult(sess, false, "equipment not in bag", "", 0)
+		return
+	}
+	eq := player.EquipBag[idx]
+	player.EquipBag = append(player.EquipBag[:idx], player.EquipBag[idx+1:]...)
+	crafting.Decompose(player, eq)
+	h.pushMaterials(sess, player)
+	h.pushBag(sess, player)
+	h.pushCraftResult(sess, true, "decomposed", "", 0)
+}
+
+// handleCompose 合成请求。
+func (h *Hub) handleCompose(sess *Session, env protocol.Envelope) {
+	if sess.Account == "" {
+		return
+	}
+	player := h.store.LoadOrCreate(sess.Account)
+	var req protocol.ComposeRequest
+	if err := json.Unmarshal(env.Data, &req); err != nil {
+		return
+	}
+	eq, err := crafting.Compose(player, h.gen, data.Slot(req.Slot))
+	if err != nil {
+		h.pushCraftResult(sess, false, err.Error(), "", 0)
+		return
+	}
+	h.pushMaterials(sess, player)
+	h.pushBag(sess, player)
+	h.pushCraftResult(sess, true, "composed", eq.UID, 0)
+}
+
+// handleReforge 重铸请求：从背包找装备→重铸。
+func (h *Hub) handleReforge(sess *Session, env protocol.Envelope) {
+	if sess.Account == "" {
+		return
+	}
+	player := h.store.LoadOrCreate(sess.Account)
+	var req protocol.ReforgeRequest
+	if err := json.Unmarshal(env.Data, &req); err != nil {
+		return
+	}
+	idx := findBagIndex(player, req.UID)
+	if idx < 0 {
+		h.pushCraftResult(sess, false, "equipment not in bag", "", 0)
+		return
+	}
+	eq := player.EquipBag[idx]
+	if err := crafting.Reforge(player, h.gen, eq); err != nil {
+		h.pushCraftResult(sess, false, err.Error(), "", 0)
+		return
+	}
+	h.pushMaterials(sess, player)
+	h.pushBag(sess, player)
+	h.pushCraftResult(sess, true, "reforged", eq.UID, eq.Upgrade)
+}
+
+// handleUpgrade 强化请求：从背包找装备→强化。
+func (h *Hub) handleUpgrade(sess *Session, env protocol.Envelope) {
+	if sess.Account == "" {
+		return
+	}
+	player := h.store.LoadOrCreate(sess.Account)
+	var req protocol.UpgradeRequest
+	if err := json.Unmarshal(env.Data, &req); err != nil {
+		return
+	}
+	idx := findBagIndex(player, req.UID)
+	if idx < 0 {
+		h.pushCraftResult(sess, false, "equipment not in bag", "", 0)
+		return
+	}
+	eq := player.EquipBag[idx]
+	result, err := upgrade.Upgrade(player, h.rng, eq)
+	if err != nil {
+		h.pushCraftResult(sess, false, err.Error(), "", 0)
+		return
+	}
+	h.pushMaterials(sess, player)
+	h.pushBag(sess, player)
+	h.pushPower(sess, player)
+	msg := "upgraded"
+	if !result.Success {
+		msg = "upgrade failed (no degrade)"
+	}
+	h.pushCraftResult(sess, result.Success, msg, eq.UID, eq.Upgrade)
+}
+
+// pushMaterials 推送材料库存。
+func (h *Hub) pushMaterials(sess *Session, player *model.Player) {
+	mats := map[string]int{}
+	for mt, n := range player.Materials {
+		mats[string(mt)] = n
+	}
+	md := protocol.MaterialsData{Materials: mats}
+	dataBytes, _ := json.Marshal(md)
+	env := protocol.Envelope{T: protocol.TypeMaterials, Data: dataBytes}
+	out, _ := json.Marshal(env)
+	select {
+	case sess.Send <- out:
+	default:
+	}
+}
+
+// pushCraftResult 推送养成操作结果。
+func (h *Hub) pushCraftResult(sess *Session, ok bool, msg, uid string, upg int) {
+	cr := protocol.CraftResult{OK: ok, Msg: msg, UID: uid, Upgrade: upg}
+	dataBytes, _ := json.Marshal(cr)
+	env := protocol.Envelope{T: protocol.TypeCraftResult, Data: dataBytes}
+	out, _ := json.Marshal(env)
+	select {
+	case sess.Send <- out:
+	default:
+	}
 }

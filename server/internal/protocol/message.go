@@ -11,14 +11,20 @@ type Envelope struct {
 
 // 消息类型常量
 const (
-	TypeLogin   = "login"   // 请求：登录
-	TypeSync    = "sync"    // 推送：全量同步
-	TypeLoot    = "loot"    // 推送：掉落装备
-	TypeFloor   = "floor"   // 推送：层数推进
-	TypeEquip   = "equip"   // 请求：穿戴
-	TypeUnequip = "unequip" // 请求：卸下
-	TypeBag     = "bag"     // 推送：背包全量
-	TypePower   = "power"   // 推送：当前战力
+	TypeLogin     = "login"     // 请求：登录
+	TypeSync      = "sync"      // 推送：全量同步
+	TypeLoot      = "loot"      // 推送：掉落装备
+	TypeFloor     = "floor"     // 推送：层数推进
+	TypeEquip     = "equip"     // 请求：穿戴
+	TypeUnequip   = "unequip"   // 请求：卸下
+	TypeBag       = "bag"       // 推送：背包全量
+	TypePower     = "power"     // 推送：当前战力
+	TypeDecompose = "decompose" // 请求：分解
+	TypeCompose   = "compose"   // 请求：合成
+	TypeReforge   = "reforge"   // 请求：重铸
+	TypeUpgrade   = "upgrade"   // 请求：强化
+	TypeMaterials = "materials" // 推送：材料库存
+	TypeCraftResult = "craft_result" // 推送：养成操作结果
 )
 
 // LoginRequest 登录请求体。
@@ -86,4 +92,37 @@ type EquipmentDTO struct {
 // PowerData 战力推送。
 type PowerData struct {
 	Power float64 `json:"power"`
+}
+
+// DecomposeRequest 分解请求体。
+type DecomposeRequest struct {
+	UID string `json:"uid"`
+}
+
+// ComposeRequest 合成请求体。
+type ComposeRequest struct {
+	Slot int `json:"slot"`
+}
+
+// ReforgeRequest 重铸请求体。
+type ReforgeRequest struct {
+	UID string `json:"uid"`
+}
+
+// UpgradeRequest 强化请求体。
+type UpgradeRequest struct {
+	UID string `json:"uid"`
+}
+
+// MaterialsData 材料库存推送。
+type MaterialsData struct {
+	Materials map[string]int `json:"materials"`
+}
+
+// CraftResult 养成操作结果（分解/合成/重铸/强化通用响应推送）。
+type CraftResult struct {
+	OK      bool   `json:"ok"`
+	Msg     string `json:"msg"`
+	UID     string `json:"uid,omitempty"`
+	Upgrade int    `json:"upgrade,omitempty"`
 }

@@ -33,6 +33,7 @@ type Hub struct {
 	sessions map[*Session]struct{}
 	store    *save.MemoryStore
 	gen      *loot.Generator
+	rng      *rand.Rand
 }
 
 // NewHub 创建 Hub。
@@ -41,6 +42,7 @@ func NewHub(store *save.MemoryStore) *Hub {
 		sessions: make(map[*Session]struct{}),
 		store:    store,
 		gen:      loot.NewGenerator(rand.New(rand.NewSource(time.Now().UnixNano()))),
+		rng:      rand.New(rand.NewSource(time.Now().UnixNano() + 1)),
 	}
 }
 

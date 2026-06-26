@@ -17,6 +17,8 @@ namespace EquipmentIdle.State
         public event System.Action<float> OnPowerReceived;
         public event System.Action<EquipmentDTO> OnLootReceived;
         public event System.Action<int> OnFloorReceived;
+        public event System.Action<Dictionary<string, int>> OnMaterialsReceived;
+        public event System.Action<CraftResultData> OnCraftResult;
 
         public string Account { get; private set; } = "";
         public int Floor { get; private set; } = 1;
@@ -24,6 +26,7 @@ namespace EquipmentIdle.State
         public List<string> Inventory { get; private set; } = new List<string>();
         public List<EquipmentDTO> Bag { get; private set; } = new List<EquipmentDTO>();
         public float Power { get; private set; } = 0;
+        public Dictionary<string, int> Materials { get; private set; } = new Dictionary<string, int>();
 
         private WSClient _ws;
         private int _reqSeq = 1;
@@ -52,6 +55,26 @@ namespace EquipmentIdle.State
         public void Unequip(int slot)
         {
             _ws.SendText(Message.EncodeUnequip("r" + (_reqSeq++), slot));
+        }
+
+        public void Decompose(string uid)
+        {
+            _ws.SendText(Message.EncodeDecompose("r" + (_reqSeq++), uid));
+        }
+
+        public void Compose(int slot)
+        {
+            _ws.SendText(Message.EncodeCompose("r" + (_reqSeq++), slot));
+        }
+
+        public void Reforge(string uid)
+        {
+            _ws.SendText(Message.EncodeReforge("r" + (_reqSeq++), uid));
+        }
+
+        public void Upgrade(string uid)
+        {
+            _ws.SendText(Message.EncodeUpgrade("r" + (_reqSeq++), uid));
         }
 
         private void HandleConnected()
@@ -113,6 +136,14 @@ namespace EquipmentIdle.State
                         Floor = fd.floor;
                         OnFloorReceived?.Invoke(fd.floor);
                     }
+                    break;
+                case Message.TypeMaterials:
+                    Materials = Message.ParseMaterials(msg.dataJson);
+                    OnMaterialsReceived?.Invoke(Materials);
+                    break;
+                case Message.TypeCraftResult:
+                    var cr = JsonUtility.FromJson<CraftResultData>(msg.dataJson);
+                    if (cr != null) OnCraftResult?.Invoke(cr);
                     break;
             }
         }
