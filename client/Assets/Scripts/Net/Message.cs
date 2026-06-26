@@ -12,13 +12,32 @@ namespace EquipmentIdle.Net
     {
         public const string TypeLogin = "login";
         public const string TypeSync = "sync";
+        public const string TypeLoot = "loot";
+        public const string TypeFloor = "floor";
+        public const string TypeEquip = "equip";
+        public const string TypeUnequip = "unequip";
+        public const string TypeBag = "bag";
+        public const string TypePower = "power";
 
         /// <summary>编码登录请求为信封 JSON 字符串。</summary>
         public static string EncodeLogin(string id, string account)
         {
-            // 手动拼装，避免 JsonUtility 对嵌套 data 的额外包装类
             string dataJson = "{\"account\":\"" + Escape(account) + "\"}";
             return "{\"t\":\"" + TypeLogin + "\",\"id\":\"" + Escape(id) + "\",\"data\":" + dataJson + "}";
+        }
+
+        /// <summary>编码穿戴请求。</summary>
+        public static string EncodeEquip(string id, string uid)
+        {
+            string dataJson = "{\"uid\":\"" + Escape(uid) + "\"}";
+            return "{\"t\":\"" + TypeEquip + "\",\"id\":\"" + Escape(id) + "\",\"data\":" + dataJson + "}";
+        }
+
+        /// <summary>编码卸下请求。</summary>
+        public static string EncodeUnequip(string id, int slot)
+        {
+            string dataJson = "{\"slot\":" + slot + "}";
+            return "{\"t\":\"" + TypeUnequip + "\",\"id\":\"" + Escape(id) + "\",\"data\":" + dataJson + "}";
         }
 
         /// <summary>解析收到的信封文本。失败返回 null。</summary>
@@ -110,5 +129,61 @@ namespace EquipmentIdle.Net
     public class LoginData
     {
         public string account;
+    }
+
+    /// <summary>掉落推送的 data 结构。</summary>
+    [Serializable]
+    public class LootData
+    {
+        public string uid;
+        public string base_id;
+        public string name;
+        public int slot;
+        public int rarity;
+        public int upgrade;
+        public AffixData[] affixes;
+    }
+
+    /// <summary>层数推送的 data 结构。</summary>
+    [Serializable]
+    public class FloorData
+    {
+        public int floor;
+    }
+
+    /// <summary>装备传输对象（背包与已穿戴通用）。</summary>
+    [Serializable]
+    public class EquipmentDTO
+    {
+        public string uid;
+        public string base_id;
+        public string name;
+        public int slot;
+        public int rarity;
+        public int upgrade;
+        public AffixData[] affixes;
+    }
+
+    /// <summary>词缀传输对象。</summary>
+    [Serializable]
+    public class AffixData
+    {
+        public string type;
+        public int tier;
+        public float value;
+    }
+
+    /// <summary>背包全量推送。</summary>
+    [Serializable]
+    public class BagData
+    {
+        public EquipmentDTO[] items;
+    }
+
+    /// <summary>战力推送。</summary>
+    [Serializable]
+    public class PowerData
+    {
+        public float power;
     }
 }

@@ -11,10 +11,14 @@ type Envelope struct {
 
 // 消息类型常量
 const (
-	TypeLogin = "login" // 请求：登录
-	TypeSync  = "sync"  // 推送：全量同步
-	TypeLoot  = "loot"  // 推送：掉落装备
-	TypeFloor = "floor" // 推送：层数推进
+	TypeLogin   = "login"   // 请求：登录
+	TypeSync    = "sync"    // 推送：全量同步
+	TypeLoot    = "loot"    // 推送：掉落装备
+	TypeFloor   = "floor"   // 推送：层数推进
+	TypeEquip   = "equip"   // 请求：穿戴
+	TypeUnequip = "unequip" // 请求：卸下
+	TypeBag     = "bag"     // 推送：背包全量
+	TypePower   = "power"   // 推送：当前战力
 )
 
 // LoginRequest 登录请求体。
@@ -51,4 +55,35 @@ type AffixDTO struct {
 // FloorData 层数推送消息体。
 type FloorData struct {
 	Floor int `json:"floor"` // 新层数
+}
+
+// EquipRequest 穿戴请求体。
+type EquipRequest struct {
+	UID string `json:"uid"`
+}
+
+// UnequipRequest 卸下请求体。
+type UnequipRequest struct {
+	Slot int `json:"slot"`
+}
+
+// BagData 背包全量推送。
+type BagData struct {
+	Items []EquipmentDTO `json:"items"`
+}
+
+// EquipmentDTO 装备传输对象（背包与已穿戴通用）。
+type EquipmentDTO struct {
+	UID     string     `json:"uid"`
+	BaseID  string     `json:"base_id"`
+	Name    string     `json:"name"`
+	Slot    int        `json:"slot"`
+	Rarity  int        `json:"rarity"`
+	Upgrade int        `json:"upgrade"`
+	Affixes []AffixDTO `json:"affixes"`
+}
+
+// PowerData 战力推送。
+type PowerData struct {
+	Power float64 `json:"power"`
 }

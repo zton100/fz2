@@ -6,7 +6,9 @@ import (
 	"time"
 
 	"equipment-idle-server/internal/combat"
+	"equipment-idle-server/internal/data"
 	"equipment-idle-server/internal/dungeon"
+	"equipment-idle-server/internal/inventory"
 	"equipment-idle-server/internal/loot"
 	"equipment-idle-server/internal/model"
 	"equipment-idle-server/internal/protocol"
@@ -21,12 +23,16 @@ func (h *Hub) handleMessage(sess *Session, raw []byte) {
 	switch env.T {
 	case protocol.TypeLogin:
 		h.handleLogin(sess, env)
+	case protocol.TypeEquip:
+		h.handleEquip(sess, env)
+	case protocol.TypeUnequip:
+		h.handleUnequip(sess, env)
 	default:
 		log.Printf("unknown message type: %s", env.T)
 	}
 }
 
-// handleLogin 处理登录：加载/创建玩家，回发全量同步，启动战斗循环。
+// handleLogin 处理登录：加载/创建玩家，回发全量同步与背包战力，启动战斗循环。
 func (h *Hub) handleLogin(sess *Session, env protocol.Envelope) {
 	var req protocol.LoginRequest
 	if err := json.Unmarshal(env.Data, &req); err != nil {
@@ -48,17 +54,60 @@ func (h *Hub) handleLogin(sess *Session, env protocol.Envelope) {
 	out, _ := json.Marshal(resp)
 	sess.Send <- out
 
+	// 推送当前背包与战力
+	h.pushBag(sess, player)
+	h.pushPower(sess, player)
+
 	// 启动战斗循环
 	drop := loot.NewDropTable(h.gen)
 	runner := dungeon.NewRunner(player, combat.ComputePower, drop)
 	runner.LootCallback = func(eq *model.Equipment) {
 		h.pushLoot(sess, eq)
+		h.pushBag(sess, player) // 掉落后背包变化，同步推送
 	}
 	runner.FloorCallback = func(newFloor int) {
 		h.pushFloor(sess, newFloor)
 	}
 	sess.runner = runner
 	go h.battleLoop(sess, runner)
+}
+
+// handleEquip 处理穿戴请求。
+func (h *Hub) handleEquip(sess *Session, env protocol.Envelope) {
+	if sess.Account == "" {
+		return
+	}
+	player := h.store.LoadOrCreate(sess.Account)
+	var req protocol.EquipRequest
+	if err := json.Unmarshal(env.Data, &req); err != nil {
+		log.Printf("equip parse error: %v", err)
+		return
+	}
+	if err := inventory.Equip(player, req.UID); err != nil {
+		log.Printf("equip error: %v", err)
+		return
+	}
+	h.pushBag(sess, player)
+	h.pushPower(sess, player)
+}
+
+// handleUnequip 处理卸下请求。
+func (h *Hub) handleUnequip(sess *Session, env protocol.Envelope) {
+	if sess.Account == "" {
+		return
+	}
+	player := h.store.LoadOrCreate(sess.Account)
+	var req protocol.UnequipRequest
+	if err := json.Unmarshal(env.Data, &req); err != nil {
+		log.Printf("unequip parse error: %v", err)
+		return
+	}
+	if err := inventory.Unequip(player, data.Slot(req.Slot)); err != nil {
+		log.Printf("unequip error: %v", err)
+		return
+	}
+	h.pushBag(sess, player)
+	h.pushPower(sess, player)
 }
 
 // battleLoop 定时战斗循环，每 2 秒一次 tick。
@@ -77,14 +126,6 @@ func (h *Hub) battleLoop(sess *Session, runner *dungeon.Runner) {
 
 // pushLoot 把掉落装备推送给客户端。
 func (h *Hub) pushLoot(sess *Session, eq *model.Equipment) {
-	affixes := make([]protocol.AffixDTO, len(eq.Affixes))
-	for i, a := range eq.Affixes {
-		affixes[i] = protocol.AffixDTO{
-			Type:  string(a.Type),
-			Tier:  a.Tier,
-			Value: a.Value,
-		}
-	}
 	ld := protocol.LootData{
 		UID:     eq.UID,
 		BaseID:  eq.BaseID,
@@ -92,25 +133,81 @@ func (h *Hub) pushLoot(sess *Session, eq *model.Equipment) {
 		Slot:    int(eq.Slot),
 		Rarity:  int(eq.Rarity),
 		Upgrade: eq.Upgrade,
-		Affixes: affixes,
+		Affixes: toAffixDTOs(eq.Affixes),
 	}
-	data, _ := json.Marshal(ld)
-	env := protocol.Envelope{T: protocol.TypeLoot, Data: data}
+	dataBytes, _ := json.Marshal(ld)
+	env := protocol.Envelope{T: protocol.TypeLoot, Data: dataBytes}
 	out, _ := json.Marshal(env)
 	select {
 	case sess.Send <- out:
-	default: // 发送缓冲满则丢弃，避免阻塞战斗循环
+	default:
 	}
 }
 
 // pushFloor 把层数推进推送给客户端。
 func (h *Hub) pushFloor(sess *Session, newFloor int) {
 	fd := protocol.FloorData{Floor: newFloor}
-	data, _ := json.Marshal(fd)
-	env := protocol.Envelope{T: protocol.TypeFloor, Data: data}
+	dataBytes, _ := json.Marshal(fd)
+	env := protocol.Envelope{T: protocol.TypeFloor, Data: dataBytes}
 	out, _ := json.Marshal(env)
 	select {
 	case sess.Send <- out:
 	default:
 	}
+}
+
+// pushBag 推送背包全量。
+func (h *Hub) pushBag(sess *Session, player *model.Player) {
+	items := make([]protocol.EquipmentDTO, len(player.EquipBag))
+	for i, eq := range player.EquipBag {
+		items[i] = toEquipmentDTO(eq)
+	}
+	bd := protocol.BagData{Items: items}
+	dataBytes, _ := json.Marshal(bd)
+	env := protocol.Envelope{T: protocol.TypeBag, Data: dataBytes}
+	out, _ := json.Marshal(env)
+	select {
+	case sess.Send <- out:
+	default:
+	}
+}
+
+// pushPower 推送当前战力。
+func (h *Hub) pushPower(sess *Session, player *model.Player) {
+	stats := combat.AggregateStats(player.EquippedList())
+	power := combat.ComputePower(stats)
+	pd := protocol.PowerData{Power: power}
+	dataBytes, _ := json.Marshal(pd)
+	env := protocol.Envelope{T: protocol.TypePower, Data: dataBytes}
+	out, _ := json.Marshal(env)
+	select {
+	case sess.Send <- out:
+	default:
+	}
+}
+
+// toEquipmentDTO 把装备实例转为传输对象。
+func toEquipmentDTO(eq *model.Equipment) protocol.EquipmentDTO {
+	return protocol.EquipmentDTO{
+		UID:     eq.UID,
+		BaseID:  eq.BaseID,
+		Name:    eq.Name,
+		Slot:    int(eq.Slot),
+		Rarity:  int(eq.Rarity),
+		Upgrade: eq.Upgrade,
+		Affixes: toAffixDTOs(eq.Affixes),
+	}
+}
+
+// toAffixDTOs 把词缀实例列表转为传输对象列表。
+func toAffixDTOs(affixes []model.AffixInstance) []protocol.AffixDTO {
+	out := make([]protocol.AffixDTO, len(affixes))
+	for i, a := range affixes {
+		out[i] = protocol.AffixDTO{
+			Type:  string(a.Type),
+			Tier:  a.Tier,
+			Value: a.Value,
+		}
+	}
+	return out
 }
