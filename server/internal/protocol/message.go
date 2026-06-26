@@ -25,6 +25,7 @@ const (
 	TypeUpgrade   = "upgrade"   // 请求：强化
 	TypeMaterials = "materials" // 推送：材料库存
 	TypeCraftResult = "craft_result" // 推送：养成操作结果
+	TypeOfflineResult = "offline_result" // 推送：离线结算结果
 )
 
 // LoginRequest 登录请求体。
@@ -125,4 +126,12 @@ type CraftResult struct {
 	Msg     string `json:"msg"`
 	UID     string `json:"uid,omitempty"`
 	Upgrade int    `json:"upgrade,omitempty"`
+}
+
+// OfflineResultData 离线结算结果推送。
+type OfflineResultData struct {
+	DurationSeconds int `json:"duration_seconds"` // 结算时长（秒）
+	TicksSimulated  int `json:"ticks_simulated"`  // 模拟 tick 数
+	LootCount       int `json:"loot_count"`       // 掉落数
+	FloorsAdvanced  int `json:"floors_advanced"`  // 推进层数
 }

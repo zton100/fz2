@@ -12,6 +12,7 @@ import (
 	"equipment-idle-server/internal/inventory"
 	"equipment-idle-server/internal/loot"
 	"equipment-idle-server/internal/model"
+	"equipment-idle-server/internal/offline"
 	"equipment-idle-server/internal/protocol"
 	"equipment-idle-server/internal/upgrade"
 )
@@ -51,6 +52,20 @@ func (h *Hub) handleLogin(sess *Session, env protocol.Envelope) {
 	}
 	player := h.store.LoadOrCreate(req.Account)
 	sess.Account = req.Account
+
+	// 离线结算：计算上次离线时长
+	now := time.Now()
+	if !player.LastOnline.IsZero() {
+		offlineDuration := now.Sub(player.LastOnline)
+		if offlineDuration > 0 {
+			drop := loot.NewDropTable(h.gen)
+			result := offline.Calc(player, combat.ComputePower, drop, offlineDuration)
+			if result.TicksSimulated > 0 {
+				h.pushOfflineResult(sess, result)
+			}
+		}
+	}
+	player.LastOnline = now
 
 	// 回发全量同步
 	sync := protocol.SyncData{
@@ -121,13 +136,17 @@ func (h *Hub) handleUnequip(sess *Session, env protocol.Envelope) {
 	h.pushPower(sess, player)
 }
 
-// battleLoop 定时战斗循环，每 2 秒一次 tick。
+// battleLoop 定时战斗循环，每 2 秒一次 tick。断开时记录离线时间。
 func (h *Hub) battleLoop(sess *Session, runner *dungeon.Runner) {
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-sess.stopCh:
+			if sess.Account != "" {
+				p := h.store.LoadOrCreate(sess.Account)
+				p.LastOnline = time.Now()
+			}
 			return
 		case <-ticker.C:
 			runner.Tick()
@@ -353,6 +372,23 @@ func (h *Hub) pushCraftResult(sess *Session, ok bool, msg, uid string, upg int) 
 	cr := protocol.CraftResult{OK: ok, Msg: msg, UID: uid, Upgrade: upg}
 	dataBytes, _ := json.Marshal(cr)
 	env := protocol.Envelope{T: protocol.TypeCraftResult, Data: dataBytes}
+	out, _ := json.Marshal(env)
+	select {
+	case sess.Send <- out:
+	default:
+	}
+}
+
+// pushOfflineResult 推送离线结算结果。
+func (h *Hub) pushOfflineResult(sess *Session, result offline.OfflineResult) {
+	od := protocol.OfflineResultData{
+		DurationSeconds: int(result.Duration.Seconds()),
+		TicksSimulated:  result.TicksSimulated,
+		LootCount:       result.LootCount,
+		FloorsAdvanced:  result.FloorsAdvanced,
+	}
+	dataBytes, _ := json.Marshal(od)
+	env := protocol.Envelope{T: protocol.TypeOfflineResult, Data: dataBytes}
 	out, _ := json.Marshal(env)
 	select {
 	case sess.Send <- out:

@@ -1,16 +1,21 @@
 package model
 
-import "equipment-idle-server/internal/data"
+import (
+	"time"
+
+	"equipment-idle-server/internal/data"
+)
 
 // Player 玩家领域模型。
 type Player struct {
-	Account   string                   // 账号名
-	Floor     int                      // 当前层数
-	Souls     int                      // 魂点
-	Inventory []string                 // 背包物品 ID 占位（保留兼容阶段0同步）
-	EquipBag  []*Equipment             // 装备背包（掉落/未穿戴的装备）
-	Equipped  map[data.Slot]*Equipment // 已穿戴装备，按槽位
-	Materials map[data.MaterialType]int // 材料库存
+	Account    string                   // 账号名
+	Floor      int                      // 当前层数
+	Souls      int                      // 魂点
+	Inventory  []string                 // 背包物品 ID 占位（保留兼容阶段0同步）
+	EquipBag   []*Equipment             // 装备背包（掉落/未穿戴的装备）
+	Equipped   map[data.Slot]*Equipment // 已穿戴装备，按槽位
+	Materials  map[data.MaterialType]int // 材料库存
+	LastOnline time.Time                // 上次在线时间（离线结算用）
 }
 
 // NewPlayer 创建新玩家，默认第 1 层、0 魂、空背包。
@@ -22,7 +27,8 @@ func NewPlayer(account string) *Player {
 		Inventory: []string{},
 		EquipBag:  []*Equipment{},
 		Equipped:  map[data.Slot]*Equipment{},
-		Materials: map[data.MaterialType]int{},
+		Materials:  map[data.MaterialType]int{},
+		LastOnline: time.Now(),
 	}
 }
 
