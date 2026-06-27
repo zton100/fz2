@@ -26,6 +26,9 @@ const (
 	TypeMaterials = "materials" // 推送：材料库存
 	TypeCraftResult = "craft_result" // 推送：养成操作结果
 	TypeOfflineResult = "offline_result" // 推送：离线结算结果
+	TypeReincarn  = "reincarn"  // 请求：转生
+	TypeTalentUp  = "talent_up" // 请求：天赋升级
+	TypeTalents   = "talents"   // 推送：天赋状态
 )
 
 // LoginRequest 登录请求体。
@@ -134,4 +137,17 @@ type OfflineResultData struct {
 	TicksSimulated  int `json:"ticks_simulated"`  // 模拟 tick 数
 	LootCount       int `json:"loot_count"`       // 掉落数
 	FloorsAdvanced  int `json:"floors_advanced"`  // 推进层数
+}
+
+// TalentUpRequest 天赋升级请求体。
+type TalentUpRequest struct {
+	Name string `json:"name"`
+}
+
+// TalentsData 天赋状态推送。
+type TalentsData struct {
+	Souls       int            `json:"souls"`
+	MaxFloor    int            `json:"max_floor"`
+	CanReincarn bool           `json:"can_reincarn"`
+	Talents     map[string]int `json:"talents"`
 }

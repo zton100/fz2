@@ -19,14 +19,18 @@ namespace EquipmentIdle.State
         public event System.Action<int> OnFloorReceived;
         public event System.Action<Dictionary<string, int>> OnMaterialsReceived;
         public event System.Action<CraftResultData> OnCraftResult;
+        public event System.Action<int, int, bool, Dictionary<string, int>> OnTalentsReceived;
 
         public string Account { get; private set; } = "";
         public int Floor { get; private set; } = 1;
         public int Souls { get; private set; } = 0;
+        public int MaxFloor { get; private set; } = 1;
+        public bool CanReincarn { get; private set; } = false;
         public List<string> Inventory { get; private set; } = new List<string>();
         public List<EquipmentDTO> Bag { get; private set; } = new List<EquipmentDTO>();
         public float Power { get; private set; } = 0;
         public Dictionary<string, int> Materials { get; private set; } = new Dictionary<string, int>();
+        public Dictionary<string, int> Talents { get; private set; } = new Dictionary<string, int>();
 
         private WSClient _ws;
         private int _reqSeq = 1;
@@ -75,6 +79,16 @@ namespace EquipmentIdle.State
         public void Upgrade(string uid)
         {
             _ws.SendText(Message.EncodeUpgrade("r" + (_reqSeq++), uid));
+        }
+
+        public void Reincarn()
+        {
+            _ws.SendText(Message.EncodeReincarn("r" + (_reqSeq++)));
+        }
+
+        public void TalentUp(string name)
+        {
+            _ws.SendText(Message.EncodeTalentUp("r" + (_reqSeq++), name));
         }
 
         private void HandleConnected()
@@ -145,9 +159,29 @@ namespace EquipmentIdle.State
                     var cr = JsonUtility.FromJson<CraftResultData>(msg.dataJson);
                     if (cr != null) OnCraftResult?.Invoke(cr);
                     break;
+                case Message.TypeTalents:
+                    Souls = ExtractInt(msg.dataJson, "souls");
+                    MaxFloor = ExtractInt(msg.dataJson, "max_floor");
+                    CanReincarn = msg.dataJson.Contains("\"can_reincarn\":true");
+                    Talents = Message.ParseTalents(msg.dataJson);
+                    OnTalentsReceived?.Invoke(Souls, MaxFloor, CanReincarn, Talents);
+                    break;
             }
         }
 
         public bool IsConnected => _ws != null && _ws.IsConnected;
+
+        private static int ExtractInt(string json, string key)
+        {
+            string pattern = "\"" + key + "\":";
+            int i = json.IndexOf(pattern, System.StringComparison.Ordinal);
+            if (i < 0) return 0;
+            i += pattern.Length;
+            int end = i;
+            while (end < json.Length && json[end] >= '0' && json[end] <= '9') end++;
+            int val;
+            int.TryParse(json.Substring(i, end - i), out val);
+            return val;
+        }
     }
 }

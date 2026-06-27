@@ -16,6 +16,8 @@ type Player struct {
 	Equipped   map[data.Slot]*Equipment // 已穿戴装备，按槽位
 	Materials  map[data.MaterialType]int // 材料库存
 	LastOnline time.Time                // 上次在线时间（离线结算用）
+	MaxFloor   int                      // 历史最高层数（决定转生魂点）
+	Talents    map[string]int           // 天赋等级 {damage,quality,drop,offline_gain}
 }
 
 // NewPlayer 创建新玩家，默认第 1 层、0 魂、空背包。
@@ -29,6 +31,8 @@ func NewPlayer(account string) *Player {
 		Equipped:  map[data.Slot]*Equipment{},
 		Materials:  map[data.MaterialType]int{},
 		LastOnline: time.Now(),
+		MaxFloor:   1,
+		Talents:    map[string]int{},
 	}
 }
 
@@ -67,4 +71,9 @@ func (p *Player) SpendMaterial(mt data.MaterialType, n int) {
 	if p.Materials[mt] < 0 {
 		p.Materials[mt] = 0
 	}
+}
+
+// TalentLevel 返回指定天赋的当前等级。
+func (p *Player) TalentLevel(name string) int {
+	return p.Talents[name]
 }

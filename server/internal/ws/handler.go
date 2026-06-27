@@ -14,6 +14,7 @@ import (
 	"equipment-idle-server/internal/model"
 	"equipment-idle-server/internal/offline"
 	"equipment-idle-server/internal/protocol"
+	"equipment-idle-server/internal/reincarnation"
 	"equipment-idle-server/internal/upgrade"
 )
 
@@ -38,6 +39,10 @@ func (h *Hub) handleMessage(sess *Session, raw []byte) {
 		h.handleReforge(sess, env)
 	case protocol.TypeUpgrade:
 		h.handleUpgrade(sess, env)
+	case protocol.TypeReincarn:
+		h.handleReincarn(sess, env)
+	case protocol.TypeTalentUp:
+		h.handleTalentUp(sess, env)
 	default:
 		log.Printf("unknown message type: %s", env.T)
 	}
@@ -60,6 +65,25 @@ func (h *Hub) handleLogin(sess *Session, env protocol.Envelope) {
 		if offlineDuration > 0 {
 			drop := loot.NewDropTable(h.gen)
 			result := offline.Calc(player, combat.ComputePower, drop, offlineDuration)
+			// offline_gain 天赋加成：额外模拟 tick
+			gainBonus := reincarnation.OfflineGainBonus(player)
+			if gainBonus > 0 && result.TicksSimulated > 0 {
+				extraTicks := int(float64(result.TicksSimulated) * gainBonus)
+				for i := 0; i < extraTicks; i++ {
+					stats := combat.AggregateStats(player.EquippedList())
+					playerPower := combat.ComputePower(stats) * (1.0 + reincarnation.DamageBonus(player))
+					monster := data.MonsterAt(player.Floor)
+					if playerPower > monster.Power {
+						eq := drop.DropRandomSlot(player.Floor)
+						if eq != nil {
+							player.AddEquipment(eq)
+							result.LootCount++
+						}
+						player.Floor++
+						result.FloorsAdvanced++
+					}
+				}
+			}
 			if result.TicksSimulated > 0 {
 				h.pushOfflineResult(sess, result)
 			}
@@ -83,6 +107,7 @@ func (h *Hub) handleLogin(sess *Session, env protocol.Envelope) {
 	h.pushBag(sess, player)
 	h.pushPower(sess, player)
 	h.pushMaterials(sess, player)
+	h.pushTalents(sess, player)
 
 	// 启动战斗循环
 	drop := loot.NewDropTable(h.gen)
@@ -202,10 +227,11 @@ func (h *Hub) pushBag(sess *Session, player *model.Player) {
 	}
 }
 
-// pushPower 推送当前战力。
+// pushPower 推送当前战力（含 damage 天赋加成）。
 func (h *Hub) pushPower(sess *Session, player *model.Player) {
 	stats := combat.AggregateStats(player.EquippedList())
 	power := combat.ComputePower(stats)
+	power *= (1.0 + reincarnation.DamageBonus(player))
 	pd := protocol.PowerData{Power: power}
 	dataBytes, _ := json.Marshal(pd)
 	env := protocol.Envelope{T: protocol.TypePower, Data: dataBytes}
@@ -390,6 +416,76 @@ func (h *Hub) pushOfflineResult(sess *Session, result offline.OfflineResult) {
 	dataBytes, _ := json.Marshal(od)
 	env := protocol.Envelope{T: protocol.TypeOfflineResult, Data: dataBytes}
 	out, _ := json.Marshal(env)
+	select {
+	case sess.Send <- out:
+	default:
+	}
+}
+
+// handleReincarn 转生请求。
+func (h *Hub) handleReincarn(sess *Session, env protocol.Envelope) {
+	if sess.Account == "" {
+		return
+	}
+	player := h.store.LoadOrCreate(sess.Account)
+	if err := reincarnation.Reincarnate(player); err != nil {
+		h.pushCraftResult(sess, false, err.Error(), "", 0)
+		return
+	}
+	h.pushSync(sess, player, env.ID)
+	h.pushBag(sess, player)
+	h.pushPower(sess, player)
+	h.pushMaterials(sess, player)
+	h.pushTalents(sess, player)
+	h.pushCraftResult(sess, true, "reincarnated", "", 0)
+}
+
+// handleTalentUp 天赋升级请求。
+func (h *Hub) handleTalentUp(sess *Session, env protocol.Envelope) {
+	if sess.Account == "" {
+		return
+	}
+	player := h.store.LoadOrCreate(sess.Account)
+	var req protocol.TalentUpRequest
+	if err := json.Unmarshal(env.Data, &req); err != nil {
+		return
+	}
+	if err := reincarnation.UpgradeTalent(player, req.Name); err != nil {
+		h.pushCraftResult(sess, false, err.Error(), "", 0)
+		return
+	}
+	h.pushTalents(sess, player)
+	h.pushCraftResult(sess, true, "talent upgraded: "+req.Name, "", 0)
+}
+
+// pushTalents 推送天赋状态。
+func (h *Hub) pushTalents(sess *Session, player *model.Player) {
+	td := protocol.TalentsData{
+		Souls:       player.Souls,
+		MaxFloor:    player.MaxFloor,
+		CanReincarn: reincarnation.CanReincarnate(player),
+		Talents:     player.Talents,
+	}
+	dataBytes, _ := json.Marshal(td)
+	env := protocol.Envelope{T: protocol.TypeTalents, Data: dataBytes}
+	out, _ := json.Marshal(env)
+	select {
+	case sess.Send <- out:
+	default:
+	}
+}
+
+// pushSync 推送全量同步（供转生后复用）。
+func (h *Hub) pushSync(sess *Session, player *model.Player, id string) {
+	sync := protocol.SyncData{
+		Account:   player.Account,
+		Floor:     player.Floor,
+		Souls:     player.Souls,
+		Inventory: player.Inventory,
+	}
+	syncData, _ := json.Marshal(sync)
+	resp := protocol.Envelope{T: protocol.TypeSync, ID: id, Data: syncData}
+	out, _ := json.Marshal(resp)
 	select {
 	case sess.Send <- out:
 	default:

@@ -118,6 +118,29 @@ namespace EquipmentIdle.UI
             }
             GUILayout.EndHorizontal();
 
+            // 转生面板
+            GUILayout.Space(8);
+            GUILayout.Label("--- Reincarnation ---");
+            GUILayout.Label($"Souls: {_gameState.Souls}  MaxFloor: {_gameState.MaxFloor}  CanReincarn: {_gameState.CanReincarn}");
+            if (_gameState.CanReincarn && GUILayout.Button("REINCARNATE", GUILayout.Height(26)))
+            {
+                _gameState.Reincarn();
+            }
+            GUILayout.Space(4);
+            GUILayout.Label("Talents (cost 1 soul each):");
+            string[] talentNames = { "damage", "quality", "drop", "offline_gain" };
+            string[] talentDesc = { "+5% dmg/lvl(max10)", "+1 quality/lvl(max3)", "+3% drop/lvl(max10)", "+10% offline/lvl(max5)" };
+            int[] talentMax = { 10, 3, 10, 5 };
+            for (int i = 0; i < 4; i++)
+            {
+                GUILayout.BeginHorizontal();
+                int lv = _gameState.Talents.ContainsKey(talentNames[i]) ? _gameState.Talents[talentNames[i]] : 0;
+                GUILayout.Label($"{talentNames[i]} Lv{lv}/{talentMax[i]} - {talentDesc[i]}", GUILayout.Width(300));
+                if (GUILayout.Button("+", GUILayout.Width(30)))
+                    _gameState.TalentUp(talentNames[i]);
+                GUILayout.EndHorizontal();
+            }
+
             GUILayout.EndArea();
         }
 

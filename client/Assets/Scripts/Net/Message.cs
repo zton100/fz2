@@ -24,6 +24,9 @@ namespace EquipmentIdle.Net
         public const string TypeUpgrade = "upgrade";
         public const string TypeMaterials = "materials";
         public const string TypeCraftResult = "craft_result";
+        public const string TypeReincarn = "reincarn";
+        public const string TypeTalentUp = "talent_up";
+        public const string TypeTalents = "talents";
 
         /// <summary>编码登录请求为信封 JSON 字符串。</summary>
         public static string EncodeLogin(string id, string account)
@@ -74,29 +77,75 @@ namespace EquipmentIdle.Net
             return "{\"t\":\"" + TypeUpgrade + "\",\"id\":\"" + Escape(id) + "\",\"data\":" + dataJson + "}";
         }
 
+        /// <summary>编码转生请求。</summary>
+        public static string EncodeReincarn(string id)
+        {
+            return "{\"t\":\"" + TypeReincarn + "\",\"id\":\"" + Escape(id) + "\"}";
+        }
+
+        /// <summary>编码天赋升级请求。</summary>
+        public static string EncodeTalentUp(string id, string name)
+        {
+            string dataJson = "{\"name\":\"" + Escape(name) + "\"}";
+            return "{\"t\":\"" + TypeTalentUp + "\",\"id\":\"" + Escape(id) + "\",\"data\":" + dataJson + "}";
+        }
+
         /// <summary>解析 materials 推送的 JSON，返回 key->count 字典。</summary>
         public static System.Collections.Generic.Dictionary<string, int> ParseMaterials(string dataJson)
         {
+            return ParseIntMap(dataJson, "materials");
+        }
+
+        /// <summary>解析 talents 推送里的 talents 子字段，返回 key->level 字典。</summary>
+        public static System.Collections.Generic.Dictionary<string, int> ParseTalents(string dataJson)
+        {
+            return ParseIntMap(dataJson, "talents");
+        }
+
+        /// <summary>从 JSON 提取指定对象字段为 int 字典。</summary>
+        private static System.Collections.Generic.Dictionary<string, int> ParseIntMap(string dataJson, string key)
+        {
             var dict = new System.Collections.Generic.Dictionary<string, int>();
-            int i = 0;
-            while (i < dataJson.Length)
+            // 定位 "key":{ 子对象
+            string pattern = "\"" + key + "\":";
+            int i = dataJson.IndexOf(pattern, System.StringComparison.Ordinal);
+            if (i < 0) return dict;
+            i += pattern.Length;
+            while (i < dataJson.Length && (dataJson[i] == ' ' || dataJson[i] == '\t')) i++;
+            if (i >= dataJson.Length || dataJson[i] != '{') return dict;
+            int depth = 0;
+            int start = i;
+            for (; i < dataJson.Length; i++)
             {
-                int q1 = dataJson.IndexOf('"', i);
+                if (dataJson[i] == '{') depth++;
+                else if (dataJson[i] == '}')
+                {
+                    depth--;
+                    if (depth == 0) break;
+                }
+            }
+            if (i >= dataJson.Length) return dict;
+            string mapJson = dataJson.Substring(start, i - start + 1);
+            // 解析 mapJson 里的 "k":v 对
+            int j = 1; // 跳过开头 {
+            while (j < mapJson.Length - 1)
+            {
+                int q1 = mapJson.IndexOf('"', j);
                 if (q1 < 0) break;
-                int q2 = dataJson.IndexOf('"', q1 + 1);
+                int q2 = mapJson.IndexOf('"', q1 + 1);
                 if (q2 < 0) break;
-                string key = dataJson.Substring(q1 + 1, q2 - q1 - 1);
-                int colon = dataJson.IndexOf(':', q2);
+                string k = mapJson.Substring(q1 + 1, q2 - q1 - 1);
+                int colon = mapJson.IndexOf(':', q2);
                 if (colon < 0) break;
-                int comma = dataJson.IndexOf(',', colon);
-                int brace = dataJson.IndexOf('}', colon);
+                int comma = mapJson.IndexOf(',', colon);
+                int brace = mapJson.IndexOf('}', colon);
                 int end = comma;
                 if (comma < 0 || (brace >= 0 && brace < comma)) end = brace;
-                if (end < 0) end = dataJson.Length;
-                string valStr = dataJson.Substring(colon + 1, end - colon - 1).Trim();
+                if (end < 0) end = mapJson.Length;
+                string valStr = mapJson.Substring(colon + 1, end - colon - 1).Trim();
                 int val;
-                if (int.TryParse(valStr, out val)) dict[key] = val;
-                i = end + 1;
+                if (int.TryParse(valStr, out val)) dict[k] = val;
+                j = end + 1;
             }
             return dict;
         }
