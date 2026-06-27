@@ -51,3 +51,44 @@ func TestDrop_GeneratesEquipment(t *testing.T) {
 		t.Fatal("dropped equipment has empty UID")
 	}
 }
+
+func TestDropRandomSlotModified_QualityFloorPreventsCommon(t *testing.T) {
+	g := NewGenerator(rand.New(rand.NewSource(77)))
+	drop := NewDropTable(g)
+	mod := DropModifier{DropBonus: 0, QualityFloor: data.RarityMagic}
+	for i := 0; i < 50; i++ {
+		eq := drop.DropRandomSlotModified(1, mod)
+		if eq == nil {
+			t.Fatal("drop returned nil")
+		}
+		if eq.Rarity < data.RarityMagic {
+			t.Fatalf("rarity = %d, want >= magic(%d) with quality floor", eq.Rarity, data.RarityMagic)
+		}
+	}
+}
+
+func TestDropRandomSlotModified_DropBonusIncreasesQuality(t *testing.T) {
+	g := NewGenerator(rand.New(rand.NewSource(99)))
+	drop := NewDropTable(g)
+	// 无加成时 floor=1 高稀有度几乎不出
+	var rareOrBetterNoBonus int
+	for i := 0; i < 200; i++ {
+		mod := DropModifier{DropBonus: 0, QualityFloor: 0}
+		eq := drop.DropRandomSlotModified(1, mod)
+		if eq.Rarity >= data.RarityRare {
+			rareOrBetterNoBonus++
+		}
+	}
+	// 有加成时高稀有度显著增多
+	var rareOrBetterWithBonus int
+	for i := 0; i < 200; i++ {
+		mod := DropModifier{DropBonus: 0.3, QualityFloor: 0}
+		eq := drop.DropRandomSlotModified(1, mod)
+		if eq.Rarity >= data.RarityRare {
+			rareOrBetterWithBonus++
+		}
+	}
+	if rareOrBetterWithBonus <= rareOrBetterNoBonus {
+		t.Fatalf("drop bonus should increase high rarity: noBonus=%d withBonus=%d", rareOrBetterNoBonus, rareOrBetterWithBonus)
+	}
+}

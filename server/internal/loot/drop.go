@@ -7,6 +7,12 @@ import (
 	"equipment-idle-server/internal/model"
 )
 
+// DropModifier 天赋加成参数，影响掉落稀有度。
+type DropModifier struct {
+	DropBonus    float64    // 高稀有度权重加成
+	QualityFloor data.Rarity // 最低稀有度
+}
+
 // DropTable 掉落表：按层数决定稀有度权重并生成装备。
 type DropTable struct {
 	gen *Generator
@@ -64,12 +70,15 @@ func (d *DropTable) DropRandomSlot(floor int) *model.Equipment {
 }
 
 // RollRarityWithBonus 按层数+天赋加成选稀有度。
-// dropBonus: 提高高稀有度权重（0.03/级，最高+0.30）。
+// dropBonus: 提高高稀有度权重（直接给稀有/传奇/神器加权）。
 // qualityFloor: 稀有度下限，低于下限的权重置零。
 func (d *DropTable) RollRarityWithBonus(floor int, dropBonus float64, qualityFloor data.Rarity) data.Rarity {
-	effectiveFloor := floor + int(dropBonus*10)
-	weights := rarityWeights(effectiveFloor)
+	weights := rarityWeights(floor)
 	rarities := data.AllRarities()
+	// dropBonus 直接提升稀有/传奇/神器权重
+	weights[2] += int(dropBonus * 100) // Rare
+	weights[3] += int(dropBonus * 40)  // Legendary
+	weights[4] += int(dropBonus * 20)  // Artifact
 	total := 0
 	for i := range weights {
 		if rarities[i] < qualityFloor {
@@ -96,6 +105,15 @@ func (d *DropTable) DropRandomSlotWithBonus(floor int, dropBonus float64, qualit
 	slots := data.AllSlots()
 	slot := slots[d.rng.Intn(len(slots))]
 	rarity := d.RollRarityWithBonus(floor, dropBonus, qualityFloor)
+	return d.gen.Generate(slot, rarity)
+}
+
+// DropRandomSlotModified 带 DropModifier 的随机槽位掉落（在线 Runner 使用）。
+// drop/quality 天赋通过 DropModifier 影响掉落权重与稀有度下限。
+func (d *DropTable) DropRandomSlotModified(floor int, mod DropModifier) *model.Equipment {
+	slots := data.AllSlots()
+	slot := slots[d.rng.Intn(len(slots))]
+	rarity := d.RollRarityWithBonus(floor, mod.DropBonus, mod.QualityFloor)
 	return d.gen.Generate(slot, rarity)
 }
 

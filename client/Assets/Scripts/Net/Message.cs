@@ -27,6 +27,7 @@ namespace EquipmentIdle.Net
         public const string TypeReincarn = "reincarn";
         public const string TypeTalentUp = "talent_up";
         public const string TypeTalents = "talents";
+        public const string TypeOfflineResult = "offline_result";
 
         /// <summary>编码登录请求为信封 JSON 字符串。</summary>
         public static string EncodeLogin(string id, string account)
@@ -296,5 +297,15 @@ public class TalentEntry
 {
     public string name;
     public int level;
+}
+
+/// <summary>离线结算结果推送。</summary>
+[Serializable]
+public class OfflineResultData
+{
+    public int duration_seconds;
+    public int ticks_simulated;
+    public int loot_count;
+    public int floors_advanced;
 }
 }

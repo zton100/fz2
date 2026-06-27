@@ -38,8 +38,12 @@ func (r *Runner) Tick() {
 	if !result.Win {
 		return
 	}
-	// 胜利：掉落装备
-	eq := r.drop.DropRandomSlot(r.player.Floor)
+	// 胜利：掉落装备（使用 drop/quality 天赋加成）
+	mod := loot.DropModifier{
+		DropBonus:    reincarnation.DropBonus(r.player),
+		QualityFloor: reincarnation.QualityFloor(r.player),
+	}
+	eq := r.drop.DropRandomSlotModified(r.player.Floor, mod)
 	if eq != nil {
 		r.player.AddEquipment(eq)
 		if r.LootCallback != nil {

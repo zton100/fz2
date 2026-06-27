@@ -20,6 +20,7 @@ namespace EquipmentIdle.State
         public event System.Action<Dictionary<string, int>> OnMaterialsReceived;
         public event System.Action<CraftResultData> OnCraftResult;
         public event System.Action<int, int, bool, Dictionary<string, int>> OnTalentsReceived;
+        public event System.Action<OfflineResultData> OnOfflineResultReceived;
 
         public string Account { get; private set; } = "";
         public int Floor { get; private set; } = 1;
@@ -31,6 +32,7 @@ namespace EquipmentIdle.State
         public float Power { get; private set; } = 0;
         public Dictionary<string, int> Materials { get; private set; } = new Dictionary<string, int>();
         public Dictionary<string, int> Talents { get; private set; } = new Dictionary<string, int>();
+        public OfflineResultData LastOfflineResult { get; private set; }
 
         private WSClient _ws;
         private int _reqSeq = 1;
@@ -169,6 +171,14 @@ namespace EquipmentIdle.State
                         CanReincarn = td.can_reincarn;
                         Talents = Message.TalentsToDict(td.talents);
                         OnTalentsReceived?.Invoke(Souls, MaxFloor, CanReincarn, Talents);
+                    }
+                    break;
+                case Message.TypeOfflineResult:
+                    var ord = JsonUtility.FromJson<OfflineResultData>(msg.dataJson);
+                    if (ord != null)
+                    {
+                        LastOfflineResult = ord;
+                        OnOfflineResultReceived?.Invoke(ord);
                     }
                     break;
             }

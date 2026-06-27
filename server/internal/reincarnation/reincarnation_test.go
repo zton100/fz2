@@ -146,3 +146,46 @@ func TestQualityFloor(t *testing.T) {
 		t.Fatalf("quality floor = %d, want magic(%d)", floor, data.RarityMagic)
 	}
 }
+
+func TestReincarnate_HistoricMaxFloorDoesNotRepeatReward(t *testing.T) {
+	p := model.NewPlayer("t")
+	p.Floor = 10
+	p.MaxFloor = 100
+	p.Souls = 0
+	err := Reincarnate(p)
+	if err != nil {
+		t.Fatalf("reincarnate error: %v", err)
+	}
+	if p.Souls != 2 {
+		t.Fatalf("souls = %d, want 2 (Floor/5=2, not MaxFloor/5=20)", p.Souls)
+	}
+	if p.MaxFloor != 100 {
+		t.Fatalf("MaxFloor = %d, want 100 (preserved)", p.MaxFloor)
+	}
+}
+
+func TestAdvanceFloor_UpdatesBothFloorAndMaxFloor(t *testing.T) {
+	p := model.NewPlayer("t")
+	p.Floor = 9
+	p.MaxFloor = 9
+	AdvanceFloor(p)
+	if p.Floor != 10 {
+		t.Fatalf("Floor = %d, want 10", p.Floor)
+	}
+	if p.MaxFloor != 10 {
+		t.Fatalf("MaxFloor = %d, want 10", p.MaxFloor)
+	}
+}
+
+func TestAdvanceFloor_MaxFloorHigherDoesNotDecrease(t *testing.T) {
+	p := model.NewPlayer("t")
+	p.Floor = 5
+	p.MaxFloor = 20
+	AdvanceFloor(p)
+	if p.Floor != 6 {
+		t.Fatalf("Floor = %d, want 6", p.Floor)
+	}
+	if p.MaxFloor != 20 {
+		t.Fatalf("MaxFloor = %d, want 20 (unchanged)", p.MaxFloor)
+	}
+}

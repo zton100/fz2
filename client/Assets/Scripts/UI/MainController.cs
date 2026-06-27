@@ -17,6 +17,24 @@ namespace EquipmentIdle.UI
         private string _powerText = "power: 0";
         private GameState _gameState;
         private Vector2 _bagScroll;
+        private bool _offlinePopup;
+        private string _offlineText = "";
+
+        // 战力变化追踪
+        private float _prevPower = 0;
+
+        // toast 通知系统（掉落/强化/转生/Boss 第一关）
+        private struct Toast
+        {
+            public string text;
+            public float expireAt;
+            public Color color;
+        }
+        private readonly List<Toast> _toasts = new List<Toast>();
+        private const float ToastDuration = 3f;
+
+        // 之前 CanReincarn 状态（检测变化触发提示）
+        private bool _prevCanReincarn = false;
 
         private void Start()
         {
@@ -31,6 +49,9 @@ namespace EquipmentIdle.UI
             _gameState.OnPowerReceived += OnPower;
             _gameState.OnLootReceived += OnLoot;
             _gameState.OnFloorReceived += OnFloor;
+            _gameState.OnOfflineResultReceived += OnOfflineResult;
+            _gameState.OnCraftResult += OnCraftResult;
+            _gameState.OnTalentsReceived += OnTalents;
         }
 
         private void OnSync(SyncData data)
@@ -46,31 +67,111 @@ namespace EquipmentIdle.UI
 
         private void OnPower(float power)
         {
-            _powerText = $"power: {power:F1}";
+            float delta = power - _prevPower;
+            if (delta > 0.5f)
+                _powerText = $"power: {power:F1} <color=#4f4>+{delta:F1}</color>";
+            else if (delta < -0.5f)
+                _powerText = $"power: {power:F1} <color=#f44>{delta:F1}</color>";
+            else
+                _powerText = $"power: {power:F1}";
+            _prevPower = power;
         }
 
         private void OnLoot(EquipmentDTO eq)
         {
-            // 掉落即时提示（背包会在 bag 推送时刷新）
+            // 掉落弹窗 toast
+            string color = RarityColor(eq.rarity);
+            string rname = RarityName(eq.rarity);
+            AddToast($"[Loot] <color={color}>{rname} {eq.name}</color>", ToastDuration, Color.white);
         }
 
         private void OnFloor(int newFloor)
         {
             _syncText = $"account={_gameState.Account} floor={newFloor} souls={_gameState.Souls}";
+            // Boss 击败提示：每 5 层一次（刚推进到的层是 newFloor，上一个 boss 是 newFloor-1）
+            // 在线 Runner.Tick 推层后调用此回调。如果在推进时 newFloor-1 是 5 的倍数，说明刚打完 Boss。
+            int justCleared = newFloor - 1;
+            if (justCleared > 0 && justCleared % 5 == 0)
+            {
+                AddToast($"<color=#f80>Boss Defeated!</color> Floor {justCleared} cleared", ToastDuration, new Color(1f, 0.5f, 0f));
+            }
+        }
+
+        private void OnOfflineResult(OfflineResultData ord)
+        {
+            int h = ord.duration_seconds / 3600;
+            int m = (ord.duration_seconds % 3600) / 60;
+            string dur = h > 0 ? $"{h}h{m}m" : $"{m}m";
+            _offlineText = $"--- Offline Summary ---\n"
+                         + $"Duration: {dur} (capped 8h)\n"
+                         + $"Loot gained: {ord.loot_count} items\n"
+                         + $"Floors advanced: {ord.floors_advanced}\n"
+                         + $"Simulated ticks: {ord.ticks_simulated}";
+            _offlinePopup = true;
+        }
+
+        private void OnCraftResult(CraftResultData cr)
+        {
+            // 强化/铸造反馈 toast
+            if (cr.ok)
+            {
+                if (!string.IsNullOrEmpty(cr.uid))
+                    AddToast($"<color=#4f4>{cr.msg} +{cr.upgrade}</color>", ToastDuration, Color.green);
+                else
+                    AddToast($"<color=#4f4>{cr.msg}</color>", ToastDuration, Color.green);
+            }
+            else
+            {
+                AddToast($"<color=#f44>{cr.msg}</color>", ToastDuration, Color.red);
+            }
+        }
+
+        private void OnTalents(int souls, int maxFloor, bool canReincarn, Dictionary<string, int> talents)
+        {
+            // 转生提示：CanReincarn 从 false 变 true 时弹提示
+            if (canReincarn && !_prevCanReincarn)
+            {
+                AddToast("<color=#f80>Reincarnation available!</color> Tap REINCARNATE to reset for souls", 5f, new Color(1f, 0.5f, 0f));
+            }
+            _prevCanReincarn = canReincarn;
+        }
+
+        private void AddToast(string text, float duration, Color color)
+        {
+            _toasts.Add(new Toast
+            {
+                text = text,
+                expireAt = Time.realtimeSinceStartup + duration,
+                color = color,
+            });
+            if (_toasts.Count > 8) _toasts.RemoveAt(0);
         }
 
         private void OnGUI()
         {
-            float w = 480f, h = 460f;
+            float w = 480f, h = 480f;
             float x = (Screen.width - w) / 2f;
             float y = (Screen.height - h) / 2f;
             GUILayout.BeginArea(new Rect(x, y, w, h), GUI.skin.box);
 
-            GUILayout.Label("EquipmentIdle - Stage 3");
+            GUILayout.Label("EquipmentIdle - Stage 6");
             GUILayout.Space(4);
             GUILayout.Label("Status: " + _statusText);
             GUILayout.Label(_syncText);
-            GUILayout.Label(_powerText);
+
+            // 战力文本（含 delta，用 rich text 显示颜色）
+            var richStyle = new GUIStyle(GUI.skin.label) { richText = true };
+            GUILayout.Label(_powerText, richStyle);
+
+            // 卡点提示：当前战力打不过当前层怪物
+            float curPower = _gameState.Power;
+            int curFloor = _gameState.Floor;
+            float monsterPower = MonsterPowerAtFloor(curFloor);
+            if (curPower > 0 && curPower <= monsterPower)
+            {
+                GUILayout.Label($"<color=#f44>STUCK! Power {curPower:F0} < Monster {monsterPower:F0} at Floor {curFloor}</color>", richStyle);
+            }
+
             GUILayout.Space(6);
 
             GUILayout.Label("Account:");
@@ -84,7 +185,14 @@ namespace EquipmentIdle.UI
             }
 
             GUILayout.Space(8);
+            GUILayout.BeginHorizontal();
             GUILayout.Label("Backpack (" + _gameState.Bag.Count + " items):");
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("Equip Best", GUILayout.Width(90)))
+            {
+                EquipBest();
+            }
+            GUILayout.EndHorizontal();
 
             _bagScroll = GUILayout.BeginScrollView(_bagScroll, GUILayout.Height(180));
             foreach (var eq in _gameState.Bag)
@@ -142,6 +250,98 @@ namespace EquipmentIdle.UI
             }
 
             GUILayout.EndArea();
+
+            // toast 通知（屏幕右侧从上往下排列）
+            DrawToasts();
+
+            // 离线结算弹窗（覆盖在主面板上方）
+            if (_offlinePopup)
+            {
+                DrawOfflinePopup();
+            }
+        }
+
+        /// <summary>一键穿戴：找背包中每槽位战力最高的穿上。</summary>
+        private void EquipBest()
+        {
+            // 找出背包中所有装备的战力评分并穿戴最高的
+            string bestUid = null;
+            float bestScore = -1f;
+            foreach (var eq in _gameState.Bag)
+            {
+                float score = ScoreEquipment(eq);
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    bestUid = eq.uid;
+                }
+            }
+            if (bestUid != null)
+            {
+                _gameState.Equip(bestUid);
+                AddToast("<color=#4f4>Equipped best item</color>", 2f, Color.green);
+            }
+        }
+
+        /// <summary>装备评分：稀有度权重 + 强化等级 + 词缀数。</summary>
+        private static float ScoreEquipment(EquipmentDTO eq)
+        {
+            float s = (eq.rarity + 1) * 100f + eq.upgrade * 10f;
+            if (eq.affixes != null) s += eq.affixes.Length * 5f;
+            return s;
+        }
+
+        private void DrawToasts()
+        {
+            float now = Time.realtimeSinceStartup;
+            // 移除过期的 toast
+            for (int i = _toasts.Count - 1; i >= 0; i--)
+            {
+                if (now >= _toasts[i].expireAt) _toasts.RemoveAt(i);
+            }
+            if (_toasts.Count == 0) return;
+
+            float toastW = 280f;
+            float toastH = 28f;
+            float tx = Screen.width - toastW - 10f;
+            float ty = 10f;
+            var richStyle = new GUIStyle(GUI.skin.label) { richText = true, fontSize = 12 };
+
+            for (int i = 0; i < _toasts.Count; i++)
+            {
+                var t = _toasts[i];
+                float age = t.expireAt - now;
+                float alpha = Mathf.Clamp01(age / 1f); // 最后一秒淡出
+                Color c = t.color;
+                c.a *= alpha;
+                GUI.color = c;
+                GUI.Box(new Rect(tx, ty + i * (toastH + 4), toastW, toastH), t.text, GUI.skin.box);
+                GUI.color = Color.white;
+            }
+        }
+
+        private void DrawOfflinePopup()
+        {
+            float pw = 300f, ph = 220f;
+            float px = (Screen.width - pw) / 2f;
+            float py = (Screen.height - ph) / 2f;
+            GUI.Box(new Rect(px, py, pw, ph), "");
+            GUILayout.BeginArea(new Rect(px, py, pw, ph), GUI.skin.box);
+            GUILayout.Label(_offlineText);
+            GUILayout.Space(12);
+            if (GUILayout.Button("OK", GUILayout.Height(28)))
+            {
+                _offlinePopup = false;
+            }
+            GUILayout.EndArea();
+        }
+
+        /// <summary>怪物战力公式（与服务端 data.MonsterPower 一致）。</summary>
+        private static float MonsterPowerAtFloor(int floor)
+        {
+            float p = 10f + (floor - 1) * 8f;
+            if (floor % 5 == 0) p *= 1.8f; // Boss 层
+            return p;
         }
 
         private static string RarityName(int r)
@@ -154,6 +354,19 @@ namespace EquipmentIdle.UI
                 case 3: return "传奇";
                 case 4: return "神器";
                 default: return "?";
+            }
+        }
+
+        private static string RarityColor(int r)
+        {
+            switch (r)
+            {
+                case 0: return "#aaa"; // 普通 白
+                case 1: return "#4af"; // 魔法 蓝
+                case 2: return "#fd4"; // 稀有 黄
+                case 3: return "#f80"; // 传奇 橙
+                case 4: return "#f44"; // 神器 红
+                default: return "#fff";
             }
         }
 
