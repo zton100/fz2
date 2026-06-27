@@ -1,4 +1,4 @@
-package loot
+﻿package loot
 
 import (
 	"fmt"
@@ -23,8 +23,9 @@ func NewGenerator(rng *rand.Rand) *Generator {
 	}
 }
 
-// Generate 按槽位与稀有度生成一件装备实例。
-func (g *Generator) Generate(slot data.Slot, rarity data.Rarity) *model.Equipment {
+// Generate 按槽位、稀有度和楼层生成一件装备实例。
+// floor 用于按楼层解锁词缀类别（Basic 始终可用，Derived 在 floor≥6 时解锁，Special 在 floor≥16 时解锁）。
+func (g *Generator) Generate(slot data.Slot, rarity data.Rarity, floor int) *model.Equipment {
 	base := data.BaseBySlot(slot)
 	eq := &model.Equipment{
 		UID:       g.nextUID(),
@@ -36,8 +37,8 @@ func (g *Generator) Generate(slot data.Slot, rarity data.Rarity) *model.Equipmen
 		Upgrade:   0,
 	}
 	rule := data.RarityAffixCount[rarity]
-	prefixes := data.AffixesByPosition(g.pool, data.PosPrefix)
-	suffixes := data.AffixesByPosition(g.pool, data.PosSuffix)
+	prefixes := g.filteredPool(data.PosPrefix, floor)
+	suffixes := g.filteredPool(data.PosSuffix, floor)
 
 	chosenTypes := map[data.AffixType]bool{}
 	for i := 0; i < rule.Prefix && len(prefixes) > 0; i++ {
@@ -55,6 +56,17 @@ func (g *Generator) Generate(slot data.Slot, rarity data.Rarity) *model.Equipmen
 		}
 	}
 	return eq
+}
+
+// filteredPool returns affixes matching both position and floor unlock.
+func (g *Generator) filteredPool(pos data.AffixPosition, floor int) []data.AffixDef {
+	var out []data.AffixDef
+	for _, a := range g.pool {
+		if a.Position == pos && a.FloorMin <= floor {
+			out = append(out, a)
+		}
+	}
+	return out
 }
 
 // pickAffix 从候选词缀中随机选一个（避开已选类型），返回 AffixDef 指针。

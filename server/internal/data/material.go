@@ -1,4 +1,4 @@
-package data
+﻿package data
 
 // MaterialType 材料类型标识。
 type MaterialType string
@@ -43,11 +43,13 @@ const ComposeCost = 10
 // ReforgeCostPerAffix 每重铸一个词缀所需词缀材料数（按词缀 Tier 对应材料）。
 const ReforgeCostPerAffix = 1
 
-// UpgradeCostTable 强化各级消耗基础材料（索引=目标等级，0不用）。
-var UpgradeCostTable = []int{0, 3, 5, 8, 12, 18, 25, 35, 50, 70, 100}
+// UpgradeCostTable 强化各级消耗基础材料（索引=目标等级）。
+var UpgradeCostTable = []int{0, 3, 5, 10, 18, 30, 50, 80, 120, 180, 250}
 
 // UpgradeSuccessRate 强化成功率（索引=目标等级）。
-var UpgradeSuccessRate = []float64{0, 1.0, 1.0, 1.0, 0.8, 0.8, 0.8, 0.6, 0.6, 0.6, 0.4}
+// +1~+3 100% 保证前期正反馈; +4~+5 70%; +6~+7 50%; +8~+9 35%; +10 25%。
+// 期望总成本约 2204 基础材料，让 +10 成为有分量的投资。
+var UpgradeSuccessRate = []float64{0, 1.0, 1.0, 1.0, 0.7, 0.7, 0.5, 0.5, 0.35, 0.35, 0.25}
 
 // UpgradeSafeThreshold +7 及以上失败不掉级。
 const UpgradeSafeThreshold = 7

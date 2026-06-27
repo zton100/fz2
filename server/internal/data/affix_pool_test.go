@@ -1,4 +1,4 @@
-package data
+﻿package data
 
 import "testing"
 
@@ -31,6 +31,38 @@ func TestAffixesByPosition(t *testing.T) {
 	for _, a := range prefixes {
 		if a.Position != PosPrefix {
 			t.Fatal("prefix filter returned non-prefix affix")
+		}
+	}
+}
+
+// TestBuildAffixPool_ConsistentTierMultiplier verifies that every affix type
+// has roughly the same T5/T1 midpoint ratio (within ±2 of target 16x),
+// preventing some affix types from becoming disproportionately powerful at
+// higher tiers.
+func TestBuildAffixPool_ConsistentTierMultiplier(t *testing.T) {
+	pool := BuildAffixPool()
+	type tierMid struct{ t1, t5 float64 }
+	mids := map[AffixType]tierMid{}
+	for _, a := range pool {
+		mid := (a.Min + a.Max) / 2.0
+		entry := mids[a.Type]
+		switch a.Tier {
+		case 1:
+			entry.t1 = mid
+		case 5:
+			entry.t5 = mid
+		}
+		mids[a.Type] = entry
+	}
+	const targetRatio = 16.0
+	const tol = 2.0
+	for typ, m := range mids {
+		if m.t1 <= 0 {
+			t.Fatalf("affix %s t1 midpoint = %.4f, positive required", typ, m.t1)
+		}
+		ratio := m.t5 / m.t1
+		if ratio < targetRatio-tol || ratio > targetRatio+tol {
+			t.Errorf("affix %s T5/T1 = %.2f, want %.0f\u00b1%.0f", typ, ratio, targetRatio, tol)
 		}
 	}
 }

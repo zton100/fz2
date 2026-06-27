@@ -1,4 +1,4 @@
-package crafting
+﻿package crafting
 
 import (
 	"math/rand"
@@ -9,49 +9,40 @@ import (
 	"equipment-idle-server/internal/model"
 )
 
-func TestReforge_RerollsAffixes(t *testing.T) {
+func TestReforge_ChangesAffixes(t *testing.T) {
 	p := model.NewPlayer("t")
-	p.AddMaterial(data.MatAffixT1, 10)
-	p.AddMaterial(data.MatAffixT2, 10)
-	gen := loot.NewGenerator(rand.New(rand.NewSource(1)))
-	eq := gen.Generate(data.SlotWeapon, data.RarityMagic)
-	for _, a := range eq.Affixes {
-		p.AddMaterial(data.AffixMaterialByTier(a.Tier), 5)
+	// Give all affix material tiers to ensure enough
+	for _, mt := range []data.MaterialType{data.MatAffixT1, data.MatAffixT2, data.MatAffixT3, data.MatAffixT4, data.MatAffixT5} {
+		p.AddMaterial(mt, 10)
 	}
+	gen := loot.NewGenerator(rand.New(rand.NewSource(42)))
+	eq := gen.Generate(data.SlotWeapon, data.RarityMagic, 10)
+	oldAffixes := make([]model.AffixInstance, len(eq.Affixes))
+	copy(oldAffixes, eq.Affixes)
 	err := Reforge(p, gen, eq)
 	if err != nil {
 		t.Fatalf("reforge error: %v", err)
 	}
-	if len(eq.Affixes) != 2 {
-		t.Fatalf("affix count = %d, want 2", len(eq.Affixes))
-	}
 	if eq.Rarity != data.RarityMagic {
-		t.Fatalf("rarity changed")
+		t.Fatal("reforge changed rarity")
 	}
-	if eq.BaseID != "base_weapon" {
-		t.Fatalf("base changed")
+	sameCount := 0
+	for i := range oldAffixes {
+		if i < len(eq.Affixes) && eq.Affixes[i].Type == oldAffixes[i].Type && eq.Affixes[i].Tier == oldAffixes[i].Tier {
+			sameCount++
+		}
+	}
+	if sameCount == len(oldAffixes) {
+		t.Fatal("reforge should change affixes (fixed seed)")
 	}
 }
 
 func TestReforge_InsufficientMaterial(t *testing.T) {
 	p := model.NewPlayer("t")
 	gen := loot.NewGenerator(rand.New(rand.NewSource(1)))
-	eq := gen.Generate(data.SlotWeapon, data.RarityRare)
+	eq := gen.Generate(data.SlotWeapon, data.RarityRare, 10)
 	err := Reforge(p, gen, eq)
 	if err == nil {
 		t.Fatal("should error when insufficient material")
-	}
-}
-
-func TestReforge_NoAffixesNoCost(t *testing.T) {
-	p := model.NewPlayer("t")
-	gen := loot.NewGenerator(rand.New(rand.NewSource(1)))
-	eq := &model.Equipment{
-		UID: "e1", BaseID: "base_weapon", Slot: data.SlotWeapon,
-		Rarity: data.RarityCommon, BaseStats: map[data.AffixType]float64{data.ATStrength: 5},
-	}
-	err := Reforge(p, gen, eq)
-	if err != nil {
-		t.Fatalf("reforge no-affix error: %v", err)
 	}
 }

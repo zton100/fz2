@@ -1,4 +1,4 @@
-package upgrade
+﻿package upgrade
 
 import (
 	"math/rand"
@@ -67,9 +67,34 @@ func TestUpgrade_HighLevelFailNoDegrade(t *testing.T) {
 		result, _ := Upgrade(p, rng, eq)
 		if !result.Success {
 			if eq.Upgrade == 9 {
-				return // 观察到失败且不掉级，通过
+				return // 瑙傚療鍒板け璐ヤ笖涓嶆帀绾э紝閫氳繃
 			}
 		}
 	}
 	t.Fatal("should observe a failure with no degrade at +9->+10")
+}
+
+// TestUpgrade_RatesNonIncreasing verifies success rates are non-increasing
+// at higher levels (the curve should get harder, not easier).
+func TestUpgrade_RatesNonIncreasing(t *testing.T) {
+	for i := 2; i <= 10; i++ {
+		if data.UpgradeSuccessRate[i] > data.UpgradeSuccessRate[i-1] {
+			t.Errorf("rate at +%d (%.2f) should <= rate at +%d (%.2f)", i, data.UpgradeSuccessRate[i], i-1, data.UpgradeSuccessRate[i-1])
+		}
+	}
+}
+
+// TestUpgrade_ExpectedCostReasonable verifies the total expected material cost
+// to fully upgrade (+0 to +10) falls in a reasonable range (1500-3000 base mats).
+func TestUpgrade_ExpectedCostReasonable(t *testing.T) {
+	totalAttempts := 0.0
+	for i := 1; i <= 10; i++ {
+		if data.UpgradeSuccessRate[i] <= 0 {
+			t.Fatalf("rate at +%d is zero, cannot compute", i)
+		}
+		totalAttempts += float64(data.UpgradeCostTable[i]) / data.UpgradeSuccessRate[i]
+	}
+	if totalAttempts < 1500 || totalAttempts > 3000 {
+		t.Errorf("expected total attempts to +10 = %.0f, want 1500-3000", totalAttempts)
+	}
 }

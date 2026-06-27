@@ -1,3 +1,4 @@
+﻿using EquipmentIdle.Data;
 using EquipmentIdle.Net;
 using EquipmentIdle.State;
 using System.Collections.Generic;
@@ -5,25 +6,18 @@ using UnityEngine;
 
 namespace EquipmentIdle.UI
 {
-    /// <summary>
-    /// 主场景控制器：用 IMGUI(OnGUI) 画界面，零 UI 包依赖。
-    /// 显示连接、战力、层数、背包列表与一键穿戴。
-    /// </summary>
     public class MainController : MonoBehaviour
     {
         private string _accountInput = "";
-        private string _statusText = "disconnected";
-        private string _syncText = "(no sync yet)";
-        private string _powerText = "power: 0";
+        private string _statusText = L10n.UIStatusDisconnected;
+        private string _syncText = L10n.UINoSync;
+        private string _powerText = L10n.UIPowerLabel;
         private GameState _gameState;
         private Vector2 _bagScroll;
         private bool _offlinePopup;
         private string _offlineText = "";
-
-        // 战力变化追踪
         private float _prevPower = 0;
 
-        // toast 通知系统（掉落/强化/转生/Boss 第一关）
         private struct Toast
         {
             public string text;
@@ -32,8 +26,6 @@ namespace EquipmentIdle.UI
         }
         private readonly List<Toast> _toasts = new List<Toast>();
         private const float ToastDuration = 3f;
-
-        // 之前 CanReincarn 状态（检测变化触发提示）
         private bool _prevCanReincarn = false;
 
         private void Start()
@@ -56,40 +48,35 @@ namespace EquipmentIdle.UI
 
         private void OnSync(SyncData data)
         {
-            _statusText = "connected";
+            _statusText = L10n.UIStatusConnected;
             _syncText = $"account={data.account} floor={data.floor} souls={data.souls}";
         }
 
-        private void OnBag(List<EquipmentDTO> bag)
-        {
-            // UI 在 OnGUI 里直接读 GameState.Instance.Bag，无需缓存
-        }
+        private void OnBag(List<EquipmentDTO> bag) { }
 
         private void OnPower(float power)
         {
             float delta = power - _prevPower;
             if (delta > 0.5f)
-                _powerText = $"power: {power:F1} <color=#4f4>+{delta:F1}</color>";
+                _powerText = string.Format(L10n.UIPowerDeltaUp, power, delta);
             else if (delta < -0.5f)
-                _powerText = $"power: {power:F1} <color=#f44>{delta:F1}</color>";
+                _powerText = string.Format(L10n.UIPowerDeltaDown, power, delta);
             else
-                _powerText = $"power: {power:F1}";
+                _powerText = string.Format(L10n.UIPowerLabel, power);
             _prevPower = power;
         }
 
         private void OnLoot(EquipmentDTO eq)
         {
-            // 掉落弹窗 toast
             string color = RarityColor(eq.rarity);
-            string rname = RarityName(eq.rarity);
-            AddToast($"[Loot] <color={color}>{rname} {eq.name}</color>", ToastDuration, Color.white);
+            string rname = L10n.RarityName(eq.rarity);
+            string msg = string.Format(L10n.UILootToast, rname, eq.name);
+            AddToast($"<color={color}>{msg}</color>", ToastDuration, Color.white);
         }
 
         private void OnFloor(int newFloor)
         {
             _syncText = $"account={_gameState.Account} floor={newFloor} souls={_gameState.Souls}";
-            // Boss 击败提示：每 5 层一次（刚推进到的层是 newFloor，上一个 boss 是 newFloor-1）
-            // 在线 Runner.Tick 推层后调用此回调。如果在推进时 newFloor-1 是 5 的倍数，说明刚打完 Boss。
             int justCleared = newFloor - 1;
             if (justCleared > 0 && justCleared % 5 == 0)
             {
@@ -102,17 +89,16 @@ namespace EquipmentIdle.UI
             int h = ord.duration_seconds / 3600;
             int m = (ord.duration_seconds % 3600) / 60;
             string dur = h > 0 ? $"{h}h{m}m" : $"{m}m";
-            _offlineText = $"--- Offline Summary ---\n"
-                         + $"Duration: {dur} (capped 8h)\n"
-                         + $"Loot gained: {ord.loot_count} items\n"
-                         + $"Floors advanced: {ord.floors_advanced}\n"
-                         + $"Simulated ticks: {ord.ticks_simulated}";
+            _offlineText = $"{L10n.UIOfflineTitle}\n"
+                         + $"{string.Format(L10n.UIOfflineDuration, dur)}\n"
+                         + $"{string.Format(L10n.UIOfflineLoot, ord.loot_count)}\n"
+                         + $"{string.Format(L10n.UIOfflineFloors, ord.floors_advanced)}\n"
+                         + $"{string.Format(L10n.UIOfflineTicks, ord.ticks_simulated)}";
             _offlinePopup = true;
         }
 
         private void OnCraftResult(CraftResultData cr)
         {
-            // 强化/铸造反馈 toast
             if (cr.ok)
             {
                 if (!string.IsNullOrEmpty(cr.uid))
@@ -128,7 +114,6 @@ namespace EquipmentIdle.UI
 
         private void OnTalents(int souls, int maxFloor, bool canReincarn, Dictionary<string, int> talents)
         {
-            // 转生提示：CanReincarn 从 false 变 true 时弹提示
             if (canReincarn && !_prevCanReincarn)
             {
                 AddToast("<color=#f80>Reincarnation available!</color> Tap REINCARNATE to reset for souls", 5f, new Color(1f, 0.5f, 0f));
@@ -138,12 +123,7 @@ namespace EquipmentIdle.UI
 
         private void AddToast(string text, float duration, Color color)
         {
-            _toasts.Add(new Toast
-            {
-                text = text,
-                expireAt = Time.realtimeSinceStartup + duration,
-                color = color,
-            });
+            _toasts.Add(new Toast { text = text, expireAt = Time.realtimeSinceStartup + duration, color = color });
             if (_toasts.Count > 8) _toasts.RemoveAt(0);
         }
 
@@ -154,41 +134,40 @@ namespace EquipmentIdle.UI
             float y = (Screen.height - h) / 2f;
             GUILayout.BeginArea(new Rect(x, y, w, h), GUI.skin.box);
 
-            GUILayout.Label("EquipmentIdle - Stage 6");
+            GUILayout.Label(L10n.UIStage);
             GUILayout.Space(4);
             GUILayout.Label("Status: " + _statusText);
             GUILayout.Label(_syncText);
 
-            // 战力文本（含 delta，用 rich text 显示颜色）
             var richStyle = new GUIStyle(GUI.skin.label) { richText = true };
             GUILayout.Label(_powerText, richStyle);
 
-            // 卡点提示：当前战力打不过当前层怪物
             float curPower = _gameState.Power;
             int curFloor = _gameState.Floor;
             float monsterPower = MonsterPowerAtFloor(curFloor);
             if (curPower > 0 && curPower <= monsterPower)
             {
-                GUILayout.Label($"<color=#f44>STUCK! Power {curPower:F0} < Monster {monsterPower:F0} at Floor {curFloor}</color>", richStyle);
+                string stuckMsg = string.Format(L10n.UIStuckPrefix, curPower, monsterPower, curFloor);
+                GUILayout.Label($"<color=#f44>{stuckMsg}</color>", richStyle);
             }
 
             GUILayout.Space(6);
 
-            GUILayout.Label("Account:");
+            GUILayout.Label(L10n.UIAccount);
             _accountInput = GUILayout.TextField(_accountInput);
-            if (GUILayout.Button("Connect", GUILayout.Height(24)))
+            if (GUILayout.Button(L10n.UIConnect, GUILayout.Height(24)))
             {
                 string acc = _accountInput.Trim();
                 if (string.IsNullOrEmpty(acc)) acc = "hero";
-                _statusText = "connecting...";
+                _statusText = L10n.UIStatusConnecting;
                 _gameState.ConnectAndLogin(acc);
             }
 
             GUILayout.Space(8);
             GUILayout.BeginHorizontal();
-            GUILayout.Label("Backpack (" + _gameState.Bag.Count + " items):");
+            GUILayout.Label(string.Format(L10n.UIBackpack, _gameState.Bag.Count));
             GUILayout.FlexibleSpace();
-            if (GUILayout.Button("Equip Best", GUILayout.Width(90)))
+            if (GUILayout.Button(L10n.UIEquipBest, GUILayout.Width(90)))
             {
                 EquipBest();
             }
@@ -199,45 +178,42 @@ namespace EquipmentIdle.UI
             {
                 GUILayout.BeginHorizontal(GUI.skin.box);
                 int affCount = eq.affixes != null ? eq.affixes.Length : 0;
-                string info = $"[{RarityName(eq.rarity)}] {eq.name} +{eq.upgrade} ({SlotName(eq.slot)}) {affCount}aff";
+                string info = $"[{L10n.RarityName(eq.rarity)}] {eq.name} +{eq.upgrade} ({L10n.SlotName(eq.slot)}) {affCount}aff";
                 GUILayout.Label(info, GUILayout.Width(280));
-                if (GUILayout.Button("Equip", GUILayout.Width(55))) _gameState.Equip(eq.uid);
-                if (GUILayout.Button("Dec", GUILayout.Width(42))) _gameState.Decompose(eq.uid);
-                if (GUILayout.Button("Ref", GUILayout.Width(42))) _gameState.Reforge(eq.uid);
-                if (GUILayout.Button("Up", GUILayout.Width(42))) _gameState.Upgrade(eq.uid);
+                if (GUILayout.Button(L10n.UIEquip, GUILayout.Width(55))) _gameState.Equip(eq.uid);
+                if (GUILayout.Button(L10n.UIDecompose, GUILayout.Width(42))) _gameState.Decompose(eq.uid);
+                if (GUILayout.Button(L10n.UIReforge, GUILayout.Width(42))) _gameState.Reforge(eq.uid);
+                if (GUILayout.Button(L10n.UIUpgrade, GUILayout.Width(42))) _gameState.Upgrade(eq.uid);
                 GUILayout.EndHorizontal();
             }
             GUILayout.EndScrollView();
 
-            // 工坊区
             GUILayout.Space(6);
-            GUILayout.Label("--- Workshop ---");
-            string matStr = "Mats: ";
-            foreach (var kv in _gameState.Materials)
-                matStr += kv.Key + "=" + kv.Value + " ";
+            GUILayout.Label(L10n.UIWorkshop);
+            string matStr = L10n.UIMaterials;
+            foreach (var kv in _gameState.Materials) matStr += kv.Key + "=" + kv.Value + " ";
             GUILayout.Label(matStr);
 
-            GUILayout.Label("Compose (cost 10 base_mat):");
+            GUILayout.Label(L10n.UIComposeLabel);
             GUILayout.BeginHorizontal();
             for (int s = 0; s < 8; s++)
             {
-                if (GUILayout.Button(SlotName(s), GUILayout.Width(48)))
+                if (GUILayout.Button(L10n.SlotName(s), GUILayout.Width(48)))
                     _gameState.Compose(s);
             }
             GUILayout.EndHorizontal();
 
-            // 转生面板
             GUILayout.Space(8);
-            GUILayout.Label("--- Reincarnation ---");
-            GUILayout.Label($"Souls: {_gameState.Souls}  MaxFloor: {_gameState.MaxFloor}  CanReincarn: {_gameState.CanReincarn}");
-            if (_gameState.CanReincarn && GUILayout.Button("REINCARNATE", GUILayout.Height(26)))
+            GUILayout.Label(L10n.UIReincarnation);
+            GUILayout.Label(string.Format(L10n.UISouls, _gameState.Souls, _gameState.MaxFloor, _gameState.CanReincarn));
+            if (_gameState.CanReincarn && GUILayout.Button(L10n.UIReincarnate, GUILayout.Height(26)))
             {
                 _gameState.Reincarn();
             }
             GUILayout.Space(4);
-            GUILayout.Label("Talents (cost 1 soul each):");
-            string[] talentNames = { "damage", "quality", "drop", "offline_gain" };
-            string[] talentDesc = { "+5% dmg/lvl(max10)", "+1 quality/lvl(max3)", "+3% drop/lvl(max10)", "+10% offline/lvl(max5)" };
+            GUILayout.Label(L10n.UITalentsLabel);
+            string[] talentNames = { L10n.TalentDamage, L10n.TalentQuality, L10n.TalentDrop, L10n.TalentOfflineGain };
+            string[] talentDesc = { L10n.TalentDamageDesc, L10n.TalentQualityDesc, L10n.TalentDropDesc, L10n.TalentOfflineDesc };
             int[] talentMax = { 10, 3, 10, 5 };
             for (int i = 0; i < 4; i++)
             {
@@ -251,30 +227,18 @@ namespace EquipmentIdle.UI
 
             GUILayout.EndArea();
 
-            // toast 通知（屏幕右侧从上往下排列）
             DrawToasts();
-
-            // 离线结算弹窗（覆盖在主面板上方）
-            if (_offlinePopup)
-            {
-                DrawOfflinePopup();
-            }
+            if (_offlinePopup) DrawOfflinePopup();
         }
 
-        /// <summary>一键穿戴：找背包中每槽位战力最高的穿上。</summary>
         private void EquipBest()
         {
-            // 找出背包中所有装备的战力评分并穿戴最高的
             string bestUid = null;
             float bestScore = -1f;
             foreach (var eq in _gameState.Bag)
             {
                 float score = ScoreEquipment(eq);
-                if (score > bestScore)
-                {
-                    bestScore = score;
-                    bestUid = eq.uid;
-                }
+                if (score > bestScore) { bestScore = score; bestUid = eq.uid; }
             }
             if (bestUid != null)
             {
@@ -283,7 +247,6 @@ namespace EquipmentIdle.UI
             }
         }
 
-        /// <summary>装备评分：稀有度权重 + 强化等级 + 词缀数。</summary>
         private static float ScoreEquipment(EquipmentDTO eq)
         {
             float s = (eq.rarity + 1) * 100f + eq.upgrade * 10f;
@@ -294,26 +257,16 @@ namespace EquipmentIdle.UI
         private void DrawToasts()
         {
             float now = Time.realtimeSinceStartup;
-            // 移除过期的 toast
-            for (int i = _toasts.Count - 1; i >= 0; i--)
-            {
-                if (now >= _toasts[i].expireAt) _toasts.RemoveAt(i);
-            }
+            for (int i = _toasts.Count - 1; i >= 0; i--) { if (now >= _toasts[i].expireAt) _toasts.RemoveAt(i); }
             if (_toasts.Count == 0) return;
-
-            float toastW = 280f;
-            float toastH = 28f;
-            float tx = Screen.width - toastW - 10f;
-            float ty = 10f;
+            float toastW = 280f, toastH = 28f;
+            float tx = Screen.width - toastW - 10f, ty = 10f;
             var richStyle = new GUIStyle(GUI.skin.label) { richText = true, fontSize = 12 };
-
             for (int i = 0; i < _toasts.Count; i++)
             {
                 var t = _toasts[i];
-                float age = t.expireAt - now;
-                float alpha = Mathf.Clamp01(age / 1f); // 最后一秒淡出
-                Color c = t.color;
-                c.a *= alpha;
+                float alpha = Mathf.Clamp01((t.expireAt - now) / 1f);
+                Color c = t.color; c.a *= alpha;
                 GUI.color = c;
                 GUI.Box(new Rect(tx, ty + i * (toastH + 4), toastW, toastH), t.text, GUI.skin.box);
                 GUI.color = Color.white;
@@ -323,58 +276,25 @@ namespace EquipmentIdle.UI
         private void DrawOfflinePopup()
         {
             float pw = 300f, ph = 220f;
-            float px = (Screen.width - pw) / 2f;
-            float py = (Screen.height - ph) / 2f;
+            float px = (Screen.width - pw) / 2f, py = (Screen.height - ph) / 2f;
             GUI.Box(new Rect(px, py, pw, ph), "");
             GUILayout.BeginArea(new Rect(px, py, pw, ph), GUI.skin.box);
             GUILayout.Label(_offlineText);
             GUILayout.Space(12);
-            if (GUILayout.Button("OK", GUILayout.Height(28)))
-            {
-                _offlinePopup = false;
-            }
+            if (GUILayout.Button(L10n.UIOK, GUILayout.Height(28))) { _offlinePopup = false; }
             GUILayout.EndArea();
         }
 
-        /// <summary>怪物战力公式（与服务端 data.MonsterPower 一致）。</summary>
         private static float MonsterPowerAtFloor(int floor)
         {
-            float p = 10f + (floor - 1) * 8f;
-            if (floor % 5 == 0) p *= 1.8f; // Boss 层
+            float p = 3f + (floor - 1) * 5f;
+            if (floor % 5 == 0) p *= 1.8f;
             return p;
-        }
-
-        private static string RarityName(int r)
-        {
-            switch (r)
-            {
-                case 0: return "普通";
-                case 1: return "魔法";
-                case 2: return "稀有";
-                case 3: return "传奇";
-                case 4: return "神器";
-                default: return "?";
-            }
         }
 
         private static string RarityColor(int r)
         {
-            switch (r)
-            {
-                case 0: return "#aaa"; // 普通 白
-                case 1: return "#4af"; // 魔法 蓝
-                case 2: return "#fd4"; // 稀有 黄
-                case 3: return "#f80"; // 传奇 橙
-                case 4: return "#f44"; // 神器 红
-                default: return "#fff";
-            }
-        }
-
-        private static string SlotName(int s)
-        {
-            string[] names = { "武器", "头盔", "护甲", "手套", "靴子", "戒指1", "戒指2", "项链" };
-            if (s >= 0 && s < names.Length) return names[s];
-            return "?";
+            switch (r) { case 0: return "#aaa"; case 1: return "#4af"; case 2: return "#fd4"; case 3: return "#f80"; case 4: return "#f44"; default: return "#fff"; }
         }
     }
 }

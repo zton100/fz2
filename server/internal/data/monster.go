@@ -1,31 +1,45 @@
-package data
+﻿package data
+
+import (
+	"math"
+
+	"equipment-idle-server/internal/locale"
+)
 
 // Monster 怪物定义。
 type Monster struct {
-	Name   string  // 怪物名
-	Power  float64 // 怪物战力（强度）
-	IsBoss bool    // 是否 Boss
+	Name   string
+	Power  float64
+	IsBoss bool
 }
 
-// MonsterPower 按层数计算怪物强度。
-// 普通层：线性增长，base + (floor-1)*step
-// Boss 层（每 5 层）：强度跳升 1.8 倍
+// MonsterPower 按层数计算怪物强度（非 Boss 基础值）。
 func MonsterPower(floor int) float64 {
-	const base = 10.0
-	const step = 8.0
-	normal := base + float64(floor-1)*step
+	if floor <= 0 {
+		return 3
+	}
+	var normal float64
+	if floor <= 20 {
+		const base = 3.0
+		const step = 5.0
+		normal = base + float64(floor-1)*step
+	} else {
+		const baseAt20 = 98.0
+		normal = baseAt20 * math.Pow(1.05, float64(floor-20))
+	}
 	if floor%5 == 0 {
-		return normal * 1.8 // Boss 跳升
+		return normal * 1.8
 	}
 	return normal
 }
 
-// MonsterAt 生成某层的怪物。
+// MonsterAt 生成某层的怪物（使用当前 locale 的名称）。
 func MonsterAt(floor int) Monster {
+	l := locale.Current()
 	isBoss := floor%5 == 0
-	name := "史莱姆"
+	name := l.MonsterNormal
 	if isBoss {
-		name = "守层Boss"
+		name = l.MonsterBoss
 	}
 	return Monster{
 		Name:   name,

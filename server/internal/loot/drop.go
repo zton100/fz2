@@ -1,4 +1,4 @@
-package loot
+﻿package loot
 
 import (
 	"math/rand"
@@ -25,7 +25,6 @@ func NewDropTable(gen *Generator) *DropTable {
 }
 
 // rarityWeights 按层数返回各稀有度的权重（顺序对应 AllRarities）。
-// 层数越高，高稀有度权重越大。
 func rarityWeights(floor int) []int {
 	bonus := floor / 10 // 每 10 层 +1 高稀有度倾向
 	return []int{
@@ -59,7 +58,7 @@ func (d *DropTable) RollRarity(floor int) data.Rarity {
 // Drop 生成一件掉落装备：按层数选稀有度，按指定槽位生成。
 func (d *DropTable) Drop(slot data.Slot, floor int) *model.Equipment {
 	rarity := d.RollRarity(floor)
-	return d.gen.Generate(slot, rarity)
+	return d.gen.Generate(slot, rarity, floor)
 }
 
 // DropRandomSlot 随机选一个槽位掉落（用于普通击杀，掉落槽位随机）。
@@ -70,12 +69,9 @@ func (d *DropTable) DropRandomSlot(floor int) *model.Equipment {
 }
 
 // RollRarityWithBonus 按层数+天赋加成选稀有度。
-// dropBonus: 提高高稀有度权重（直接给稀有/传奇/神器加权）。
-// qualityFloor: 稀有度下限，低于下限的权重置零。
 func (d *DropTable) RollRarityWithBonus(floor int, dropBonus float64, qualityFloor data.Rarity) data.Rarity {
 	weights := rarityWeights(floor)
 	rarities := data.AllRarities()
-	// dropBonus 直接提升稀有/传奇/神器权重
 	weights[2] += int(dropBonus * 100) // Rare
 	weights[3] += int(dropBonus * 40)  // Legendary
 	weights[4] += int(dropBonus * 20)  // Artifact
@@ -105,16 +101,15 @@ func (d *DropTable) DropRandomSlotWithBonus(floor int, dropBonus float64, qualit
 	slots := data.AllSlots()
 	slot := slots[d.rng.Intn(len(slots))]
 	rarity := d.RollRarityWithBonus(floor, dropBonus, qualityFloor)
-	return d.gen.Generate(slot, rarity)
+	return d.gen.Generate(slot, rarity, floor)
 }
 
 // DropRandomSlotModified 带 DropModifier 的随机槽位掉落（在线 Runner 使用）。
-// drop/quality 天赋通过 DropModifier 影响掉落权重与稀有度下限。
 func (d *DropTable) DropRandomSlotModified(floor int, mod DropModifier) *model.Equipment {
 	slots := data.AllSlots()
 	slot := slots[d.rng.Intn(len(slots))]
 	rarity := d.RollRarityWithBonus(floor, mod.DropBonus, mod.QualityFloor)
-	return d.gen.Generate(slot, rarity)
+	return d.gen.Generate(slot, rarity, floor)
 }
 
 func max(a, b int) int {

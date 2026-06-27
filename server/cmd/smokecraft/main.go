@@ -17,7 +17,7 @@ func main() {
 	rng := rand.New(rand.NewSource(3))
 
 	// 掉落并分解
-	eq := gen.Generate(data.SlotWeapon, data.RarityRare)
+	eq := gen.Generate(data.SlotWeapon, data.RarityRare, 10)
 	p.AddEquipment(eq)
 	yield, _ := crafting.Decompose(p, eq)
 	fmt.Printf("decomposed rare: %+v\n", yield)
@@ -40,7 +40,7 @@ func main() {
 	}
 
 	// 重铸
-	reforgeEq := gen.Generate(data.SlotWeapon, data.RarityMagic)
+	reforgeEq := gen.Generate(data.SlotWeapon, data.RarityMagic, 10)
 	p.AddEquipment(reforgeEq)
 	for _, a := range reforgeEq.Affixes {
 		p.AddMaterial(data.AffixMaterialByTier(a.Tier), 5)

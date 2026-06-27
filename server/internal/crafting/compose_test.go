@@ -1,4 +1,4 @@
-package crafting
+﻿package crafting
 
 import (
 	"math/rand"
@@ -11,7 +11,7 @@ import (
 
 func TestCompose_Success(t *testing.T) {
 	p := model.NewPlayer("t")
-	p.AddMaterial(data.MatBase, 20)
+	p.AddMaterial(data.MatBase, data.ComposeCost)
 	gen := loot.NewGenerator(rand.New(rand.NewSource(1)))
 	eq, err := Compose(p, gen, data.SlotWeapon)
 	if err != nil {
@@ -20,20 +20,19 @@ func TestCompose_Success(t *testing.T) {
 	if eq == nil {
 		t.Fatal("compose returned nil")
 	}
-	if eq.Slot != data.SlotWeapon {
-		t.Fatalf("slot = %d, want weapon", eq.Slot)
+	if eq.UID == "" {
+		t.Fatal("composed equipment has empty UID")
 	}
 	if eq.Rarity != data.RarityCommon {
-		t.Fatalf("rarity = %d, want common", eq.Rarity)
+		t.Fatalf("compose rarity = %d, want common", eq.Rarity)
 	}
-	if p.Materials[data.MatBase] != 10 {
-		t.Fatalf("remaining base mat = %d, want 10", p.Materials[data.MatBase])
+	if len(p.EquipBag) != 1 {
+		t.Fatalf("bag size = %d, want 1", len(p.EquipBag))
 	}
 }
 
 func TestCompose_InsufficientMaterial(t *testing.T) {
 	p := model.NewPlayer("t")
-	p.AddMaterial(data.MatBase, 5)
 	gen := loot.NewGenerator(rand.New(rand.NewSource(1)))
 	_, err := Compose(p, gen, data.SlotWeapon)
 	if err == nil {

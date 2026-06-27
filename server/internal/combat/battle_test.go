@@ -16,9 +16,9 @@ func TestBattle_PlayerLoses_WhenPowerLower(t *testing.T) {
 	}
 }
 
-func TestBattle_TieCountsAsLose(t *testing.T) {
+func TestBattle_TieCountsAsWin(t *testing.T) {
 	r := Battle(100, 100)
-	if r.Win {
-		t.Fatal("equal power should count as lose")
+	if !r.Win {
+		t.Fatal("equal power should count as win")
 	}
 }

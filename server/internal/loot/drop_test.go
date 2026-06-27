@@ -1,4 +1,4 @@
-package loot
+﻿package loot
 
 import (
 	"math/rand"
@@ -70,7 +70,7 @@ func TestDropRandomSlotModified_QualityFloorPreventsCommon(t *testing.T) {
 func TestDropRandomSlotModified_DropBonusIncreasesQuality(t *testing.T) {
 	g := NewGenerator(rand.New(rand.NewSource(99)))
 	drop := NewDropTable(g)
-	// 无加成时 floor=1 高稀有度几乎不出
+	// 鏃犲姞鎴愭椂 floor=1 楂樼█鏈夊害鍑犱箮涓嶅嚭
 	var rareOrBetterNoBonus int
 	for i := 0; i < 200; i++ {
 		mod := DropModifier{DropBonus: 0, QualityFloor: 0}
@@ -79,7 +79,7 @@ func TestDropRandomSlotModified_DropBonusIncreasesQuality(t *testing.T) {
 			rareOrBetterNoBonus++
 		}
 	}
-	// 有加成时高稀有度显著增多
+	// 鏈夊姞鎴愭椂楂樼█鏈夊害鏄捐憲澧炲
 	var rareOrBetterWithBonus int
 	for i := 0; i < 200; i++ {
 		mod := DropModifier{DropBonus: 0.3, QualityFloor: 0}
@@ -90,5 +90,60 @@ func TestDropRandomSlotModified_DropBonusIncreasesQuality(t *testing.T) {
 	}
 	if rareOrBetterWithBonus <= rareOrBetterNoBonus {
 		t.Fatalf("drop bonus should increase high rarity: noBonus=%d withBonus=%d", rareOrBetterNoBonus, rareOrBetterWithBonus)
+	}
+}
+
+// TestDrop_FloorGatingLowFloorOnlyBasic verifies that at floor 1,
+// only Basic affixes (strength/agility/...) can appear — no Derived or Special.
+func TestDrop_FloorGatingLowFloorOnlyBasic(t *testing.T) {
+	g := NewGenerator(rand.New(rand.NewSource(42)))
+	for i := 0; i < 100; i++ {
+		eq := g.Generate(data.SlotWeapon, data.RarityRare, 1)
+		for _, a := range eq.Affixes {
+			cat := data.AffixCategoryOf(a.Type)
+			if cat != data.AffixBasic {
+				t.Fatalf("floor 1 generated affix %s (cat=%d), want only Basic(0)", a.Type, cat)
+			}
+		}
+	}
+}
+
+// TestDrop_FloorGatingUnlocksDerived verifies that at floor 10,
+// Basic and Derived affixes can both appear.
+func TestDrop_FloorGatingUnlocksDerived(t *testing.T) {
+	g := NewGenerator(rand.New(rand.NewSource(99)))
+	var sawDerived bool
+	for i := 0; i < 200; i++ {
+		eq := g.Generate(data.SlotWeapon, data.RarityRare, 10)
+		for _, a := range eq.Affixes {
+			cat := data.AffixCategoryOf(a.Type)
+			if cat == data.AffixSpecial {
+				t.Fatalf("floor 10 generated special affix %s, should not unlock until floor 16", a.Type)
+			}
+			if cat == data.AffixDerived {
+				sawDerived = true
+			}
+		}
+	}
+	if !sawDerived {
+		t.Fatal("should have seen at least one Derived affix at floor 10")
+	}
+}
+
+// TestDrop_FloorGatingAllUnlocked verifies that at floor 20,
+// all affix categories (Basic+Derived+Special) can appear.
+func TestDrop_FloorGatingAllUnlocked(t *testing.T) {
+	g := NewGenerator(rand.New(rand.NewSource(7)))
+	var sawSpecial bool
+	for i := 0; i < 300; i++ {
+		eq := g.Generate(data.SlotWeapon, data.RarityLegendary, 20)
+		for _, a := range eq.Affixes {
+			if data.AffixCategoryOf(a.Type) == data.AffixSpecial {
+				sawSpecial = true
+			}
+		}
+	}
+	if !sawSpecial {
+		t.Fatal("should have seen at least one Special affix at floor 20")
 	}
 }
