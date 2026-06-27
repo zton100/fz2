@@ -23,23 +23,35 @@ func CanReincarnate(p *model.Player) bool {
 	return p.Floor >= ReincarnateFloorReq
 }
 
-// Reincarnate 执行转生：更新 MaxFloor、加魂点、重置进度。
+// Reincarnate 执行转生：更新 MaxFloor、按当前层数发放魂点、重置进度。
+// 魂点按当前 Floor 发放（floor(Floor/5)），避免重复吃历史 MaxFloor 造成经济崩坏。
+// MaxFloor 只作历史最高记录，不作为发奖基础。
 func Reincarnate(p *model.Player) error {
 	if !CanReincarnate(p) {
 		return errors.New("floor not enough to reincarnate")
 	}
-	// 更新历史最高层数
+	// 魂点按当前轮次层数发放
+	earned := p.Floor / 5
+	p.Souls += earned
+	// 更新历史最高层数（只记录，不参与发奖）
 	if p.Floor > p.MaxFloor {
 		p.MaxFloor = p.Floor
 	}
-	// 魂点 = floor(MaxFloor / 5)
-	p.Souls += p.MaxFloor / 5
 	// 重置进度
 	p.Floor = 1
 	p.EquipBag = []*model.Equipment{}
 	p.Equipped = map[data.Slot]*model.Equipment{}
 	p.Materials = map[data.MaterialType]int{}
 	return nil
+}
+
+// AdvanceFloor 推进一层并更新 MaxFloor。
+// 在线战斗、离线结算、Boss 推进全部统一调用此方法。
+func AdvanceFloor(p *model.Player) {
+	p.Floor++
+	if p.Floor > p.MaxFloor {
+		p.MaxFloor = p.Floor
+	}
 }
 
 // UpgradeTalent 升级一个天赋，消耗 1 魂点。

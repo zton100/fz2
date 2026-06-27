@@ -5,7 +5,6 @@ import (
 	"log"
 	"time"
 
-	"equipment-idle-server/internal/combat"
 	"equipment-idle-server/internal/crafting"
 	"equipment-idle-server/internal/data"
 	"equipment-idle-server/internal/dungeon"
@@ -58,32 +57,25 @@ func (h *Hub) handleLogin(sess *Session, env protocol.Envelope) {
 	player := h.store.LoadOrCreate(req.Account)
 	sess.Account = req.Account
 
-	// 离线结算：计算上次离线时长
+	// 同账号多开：踢掉旧连接，防止重复战斗循环
+	h.mu.Lock()
+	if old, ok := h.accountSessions[sess.Account]; ok && old != sess {
+		log.Printf("kicking duplicate session for account %s", sess.Account)
+		old.Conn.Close()
+	}
+	h.accountSessions[sess.Account] = sess
+	h.mu.Unlock()
+
+	// 离线结算：计算上次离线时长，天赋加成统一在 Calc 内处理
 	now := time.Now()
 	if !player.LastOnline.IsZero() {
 		offlineDuration := now.Sub(player.LastOnline)
 		if offlineDuration > 0 {
 			drop := loot.NewDropTable(h.gen)
-			result := offline.Calc(player, combat.ComputePower, drop, offlineDuration)
-			// offline_gain 天赋加成：额外模拟 tick
-			gainBonus := reincarnation.OfflineGainBonus(player)
-			if gainBonus > 0 && result.TicksSimulated > 0 {
-				extraTicks := int(float64(result.TicksSimulated) * gainBonus)
-				for i := 0; i < extraTicks; i++ {
-					stats := combat.AggregateStats(player.EquippedList())
-					playerPower := combat.ComputePower(stats) * (1.0 + reincarnation.DamageBonus(player))
-					monster := data.MonsterAt(player.Floor)
-					if playerPower > monster.Power {
-						eq := drop.DropRandomSlot(player.Floor)
-						if eq != nil {
-							player.AddEquipment(eq)
-							result.LootCount++
-						}
-						player.Floor++
-						result.FloorsAdvanced++
-					}
-				}
-			}
+			result := offline.Calc(player, nil, drop, offlineDuration,
+				reincarnation.OfflineGainBonus(player),
+				reincarnation.DropBonus(player),
+				reincarnation.QualityFloor(player))
 			if result.TicksSimulated > 0 {
 				h.pushOfflineResult(sess, result)
 			}
@@ -111,13 +103,14 @@ func (h *Hub) handleLogin(sess *Session, env protocol.Envelope) {
 
 	// 启动战斗循环
 	drop := loot.NewDropTable(h.gen)
-	runner := dungeon.NewRunner(player, combat.ComputePower, drop)
+	runner := dungeon.NewRunner(player, nil, drop)
 	runner.LootCallback = func(eq *model.Equipment) {
 		h.pushLoot(sess, eq)
 		h.pushBag(sess, player) // 掉落后背包变化，同步推送
 	}
 	runner.FloorCallback = func(newFloor int) {
 		h.pushFloor(sess, newFloor)
+		h.pushTalents(sess, player) // 推层后刷新 CanReincarn
 	}
 	sess.runner = runner
 	go h.battleLoop(sess, runner)
@@ -140,6 +133,7 @@ func (h *Hub) handleEquip(sess *Session, env protocol.Envelope) {
 	}
 	h.pushBag(sess, player)
 	h.pushPower(sess, player)
+	h.store.Save(player.Account)
 }
 
 // handleUnequip 处理卸下请求。
@@ -159,20 +153,29 @@ func (h *Hub) handleUnequip(sess *Session, env protocol.Envelope) {
 	}
 	h.pushBag(sess, player)
 	h.pushPower(sess, player)
+	h.store.Save(player.Account)
 }
 
-// battleLoop 定时战斗循环，每 2 秒一次 tick。断开时记录离线时间。
+// battleLoop 定时战斗循环，每 2 秒一次 tick。断开时记录离线时间并保存。
+// 同时每 5 分钟自动保存一次（防止意外退出丢失进度）。
 func (h *Hub) battleLoop(sess *Session, runner *dungeon.Runner) {
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
+	saveTicker := time.NewTicker(5 * time.Minute)
+	defer saveTicker.Stop()
 	for {
 		select {
 		case <-sess.stopCh:
 			if sess.Account != "" {
 				p := h.store.LoadOrCreate(sess.Account)
 				p.LastOnline = time.Now()
+				h.store.Save(sess.Account)
 			}
 			return
+		case <-saveTicker.C:
+			if sess.Account != "" {
+				h.store.Save(sess.Account)
+			}
 		case <-ticker.C:
 			runner.Tick()
 		}
@@ -227,11 +230,9 @@ func (h *Hub) pushBag(sess *Session, player *model.Player) {
 	}
 }
 
-// pushPower 推送当前战力（含 damage 天赋加成）。
+// pushPower 推送当前战力（使用统一战力函数，含 damage 天赋加成）。
 func (h *Hub) pushPower(sess *Session, player *model.Player) {
-	stats := combat.AggregateStats(player.EquippedList())
-	power := combat.ComputePower(stats)
-	power *= (1.0 + reincarnation.DamageBonus(player))
+	power := reincarnation.ComputePlayerPower(player)
 	pd := protocol.PowerData{Power: power}
 	dataBytes, _ := json.Marshal(pd)
 	env := protocol.Envelope{T: protocol.TypePower, Data: dataBytes}
@@ -299,6 +300,7 @@ func (h *Hub) handleDecompose(sess *Session, env protocol.Envelope) {
 	h.pushMaterials(sess, player)
 	h.pushBag(sess, player)
 	h.pushCraftResult(sess, true, "decomposed", "", 0)
+	h.store.Save(player.Account)
 }
 
 // handleCompose 合成请求。
@@ -319,6 +321,7 @@ func (h *Hub) handleCompose(sess *Session, env protocol.Envelope) {
 	h.pushMaterials(sess, player)
 	h.pushBag(sess, player)
 	h.pushCraftResult(sess, true, "composed", eq.UID, 0)
+	h.store.Save(player.Account)
 }
 
 // handleReforge 重铸请求：从背包找装备→重铸。
@@ -344,6 +347,7 @@ func (h *Hub) handleReforge(sess *Session, env protocol.Envelope) {
 	h.pushMaterials(sess, player)
 	h.pushBag(sess, player)
 	h.pushCraftResult(sess, true, "reforged", eq.UID, eq.Upgrade)
+	h.store.Save(player.Account)
 }
 
 // handleUpgrade 强化请求：从背包找装备→强化。
@@ -375,13 +379,17 @@ func (h *Hub) handleUpgrade(sess *Session, env protocol.Envelope) {
 		msg = "upgrade failed (no degrade)"
 	}
 	h.pushCraftResult(sess, result.Success, msg, eq.UID, eq.Upgrade)
+	h.store.Save(player.Account)
 }
 
-// pushMaterials 推送材料库存。
+// pushMaterials 推送材料库存（数组格式，客户端 JsonUtility 可解析）。
 func (h *Hub) pushMaterials(sess *Session, player *model.Player) {
-	mats := map[string]int{}
+	var mats []protocol.MaterialKV
 	for mt, n := range player.Materials {
-		mats[string(mt)] = n
+		mats = append(mats, protocol.MaterialKV{Key: string(mt), Val: n})
+	}
+	if mats == nil {
+		mats = []protocol.MaterialKV{}
 	}
 	md := protocol.MaterialsData{Materials: mats}
 	dataBytes, _ := json.Marshal(md)
@@ -438,6 +446,7 @@ func (h *Hub) handleReincarn(sess *Session, env protocol.Envelope) {
 	h.pushMaterials(sess, player)
 	h.pushTalents(sess, player)
 	h.pushCraftResult(sess, true, "reincarnated", "", 0)
+	h.store.Save(player.Account)
 }
 
 // handleTalentUp 天赋升级请求。
@@ -456,15 +465,23 @@ func (h *Hub) handleTalentUp(sess *Session, env protocol.Envelope) {
 	}
 	h.pushTalents(sess, player)
 	h.pushCraftResult(sess, true, "talent upgraded: "+req.Name, "", 0)
+	h.store.Save(player.Account)
 }
 
-// pushTalents 推送天赋状态。
+// pushTalents 推送天赋状态（数组格式，客户端 JsonUtility 可解析）。
 func (h *Hub) pushTalents(sess *Session, player *model.Player) {
+	var talents []protocol.TalentKV
+	for name, level := range player.Talents {
+		talents = append(talents, protocol.TalentKV{Name: name, Level: level})
+	}
+	if talents == nil {
+		talents = []protocol.TalentKV{}
+	}
 	td := protocol.TalentsData{
 		Souls:       player.Souls,
 		MaxFloor:    player.MaxFloor,
 		CanReincarn: reincarnation.CanReincarnate(player),
-		Talents:     player.Talents,
+		Talents:     talents,
 	}
 	dataBytes, _ := json.Marshal(td)
 	env := protocol.Envelope{T: protocol.TypeTalents, Data: dataBytes}

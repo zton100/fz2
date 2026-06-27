@@ -5,7 +5,6 @@ import (
 	"math/rand"
 	"time"
 
-	"equipment-idle-server/internal/combat"
 	"equipment-idle-server/internal/data"
 	"equipment-idle-server/internal/loot"
 	"equipment-idle-server/internal/model"
@@ -21,7 +20,7 @@ func main() {
 	drop := loot.NewDropTable(gen)
 
 	startFloor := p.Floor
-	result := offline.Calc(p, combat.ComputePower, drop, 2*time.Hour)
+	result := offline.Calc(p, nil, drop, 2*time.Hour, 0, 0, 0)
 	fmt.Printf("offline 2h: ticks=%d loot=%d floors=%d (floor %d->%d)\n",
 		result.TicksSimulated, result.LootCount, result.FloorsAdvanced,
 		startFloor, p.Floor)
@@ -38,7 +37,7 @@ func main() {
 	p2.Equipped[data.SlotWeapon] = &model.Equipment{
 		BaseStats: map[data.AffixType]float64{data.ATStrength: 50000},
 	}
-	result2 := offline.Calc(p2, combat.ComputePower, drop, 10*time.Hour)
+	result2 := offline.Calc(p2, nil, drop, 10*time.Hour, 0, 0, 0)
 	if result2.Duration > 8*time.Hour {
 		fmt.Println("FAIL: not capped at 8h"); return
 	}

@@ -118,9 +118,29 @@ type UpgradeRequest struct {
 	UID string `json:"uid"`
 }
 
-// MaterialsData 材料库存推送。
+// MaterialKV 材料键值对。
+type MaterialKV struct {
+	Key string `json:"k"`
+	Val int    `json:"v"`
+}
+
+// MaterialsData 材料库存推送（数组格式，客户端 JsonUtility 可解析）。
 type MaterialsData struct {
-	Materials map[string]int `json:"materials"`
+	Materials []MaterialKV `json:"materials"`
+}
+
+// TalentKV 天赋键值对。
+type TalentKV struct {
+	Name  string `json:"name"`
+	Level int    `json:"level"`
+}
+
+// TalentsData 天赋状态推送（数组格式，客户端 JsonUtility 可解析）。
+type TalentsData struct {
+	Souls       int        `json:"souls"`
+	MaxFloor    int        `json:"max_floor"`
+	CanReincarn bool       `json:"can_reincarn"`
+	Talents     []TalentKV `json:"talents"`
 }
 
 // CraftResult 养成操作结果（分解/合成/重铸/强化通用响应推送）。
@@ -142,12 +162,4 @@ type OfflineResultData struct {
 // TalentUpRequest 天赋升级请求体。
 type TalentUpRequest struct {
 	Name string `json:"name"`
-}
-
-// TalentsData 天赋状态推送。
-type TalentsData struct {
-	Souls       int            `json:"souls"`
-	MaxFloor    int            `json:"max_floor"`
-	CanReincarn bool           `json:"can_reincarn"`
-	Talents     map[string]int `json:"talents"`
 }

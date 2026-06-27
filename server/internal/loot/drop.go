@@ -63,6 +63,42 @@ func (d *DropTable) DropRandomSlot(floor int) *model.Equipment {
 	return d.Drop(slot, floor)
 }
 
+// RollRarityWithBonus 按层数+天赋加成选稀有度。
+// dropBonus: 提高高稀有度权重（0.03/级，最高+0.30）。
+// qualityFloor: 稀有度下限，低于下限的权重置零。
+func (d *DropTable) RollRarityWithBonus(floor int, dropBonus float64, qualityFloor data.Rarity) data.Rarity {
+	effectiveFloor := floor + int(dropBonus*10)
+	weights := rarityWeights(effectiveFloor)
+	rarities := data.AllRarities()
+	total := 0
+	for i := range weights {
+		if rarities[i] < qualityFloor {
+			weights[i] = 0
+		}
+		total += weights[i]
+	}
+	if total == 0 {
+		return qualityFloor
+	}
+	roll := d.rng.Intn(total)
+	cum := 0
+	for i, w := range weights {
+		cum += w
+		if roll < cum {
+			return rarities[i]
+		}
+	}
+	return rarities[len(rarities)-1]
+}
+
+// DropRandomSlotWithBonus 带天赋加成的随机槽位掉落（离线结算专用）。
+func (d *DropTable) DropRandomSlotWithBonus(floor int, dropBonus float64, qualityFloor data.Rarity) *model.Equipment {
+	slots := data.AllSlots()
+	slot := slots[d.rng.Intn(len(slots))]
+	rarity := d.RollRarityWithBonus(floor, dropBonus, qualityFloor)
+	return d.gen.Generate(slot, rarity)
+}
+
 func max(a, b int) int {
 	if a > b {
 		return a

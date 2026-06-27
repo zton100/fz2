@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/rand"
 
-	"equipment-idle-server/internal/combat"
 	"equipment-idle-server/internal/data"
 	"equipment-idle-server/internal/dungeon"
 	"equipment-idle-server/internal/loot"
@@ -21,7 +20,7 @@ func main() {
 
 	gen := loot.NewGenerator(rand.New(rand.NewSource(99)))
 	drop := loot.NewDropTable(gen)
-	runner := dungeon.NewRunner(p, combat.ComputePower, drop)
+	runner := dungeon.NewRunner(p, nil, drop)
 
 	lootCount := 0
 	floorAdvances := 0

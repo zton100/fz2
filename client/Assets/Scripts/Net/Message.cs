@@ -90,63 +90,21 @@ namespace EquipmentIdle.Net
             return "{\"t\":\"" + TypeTalentUp + "\",\"id\":\"" + Escape(id) + "\",\"data\":" + dataJson + "}";
         }
 
-        /// <summary>解析 materials 推送的 JSON，返回 key->count 字典。</summary>
-        public static System.Collections.Generic.Dictionary<string, int> ParseMaterials(string dataJson)
-        {
-            return ParseIntMap(dataJson, "materials");
-        }
-
-        /// <summary>解析 talents 推送里的 talents 子字段，返回 key->level 字典。</summary>
-        public static System.Collections.Generic.Dictionary<string, int> ParseTalents(string dataJson)
-        {
-            return ParseIntMap(dataJson, "talents");
-        }
-
-        /// <summary>从 JSON 提取指定对象字段为 int 字典。</summary>
-        private static System.Collections.Generic.Dictionary<string, int> ParseIntMap(string dataJson, string key)
+        /// <summary>将材料数组转为字典。</summary>
+        public static System.Collections.Generic.Dictionary<string, int> MaterialsToDict(MaterialEntry[] entries)
         {
             var dict = new System.Collections.Generic.Dictionary<string, int>();
-            // 定位 "key":{ 子对象
-            string pattern = "\"" + key + "\":";
-            int i = dataJson.IndexOf(pattern, System.StringComparison.Ordinal);
-            if (i < 0) return dict;
-            i += pattern.Length;
-            while (i < dataJson.Length && (dataJson[i] == ' ' || dataJson[i] == '\t')) i++;
-            if (i >= dataJson.Length || dataJson[i] != '{') return dict;
-            int depth = 0;
-            int start = i;
-            for (; i < dataJson.Length; i++)
-            {
-                if (dataJson[i] == '{') depth++;
-                else if (dataJson[i] == '}')
-                {
-                    depth--;
-                    if (depth == 0) break;
-                }
-            }
-            if (i >= dataJson.Length) return dict;
-            string mapJson = dataJson.Substring(start, i - start + 1);
-            // 解析 mapJson 里的 "k":v 对
-            int j = 1; // 跳过开头 {
-            while (j < mapJson.Length - 1)
-            {
-                int q1 = mapJson.IndexOf('"', j);
-                if (q1 < 0) break;
-                int q2 = mapJson.IndexOf('"', q1 + 1);
-                if (q2 < 0) break;
-                string k = mapJson.Substring(q1 + 1, q2 - q1 - 1);
-                int colon = mapJson.IndexOf(':', q2);
-                if (colon < 0) break;
-                int comma = mapJson.IndexOf(',', colon);
-                int brace = mapJson.IndexOf('}', colon);
-                int end = comma;
-                if (comma < 0 || (brace >= 0 && brace < comma)) end = brace;
-                if (end < 0) end = mapJson.Length;
-                string valStr = mapJson.Substring(colon + 1, end - colon - 1).Trim();
-                int val;
-                if (int.TryParse(valStr, out val)) dict[k] = val;
-                j = end + 1;
-            }
+            if (entries == null) return dict;
+            foreach (var e in entries) dict[e.k] = e.v;
+            return dict;
+        }
+
+        /// <summary>将天赋数组转为字典。</summary>
+        public static System.Collections.Generic.Dictionary<string, int> TalentsToDict(TalentEntry[] entries)
+        {
+            var dict = new System.Collections.Generic.Dictionary<string, int>();
+            if (entries == null) return dict;
+            foreach (var e in entries) dict[e.name] = e.level;
             return dict;
         }
 
@@ -297,13 +255,46 @@ namespace EquipmentIdle.Net
         public float power;
     }
 
-    /// <summary>养成操作结果推送。</summary>
-    [Serializable]
-    public class CraftResultData
-    {
-        public bool ok;
-        public string msg;
-        public string uid;
-        public int upgrade;
-    }
+/// <summary>养成操作结果推送。</summary>
+[Serializable]
+public class CraftResultData
+{
+    public bool ok;
+    public string msg;
+    public string uid;
+    public int upgrade;
+}
+
+/// <summary>材料库存推送（数组格式）。</summary>
+[Serializable]
+public class MaterialsData
+{
+    public MaterialEntry[] materials;
+}
+
+/// <summary>材料键值对。</summary>
+[Serializable]
+public class MaterialEntry
+{
+    public string k;
+    public int v;
+}
+
+/// <summary>天赋状态推送（数组格式）。</summary>
+[Serializable]
+public class TalentsData
+{
+    public int souls;
+    public int max_floor;
+    public bool can_reincarn;
+    public TalentEntry[] talents;
+}
+
+/// <summary>天赋键值对。</summary>
+[Serializable]
+public class TalentEntry
+{
+    public string name;
+    public int level;
+}
 }

@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	store := save.NewMemoryStore()
+	store := save.NewStore("saves")
 	hub := ws.NewHub(store)
 
 	http.HandleFunc("/ws", hub.ServeWS)

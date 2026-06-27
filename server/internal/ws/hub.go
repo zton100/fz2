@@ -29,20 +29,22 @@ type Session struct {
 
 // Hub 管理所有连接与会话。
 type Hub struct {
-	mu       sync.Mutex
-	sessions map[*Session]struct{}
-	store    *save.MemoryStore
-	gen      *loot.Generator
-	rng      *rand.Rand
+	mu              sync.Mutex
+	sessions        map[*Session]struct{}
+	accountSessions map[string]*Session // 同账号只保留最新连接
+	store           *save.Store
+	gen             *loot.Generator
+	rng             *rand.Rand
 }
 
 // NewHub 创建 Hub。
-func NewHub(store *save.MemoryStore) *Hub {
+func NewHub(store *save.Store) *Hub {
 	return &Hub{
-		sessions: make(map[*Session]struct{}),
-		store:    store,
-		gen:      loot.NewGenerator(rand.New(rand.NewSource(time.Now().UnixNano()))),
-		rng:      rand.New(rand.NewSource(time.Now().UnixNano() + 1)),
+		sessions:        make(map[*Session]struct{}),
+		accountSessions: make(map[string]*Session),
+		store:           store,
+		gen:             loot.NewGenerator(rand.New(rand.NewSource(time.Now().UnixNano()))),
+		rng:             rand.New(rand.NewSource(time.Now().UnixNano() + 1)),
 	}
 }
 
@@ -68,6 +70,9 @@ func (h *Hub) register(sess *Session) {
 func (h *Hub) unregister(sess *Session) {
 	h.mu.Lock()
 	delete(h.sessions, sess)
+	if sess.Account != "" && h.accountSessions[sess.Account] == sess {
+		delete(h.accountSessions, sess.Account)
+	}
 	h.mu.Unlock()
 	close(sess.Send)
 	if sess.stopCh != nil {

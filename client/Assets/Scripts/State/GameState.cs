@@ -152,7 +152,8 @@ namespace EquipmentIdle.State
                     }
                     break;
                 case Message.TypeMaterials:
-                    Materials = Message.ParseMaterials(msg.dataJson);
+                    var md = JsonUtility.FromJson<MaterialsData>(msg.dataJson);
+                    if (md != null) Materials = Message.MaterialsToDict(md.materials);
                     OnMaterialsReceived?.Invoke(Materials);
                     break;
                 case Message.TypeCraftResult:
@@ -160,28 +161,19 @@ namespace EquipmentIdle.State
                     if (cr != null) OnCraftResult?.Invoke(cr);
                     break;
                 case Message.TypeTalents:
-                    Souls = ExtractInt(msg.dataJson, "souls");
-                    MaxFloor = ExtractInt(msg.dataJson, "max_floor");
-                    CanReincarn = msg.dataJson.Contains("\"can_reincarn\":true");
-                    Talents = Message.ParseTalents(msg.dataJson);
-                    OnTalentsReceived?.Invoke(Souls, MaxFloor, CanReincarn, Talents);
+                    var td = JsonUtility.FromJson<TalentsData>(msg.dataJson);
+                    if (td != null)
+                    {
+                        Souls = td.souls;
+                        MaxFloor = td.max_floor;
+                        CanReincarn = td.can_reincarn;
+                        Talents = Message.TalentsToDict(td.talents);
+                        OnTalentsReceived?.Invoke(Souls, MaxFloor, CanReincarn, Talents);
+                    }
                     break;
             }
         }
 
         public bool IsConnected => _ws != null && _ws.IsConnected;
-
-        private static int ExtractInt(string json, string key)
-        {
-            string pattern = "\"" + key + "\":";
-            int i = json.IndexOf(pattern, System.StringComparison.Ordinal);
-            if (i < 0) return 0;
-            i += pattern.Length;
-            int end = i;
-            while (end < json.Length && json[end] >= '0' && json[end] <= '9') end++;
-            int val;
-            int.TryParse(json.Substring(i, end - i), out val);
-            return val;
-        }
     }
 }
