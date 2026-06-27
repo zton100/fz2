@@ -1,8 +1,9 @@
-package main
+﻿package main
 
 import (
 	"log"
 	"net/http"
+	"time"
 
 	"equipment-idle-server/internal/save"
 	"equipment-idle-server/internal/ws"
@@ -10,6 +11,9 @@ import (
 
 func main() {
 	store := save.NewStore("saves")
+	stopFlush := store.StartPeriodicFlush(30 * time.Second)
+	defer stopFlush()
+
 	hub := ws.NewHub(store)
 
 	http.HandleFunc("/ws", hub.ServeWS)

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"time"
 
 	"equipment-idle-server/internal/crafting"
@@ -71,11 +72,14 @@ func (h *Hub) handleLogin(sess *Session, env protocol.Envelope) {
 		log.Printf("bootstrap: %s %s", locale.Current().MsgBootstrap, sess.Account)
 	}
 
+	sess.rng = rand.New(rand.NewSource(time.Now().UnixNano()))
+	sess.gen = loot.NewGenerator(sess.rng)
+	sess.drop = loot.NewDropTable(sess.gen)
 	now := time.Now()
 	if !player.LastOnline.IsZero() {
 		offlineDuration := now.Sub(player.LastOnline)
 		if offlineDuration > 0 {
-			drop := loot.NewDropTable(h.gen)
+			drop := loot.NewDropTable(sess.gen)
 			result := offline.Calc(player, nil, drop, offlineDuration,
 				reincarnation.OfflineGainBonus(player),
 				reincarnation.DropBonus(player),
@@ -88,10 +92,7 @@ func (h *Hub) handleLogin(sess *Session, env protocol.Envelope) {
 	player.LastOnline = now
 
 	sync := protocol.SyncData{
-		Account:   player.Account,
-		Floor:     player.Floor,
-		Souls:     player.Souls,
-		Inventory: player.Inventory,
+		Account: player.Account, Floor: player.Floor, Souls: player.Souls, Inventory: player.Inventory,
 	}
 	syncData, _ := json.Marshal(sync)
 	resp := protocol.Envelope{T: protocol.TypeSync, ID: env.ID, Data: syncData}
@@ -103,11 +104,12 @@ func (h *Hub) handleLogin(sess *Session, env protocol.Envelope) {
 	h.pushMaterials(sess, player)
 	h.pushTalents(sess, player)
 
-	drop := loot.NewDropTable(h.gen)
-	runner := dungeon.NewRunner(player, nil, drop)
+
+	runner := dungeon.NewRunner(player, nil, sess.drop)
 	runner.LootCallback = func(eq *model.Equipment) {
 		h.pushLoot(sess, eq)
 		h.pushBag(sess, player)
+		h.store.MarkDirty(sess.Account)
 	}
 	runner.FloorCallback = func(newFloor int) {
 		h.pushFloor(sess, newFloor)
@@ -142,8 +144,6 @@ func (h *Hub) handleUnequip(sess *Session, env protocol.Envelope) {
 func (h *Hub) battleLoop(sess *Session, runner *dungeon.Runner) {
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
-	saveTicker := time.NewTicker(5 * time.Minute)
-	defer saveTicker.Stop()
 	for {
 		select {
 		case <-sess.stopCh:
@@ -153,10 +153,9 @@ func (h *Hub) battleLoop(sess *Session, runner *dungeon.Runner) {
 				h.store.Save(sess.Account)
 			}
 			return
-		case <-saveTicker.C:
-			if sess.Account != "" { h.store.Save(sess.Account) }
 		case <-ticker.C:
 			runner.Tick()
+			h.store.MarkDirty(sess.Account)
 		}
 	}
 }
@@ -249,7 +248,7 @@ func (h *Hub) handleCompose(sess *Session, env protocol.Envelope) {
 	player := h.store.LoadOrCreate(sess.Account)
 	var req protocol.ComposeRequest
 	if err := json.Unmarshal(env.Data, &req); err != nil { return }
-	eq, err := crafting.Compose(player, h.gen, data.Slot(req.Slot))
+	eq, err := crafting.Compose(player, sess.gen, data.Slot(req.Slot))
 	if err != nil {
 		h.pushCraftResult(sess, false, err.Error(), "", 0)
 		return
@@ -271,7 +270,7 @@ func (h *Hub) handleReforge(sess *Session, env protocol.Envelope) {
 		return
 	}
 	eq := player.EquipBag[idx]
-	if err := crafting.Reforge(player, h.gen, eq); err != nil {
+	if err := crafting.Reforge(player, sess.gen, eq); err != nil {
 		h.pushCraftResult(sess, false, err.Error(), "", 0)
 		return
 	}
@@ -292,7 +291,7 @@ func (h *Hub) handleUpgrade(sess *Session, env protocol.Envelope) {
 		return
 	}
 	eq := player.EquipBag[idx]
-	result, err := upgrade.Upgrade(player, h.rng, eq)
+	result, err := upgrade.Upgrade(player, sess.rng, eq)
 	if err != nil {
 		h.pushCraftResult(sess, false, err.Error(), "", 0)
 		return

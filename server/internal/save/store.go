@@ -1,22 +1,26 @@
-package save
+﻿package save
 
 import (
 	"encoding/json"
+	"log"
 	"os"
 	"path/filepath"
+	"sync"
+	"time"
 
 	"equipment-idle-server/internal/model"
 )
 
-// Store 持久化存档：内存缓存 + JSON 文件持久化。
-// dir 为空时退化为纯内存存档（测试用）。
+// Store handles persistence with in-memory cache + JSON file storage.
+// dir is the save directory; empty string means pure in-memory (no disk).
 type Store struct {
+	mu      sync.RWMutex
 	players map[string]*model.Player
 	dir     string
+	dirty   map[string]bool // accounts with unsaved changes since last flush
 }
 
-// NewStore 创建带文件持久化的存档。
-// dir 为保存目录，如 "saves"；传空字符串则纯内存。
+// NewStore creates a Store. Pass empty dir for in-memory only (tests).
 func NewStore(dir string) *Store {
 	if dir != "" {
 		os.MkdirAll(dir, 0755)
@@ -24,11 +28,18 @@ func NewStore(dir string) *Store {
 	return &Store{
 		players: make(map[string]*model.Player),
 		dir:     dir,
+		dirty:   make(map[string]bool),
 	}
 }
 
-// LoadOrCreate 按账号读取玩家；内存有则返回，否则尝试从文件加载，文件无则新建。
+// LoadOrCreate returns the player for account, loading from file or creating new.
 func (s *Store) LoadOrCreate(account string) *model.Player {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.loadOrCreateLocked(account)
+}
+
+func (s *Store) loadOrCreateLocked(account string) *model.Player {
 	if p, ok := s.players[account]; ok {
 		return p
 	}
@@ -41,13 +52,24 @@ func (s *Store) LoadOrCreate(account string) *model.Player {
 	return p
 }
 
-// Save 将玩家数据写入 JSON 文件（原子写入：tmp → rename）。
+// Save writes player data to JSON file (atomic: tmp → rename).
 func (s *Store) Save(account string) error {
 	if s.dir == "" {
 		return nil
 	}
+	s.mu.RLock()
 	p, ok := s.players[account]
+	s.mu.RUnlock()
 	if !ok {
+		return nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.saveLocked(account, p)
+}
+
+func (s *Store) saveLocked(account string, p *model.Player) error {
+	if s.dir == "" {
 		return nil
 	}
 	data, err := json.MarshalIndent(p, "", "  ")
@@ -59,7 +81,70 @@ func (s *Store) Save(account string) error {
 	if err := os.WriteFile(tmp, data, 0644); err != nil {
 		return err
 	}
-	return os.Rename(tmp, path)
+	if err := os.Rename(tmp, path); err != nil {
+		return err
+	}
+	delete(s.dirty, account)
+	return nil
+}
+
+// MarkDirty flags an account as having unsaved changes.
+func (s *Store) MarkDirty(account string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.dirty[account] = true
+}
+
+// SaveDirty saves all dirty accounts. Returns the first error encountered.
+func (s *Store) SaveAllDirty() {
+	s.mu.Lock()
+	accounts := make([]string, 0, len(s.dirty))
+	for a := range s.dirty {
+		accounts = append(accounts, a)
+	}
+	s.mu.Unlock()
+
+	for _, a := range accounts {
+		s.mu.RLock()
+		p, ok := s.players[a]
+		s.mu.RUnlock()
+		if !ok {
+			continue
+		}
+		s.mu.Lock()
+		if err := s.saveLocked(a, p); err != nil {
+			log.Printf("save dirty %s: %v", a, err)
+		}
+		s.mu.Unlock()
+	}
+}
+
+// StartPeriodicFlush starts a goroutine that saves dirty accounts every interval.
+// Returns a stop function.
+func (s *Store) StartPeriodicFlush(interval time.Duration) (stop func()) {
+	ticker := time.NewTicker(interval)
+	done := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				s.SaveAllDirty()
+			case <-done:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
+	return func() { close(done) }
+}
+
+// WithPlayer executes fn while holding the write lock for the player's account.
+// This serializes all mutations to a single player (battle loop + user actions).
+func (s *Store) WithPlayer(account string, fn func(p *model.Player)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	p := s.loadOrCreateLocked(account)
+	fn(p)
 }
 
 func (s *Store) loadFromFile(account string) *model.Player {

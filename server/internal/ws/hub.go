@@ -1,11 +1,10 @@
-package ws
+﻿package ws
 
 import (
 	"log"
 	"math/rand"
 	"net/http"
 	"sync"
-	"time"
 
 	"github.com/gorilla/websocket"
 
@@ -15,40 +14,35 @@ import (
 )
 
 var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true }, // 本地开发，放开跨域
+	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
-// Session 一个已连接的客户端会话。
 type Session struct {
 	Conn    *websocket.Conn
-	Account string // 登录后填充
+	Account string
 	Send    chan []byte
-	runner  *dungeon.Runner // 登录后创建的战斗推进器
-	stopCh  chan struct{}   // 战斗循环停止信号
+	runner  *dungeon.Runner
+	stopCh  chan struct{}
+	rng     *rand.Rand
+	gen     *loot.Generator
+	drop    *loot.DropTable
 }
 
-// Hub 管理所有连接与会话。
 type Hub struct {
 	mu              sync.Mutex
 	sessions        map[*Session]struct{}
-	accountSessions map[string]*Session // 同账号只保留最新连接
+	accountSessions map[string]*Session
 	store           *save.Store
-	gen             *loot.Generator
-	rng             *rand.Rand
 }
 
-// NewHub 创建 Hub。
 func NewHub(store *save.Store) *Hub {
 	return &Hub{
 		sessions:        make(map[*Session]struct{}),
 		accountSessions: make(map[string]*Session),
 		store:           store,
-		gen:             loot.NewGenerator(rand.New(rand.NewSource(time.Now().UnixNano()))),
-		rng:             rand.New(rand.NewSource(time.Now().UnixNano() + 1)),
 	}
 }
 
-// ServeWS 处理 WebSocket 升级请求。
 func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -77,14 +71,13 @@ func (h *Hub) unregister(sess *Session) {
 	close(sess.Send)
 	if sess.stopCh != nil {
 		select {
-		case <-sess.stopCh: // 已关闭
+		case <-sess.stopCh:
 		default:
 			close(sess.stopCh)
 		}
 	}
 }
 
-// readPump 读取客户端消息并路由到 handler。
 func (h *Hub) readPump(sess *Session) {
 	defer func() {
 		h.unregister(sess)
@@ -99,7 +92,6 @@ func (h *Hub) readPump(sess *Session) {
 	}
 }
 
-// writePump 把 Send 通道的消息写给客户端。
 func (h *Hub) writePump(sess *Session) {
 	for msg := range sess.Send {
 		if err := sess.Conn.WriteMessage(websocket.TextMessage, msg); err != nil {
