@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	serverURL = "ws://localhost:8080/ws"
-	timeout   = 35 * time.Second
+	defaultServerURL = "ws://127.0.0.1:8080/ws"
+	timeout          = 35 * time.Second
 )
 
 type verifyState struct {
@@ -31,6 +31,10 @@ type verifyState struct {
 }
 
 func main() {
+	serverURL := os.Getenv("FZ2_WS_URL")
+	if serverURL == "" {
+		serverURL = defaultServerURL
+	}
 	account := fmt.Sprintf("verifyhero_%d", time.Now().UnixNano())
 	st := verifyState{
 		account:       account,

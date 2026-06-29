@@ -19,7 +19,7 @@ namespace EquipmentIdle.Net
         public event Action<ParsedMessage> OnMessage;
 
         private ClientWebSocket _ws;
-        private string _url = "ws://localhost:8080/ws";
+        private string _url = "ws://127.0.0.1:8080/ws";
         private volatile bool _isOpen;
         private readonly ConcurrentQueue<ParsedMessage> _inbox = new ConcurrentQueue<ParsedMessage>();
         private readonly ConcurrentQueue<bool> _stateChanges = new ConcurrentQueue<bool>(); // true=opened,false=closed

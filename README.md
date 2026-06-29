@@ -33,7 +33,11 @@
 cd server
 go run ./cmd/server/
 ```
-服务端监听 `ws://localhost:8080/ws`，存档写入 `server/saves/{account}.json`。
+服务端默认监听 `ws://127.0.0.1:8080/ws`，存档写入 `server/saves/{account}.json`。
+也可以在仓库根目录运行：
+```bash
+./scripts/dev-server.sh
+```
 
 ### 启动客户端
 
@@ -55,6 +59,10 @@ cd server
 go run ./cmd/verifyclient
 ```
 会自动登录新账号，验证起步装备、自动战斗掉落、推进到 10 层、转生后再次发放起步装备。
+或在仓库根目录运行一键验证：
+```bash
+./scripts/verify-flow.sh
+```
 
 客户端自动化验证（需 Unity Editor）：
 ```bash
