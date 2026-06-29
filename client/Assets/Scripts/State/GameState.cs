@@ -13,7 +13,7 @@ namespace EquipmentIdle.State
         public static GameState Instance { get; private set; }
 
         public event System.Action<SyncData> OnSyncReceived;
-        public event System.Action<List<EquipmentDTO>> OnBagReceived;
+        public event System.Action<List<EquipmentDTO>, List<EquipmentDTO>> OnBagReceived;
         public event System.Action<float> OnPowerReceived;
         public event System.Action<EquipmentDTO> OnLootReceived;
         public event System.Action<int> OnFloorReceived;
@@ -29,6 +29,7 @@ namespace EquipmentIdle.State
         public bool CanReincarn { get; private set; } = false;
         public List<string> Inventory { get; private set; } = new List<string>();
         public List<EquipmentDTO> Bag { get; private set; } = new List<EquipmentDTO>();
+        public List<EquipmentDTO> Equipped { get; private set; } = new List<EquipmentDTO>();
         public float Power { get; private set; } = 0;
         public Dictionary<string, int> Materials { get; private set; } = new Dictionary<string, int>();
         public Dictionary<string, int> Talents { get; private set; } = new Dictionary<string, int>();
@@ -114,10 +115,11 @@ namespace EquipmentIdle.State
                     break;
                 case Message.TypeBag:
                     var bag = JsonUtility.FromJson<BagData>(msg.dataJson);
-                    if (bag != null && bag.items != null)
+                    if (bag != null)
                     {
-                        Bag = new List<EquipmentDTO>(bag.items);
-                        OnBagReceived?.Invoke(Bag);
+                        Bag = bag.items != null ? new List<EquipmentDTO>(bag.items) : new List<EquipmentDTO>();
+                        Equipped = bag.equipped != null ? new List<EquipmentDTO>(bag.equipped) : new List<EquipmentDTO>();
+                        OnBagReceived?.Invoke(Bag, Equipped);
                     }
                     break;
                 case Message.TypePower:

@@ -2,9 +2,14 @@ package ws
 
 import (
 	"encoding/json"
+	"sync"
 	"testing"
+	"time"
 
+	"equipment-idle-server/internal/data"
+	"equipment-idle-server/internal/model"
 	"equipment-idle-server/internal/protocol"
+	"equipment-idle-server/internal/reincarnation"
 	"equipment-idle-server/internal/save"
 )
 
@@ -38,6 +43,38 @@ func TestHandleLogin_NewAccount_SendsSync(t *testing.T) {
 	}
 }
 
+func TestHandleLogin_NewAccount_GrantsStarterLoadout(t *testing.T) {
+	store := save.NewMemoryStore()
+	hub := NewHub(store)
+	sess := &Session{Send: make(chan []byte, 16)}
+
+	reqData, _ := json.Marshal(protocol.LoginRequest{Account: "hero"})
+	env := protocol.Envelope{T: protocol.TypeLogin, ID: "r1", Data: reqData}
+	raw, _ := json.Marshal(env)
+
+	hub.handleMessage(sess, raw)
+
+	store.WithPlayer("hero", func(p *model.Player) {
+		if len(p.Equipped) != len(data.AllSlots()) {
+			t.Fatalf("equipped count = %d, want %d", len(p.Equipped), len(data.AllSlots()))
+		}
+		if p.Materials[data.MatBase] < data.ComposeCost {
+			t.Fatalf("base materials = %d, want at least %d", p.Materials[data.MatBase], data.ComposeCost)
+		}
+		if power := reincarnation.ComputePlayerPower(p); power < data.MonsterAt(1).Power {
+			t.Fatalf("starter power = %.1f, want at least floor 1 monster %.1f", power, data.MonsterAt(1).Power)
+		}
+	})
+
+	var pushedBag protocol.BagData
+	if !readEnvelope(sess.Send, protocol.TypeBag, &pushedBag) {
+		t.Fatal("no bag message sent")
+	}
+	if len(pushedBag.Equipped) != len(data.AllSlots()) {
+		t.Fatalf("pushed equipped count = %d, want %d", len(pushedBag.Equipped), len(data.AllSlots()))
+	}
+}
+
 func TestHandleLogin_ExistingAccount_RetainsFloor(t *testing.T) {
 	store := save.NewMemoryStore()
 	p := store.LoadOrCreate("hero")
@@ -62,5 +99,119 @@ func TestHandleLogin_ExistingAccount_RetainsFloor(t *testing.T) {
 	}
 	if sess.Account != "hero" {
 		t.Fatalf("session account = %q, want hero", sess.Account)
+	}
+}
+
+func TestHandleReincarn_GrantsStarterLoadout(t *testing.T) {
+	store := save.NewMemoryStore()
+	hub := NewHub(store)
+	sess := &Session{Send: make(chan []byte, 32)}
+
+	loginData, _ := json.Marshal(protocol.LoginRequest{Account: "hero"})
+	loginEnv := protocol.Envelope{T: protocol.TypeLogin, ID: "login", Data: loginData}
+	loginRaw, _ := json.Marshal(loginEnv)
+	hub.handleMessage(sess, loginRaw)
+
+	store.WithPlayer("hero", func(p *model.Player) {
+		p.Floor = reincarnation.ReincarnateFloorReq
+	})
+
+	reincarnEnv := protocol.Envelope{T: protocol.TypeReincarn, ID: "reincarn"}
+	reincarnRaw, _ := json.Marshal(reincarnEnv)
+	hub.handleMessage(sess, reincarnRaw)
+
+	store.WithPlayer("hero", func(p *model.Player) {
+		if p.Floor != 1 {
+			t.Fatalf("floor = %d, want 1", p.Floor)
+		}
+		if len(p.Equipped) != len(data.AllSlots()) {
+			t.Fatalf("equipped count = %d, want %d", len(p.Equipped), len(data.AllSlots()))
+		}
+		if power := reincarnation.ComputePlayerPower(p); power < data.MonsterAt(1).Power {
+			t.Fatalf("starter power after reincarn = %.1f, want at least floor 1 monster %.1f", power, data.MonsterAt(1).Power)
+		}
+	})
+}
+
+func TestHub_ConcurrentPlayerMutations_DoNotDeadlock(t *testing.T) {
+	store := save.NewMemoryStore()
+	hub := NewHub(store)
+	sess := &Session{Send: make(chan []byte, 256), stopCh: make(chan struct{})}
+	defer close(sess.stopCh)
+
+	loginData, _ := json.Marshal(protocol.LoginRequest{Account: "hero"})
+	loginEnv := protocol.Envelope{T: protocol.TypeLogin, ID: "login", Data: loginData}
+	loginRaw, _ := json.Marshal(loginEnv)
+	hub.handleMessage(sess, loginRaw)
+
+	var weaponUID string
+	store.WithPlayer("hero", func(p *model.Player) {
+		p.Materials[data.MatBase] = 1000
+		weapon := &model.Equipment{
+			UID:       "eq_concurrent_weapon",
+			BaseID:    "base_weapon",
+			Name:      "Concurrent Sword",
+			Slot:      data.SlotWeapon,
+			Rarity:    data.RarityRare,
+			BaseStats: map[data.AffixType]float64{data.ATStrength: 500},
+		}
+		p.EquipBag = append(p.EquipBag, weapon)
+		weaponUID = weapon.UID
+	})
+
+	equipData, _ := json.Marshal(protocol.EquipRequest{UID: weaponUID})
+	equipEnv := protocol.Envelope{T: protocol.TypeEquip, ID: "equip", Data: equipData}
+	equipRaw, _ := json.Marshal(equipEnv)
+	composeData, _ := json.Marshal(protocol.ComposeRequest{Slot: int(data.SlotWeapon)})
+	composeEnv := protocol.Envelope{T: protocol.TypeCompose, ID: "compose", Data: composeData}
+	composeRaw, _ := json.Marshal(composeEnv)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		var wg sync.WaitGroup
+		for i := 0; i < 20; i++ {
+			wg.Add(3)
+			go func() {
+				defer wg.Done()
+				hub.handleMessage(sess, equipRaw)
+			}()
+			go func() {
+				defer wg.Done()
+				hub.handleMessage(sess, composeRaw)
+			}()
+			go func() {
+				defer wg.Done()
+				store.WithPlayer("hero", func(*model.Player) {
+					sess.runner.Tick()
+				})
+				store.MarkDirty("hero")
+			}()
+		}
+		wg.Wait()
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("concurrent mutations did not complete; possible lock inversion or deadlock")
+	}
+}
+
+func readEnvelope(ch <-chan []byte, typ string, out any) bool {
+	for {
+		select {
+		case raw := <-ch:
+			var env protocol.Envelope
+			if err := json.Unmarshal(raw, &env); err != nil {
+				continue
+			}
+			if env.T != typ {
+				continue
+			}
+			return json.Unmarshal(env.Data, out) == nil
+		default:
+			return false
+		}
 	}
 }

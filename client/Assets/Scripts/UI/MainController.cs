@@ -14,6 +14,7 @@ namespace EquipmentIdle.UI
         private string _powerText = L10n.UIPowerLabel;
         private GameState _gameState;
         private Vector2 _bagScroll;
+        private Vector2 _equippedScroll;
         private bool _offlinePopup;
         private string _offlineText = "";
         private float _prevPower = 0;
@@ -52,7 +53,7 @@ namespace EquipmentIdle.UI
             _syncText = $"account={data.account} floor={data.floor} souls={data.souls}";
         }
 
-        private void OnBag(List<EquipmentDTO> bag) { }
+        private void OnBag(List<EquipmentDTO> bag, List<EquipmentDTO> equipped) { }
 
         private void OnPower(float power)
         {
@@ -129,7 +130,7 @@ namespace EquipmentIdle.UI
 
         private void OnGUI()
         {
-            float w = 480f, h = 480f;
+            float w = 620f, h = 640f;
             float x = (Screen.width - w) / 2f;
             float y = (Screen.height - h) / 2f;
             GUILayout.BeginArea(new Rect(x, y, w, h), GUI.skin.box);
@@ -165,11 +166,40 @@ namespace EquipmentIdle.UI
 
             GUILayout.Space(8);
             GUILayout.BeginHorizontal();
+            GUILayout.Label(string.Format(L10n.UIEquipped, _gameState.Equipped.Count));
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button(L10n.UIEquipBest, GUILayout.Width(110)))
+            {
+                EquipBestBySlot();
+            }
+            GUILayout.EndHorizontal();
+
+            _equippedScroll = GUILayout.BeginScrollView(_equippedScroll, GUILayout.Height(110));
+            for (int s = 0; s < 8; s++)
+            {
+                EquipmentDTO eq = EquippedAtSlot(s);
+                GUILayout.BeginHorizontal(GUI.skin.box);
+                GUILayout.Label(L10n.SlotName(s), GUILayout.Width(54));
+                if (eq != null)
+                {
+                    GUILayout.Label(FormatEquipment(eq), richStyle, GUILayout.Width(420));
+                    if (GUILayout.Button(L10n.UIUnequip, GUILayout.Width(70))) _gameState.Unequip(s);
+                }
+                else
+                {
+                    GUILayout.Label(L10n.UIEmptySlot, GUILayout.Width(420));
+                }
+                GUILayout.EndHorizontal();
+            }
+            GUILayout.EndScrollView();
+
+            GUILayout.Space(8);
+            GUILayout.BeginHorizontal();
             GUILayout.Label(string.Format(L10n.UIBackpack, _gameState.Bag.Count));
             GUILayout.FlexibleSpace();
-            if (GUILayout.Button(L10n.UIEquipBest, GUILayout.Width(90)))
+            if (GUILayout.Button(L10n.UIDecomposeWeak, GUILayout.Width(130)))
             {
-                EquipBest();
+                DecomposeWeakItems();
             }
             GUILayout.EndHorizontal();
 
@@ -177,13 +207,11 @@ namespace EquipmentIdle.UI
             foreach (var eq in _gameState.Bag)
             {
                 GUILayout.BeginHorizontal(GUI.skin.box);
-                int affCount = eq.affixes != null ? eq.affixes.Length : 0;
-                string info = $"[{L10n.RarityName(eq.rarity)}] {eq.name} +{eq.upgrade} ({L10n.SlotName(eq.slot)}) {affCount}aff";
-                GUILayout.Label(info, GUILayout.Width(280));
+                GUILayout.Label(FormatEquipment(eq), richStyle, GUILayout.Width(360));
                 if (GUILayout.Button(L10n.UIEquip, GUILayout.Width(55))) _gameState.Equip(eq.uid);
-                if (GUILayout.Button(L10n.UIDecompose, GUILayout.Width(42))) _gameState.Decompose(eq.uid);
-                if (GUILayout.Button(L10n.UIReforge, GUILayout.Width(42))) _gameState.Reforge(eq.uid);
-                if (GUILayout.Button(L10n.UIUpgrade, GUILayout.Width(42))) _gameState.Upgrade(eq.uid);
+                if (GUILayout.Button(L10n.UIDecompose, GUILayout.Width(48))) _gameState.Decompose(eq.uid);
+                if (GUILayout.Button(L10n.UIReforge, GUILayout.Width(48))) _gameState.Reforge(eq.uid);
+                if (GUILayout.Button(L10n.UIUpgrade, GUILayout.Width(48))) _gameState.Upgrade(eq.uid);
                 GUILayout.EndHorizontal();
             }
             GUILayout.EndScrollView();
@@ -231,27 +259,92 @@ namespace EquipmentIdle.UI
             if (_offlinePopup) DrawOfflinePopup();
         }
 
-        private void EquipBest()
+        private void EquipBestBySlot()
         {
-            string bestUid = null;
-            float bestScore = -1f;
+            int equippedCount = 0;
+            for (int slot = 0; slot < 8; slot++)
+            {
+                EquipmentDTO current = EquippedAtSlot(slot);
+                EquipmentDTO best = null;
+                float bestScore = current != null ? ScoreEquipment(current) : -1f;
+                foreach (var eq in _gameState.Bag)
+                {
+                    if (eq.slot != slot) continue;
+                    float score = ScoreEquipment(eq);
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                        best = eq;
+                    }
+                }
+                if (best != null)
+                {
+                    _gameState.Equip(best.uid);
+                    equippedCount++;
+                }
+            }
+            if (equippedCount > 0)
+            {
+                AddToast(string.Format(L10n.UIEquipBestDone, equippedCount), 2f, Color.green);
+            }
+        }
+
+        private void DecomposeWeakItems()
+        {
+            int count = 0;
             foreach (var eq in _gameState.Bag)
             {
-                float score = ScoreEquipment(eq);
-                if (score > bestScore) { bestScore = score; bestUid = eq.uid; }
+                if (eq.rarity <= 1)
+                {
+                    _gameState.Decompose(eq.uid);
+                    count++;
+                }
             }
-            if (bestUid != null)
+            if (count > 0)
             {
-                _gameState.Equip(bestUid);
-                AddToast("<color=#4f4>Equipped best item</color>", 2f, Color.green);
+                AddToast(string.Format(L10n.UIDecomposeWeakDone, count), 2f, Color.green);
             }
         }
 
         private static float ScoreEquipment(EquipmentDTO eq)
         {
-            float s = (eq.rarity + 1) * 100f + eq.upgrade * 10f;
-            if (eq.affixes != null) s += eq.affixes.Length * 5f;
+            float s = (eq.rarity + 1) * 100f + eq.upgrade * 20f;
+            if (eq.affixes != null)
+            {
+                foreach (var affix in eq.affixes)
+                {
+                    s += affix.value;
+                    s += affix.tier * 10f;
+                }
+            }
             return s;
+        }
+
+        private EquipmentDTO EquippedAtSlot(int slot)
+        {
+            foreach (var eq in _gameState.Equipped)
+            {
+                if (eq.slot == slot) return eq;
+            }
+            return null;
+        }
+
+        private static string FormatEquipment(EquipmentDTO eq)
+        {
+            string color = RarityColor(eq.rarity);
+            string text = $"<color={color}>[{L10n.RarityName(eq.rarity)}]</color> {eq.name} +{eq.upgrade} ({L10n.SlotName(eq.slot)})";
+            if (eq.affixes != null && eq.affixes.Length > 0)
+            {
+                text += "  ";
+                int max = Mathf.Min(2, eq.affixes.Length);
+                for (int i = 0; i < max; i++)
+                {
+                    if (i > 0) text += ", ";
+                    text += $"{eq.affixes[i].type}+{eq.affixes[i].value:F0}";
+                }
+                if (eq.affixes.Length > max) text += "...";
+            }
+            return text;
         }
 
         private void DrawToasts()

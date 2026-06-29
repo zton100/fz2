@@ -1,4 +1,4 @@
-﻿package save
+package save
 
 import (
 	"encoding/json"
@@ -145,6 +145,17 @@ func (s *Store) WithPlayer(account string, fn func(p *model.Player)) {
 	defer s.mu.Unlock()
 	p := s.loadOrCreateLocked(account)
 	fn(p)
+}
+
+// WithPlayerSave executes fn while holding the write lock, then persists the
+// player before releasing the lock. This keeps mutation and immediate saves
+// serialized for websocket request handlers.
+func (s *Store) WithPlayerSave(account string, fn func(p *model.Player)) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	p := s.loadOrCreateLocked(account)
+	fn(p)
+	return s.saveLocked(account, p)
 }
 
 func (s *Store) loadFromFile(account string) *model.Player {

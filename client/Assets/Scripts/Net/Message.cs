@@ -247,6 +247,7 @@ namespace EquipmentIdle.Net
     public class BagData
     {
         public EquipmentDTO[] items;
+        public EquipmentDTO[] equipped;
     }
 
     /// <summary>战力推送。</summary>
@@ -256,56 +257,56 @@ namespace EquipmentIdle.Net
         public float power;
     }
 
-/// <summary>养成操作结果推送。</summary>
-[Serializable]
-public class CraftResultData
-{
-    public bool ok;
-    public string msg;
-    public string uid;
-    public int upgrade;
-}
+    /// <summary>养成操作结果推送。</summary>
+    [Serializable]
+    public class CraftResultData
+    {
+        public bool ok;
+        public string msg;
+        public string uid;
+        public int upgrade;
+    }
 
-/// <summary>材料库存推送（数组格式）。</summary>
-[Serializable]
-public class MaterialsData
-{
-    public MaterialEntry[] materials;
-}
+    /// <summary>材料库存推送（数组格式）。</summary>
+    [Serializable]
+    public class MaterialsData
+    {
+        public MaterialEntry[] materials;
+    }
 
-/// <summary>材料键值对。</summary>
-[Serializable]
-public class MaterialEntry
-{
-    public string k;
-    public int v;
-}
+    /// <summary>材料键值对。</summary>
+    [Serializable]
+    public class MaterialEntry
+    {
+        public string k;
+        public int v;
+    }
 
-/// <summary>天赋状态推送（数组格式）。</summary>
-[Serializable]
-public class TalentsData
-{
-    public int souls;
-    public int max_floor;
-    public bool can_reincarn;
-    public TalentEntry[] talents;
-}
+    /// <summary>天赋状态推送（数组格式）。</summary>
+    [Serializable]
+    public class TalentsData
+    {
+        public int souls;
+        public int max_floor;
+        public bool can_reincarn;
+        public TalentEntry[] talents;
+    }
 
-/// <summary>天赋键值对。</summary>
-[Serializable]
-public class TalentEntry
-{
-    public string name;
-    public int level;
-}
+    /// <summary>天赋键值对。</summary>
+    [Serializable]
+    public class TalentEntry
+    {
+        public string name;
+        public int level;
+    }
 
-/// <summary>离线结算结果推送。</summary>
-[Serializable]
-public class OfflineResultData
-{
-    public int duration_seconds;
-    public int ticks_simulated;
-    public int loot_count;
-    public int floors_advanced;
-}
+    /// <summary>离线结算结果推送。</summary>
+    [Serializable]
+    public class OfflineResultData
+    {
+        public int duration_seconds;
+        public int ticks_simulated;
+        public int loot_count;
+        public int floors_advanced;
+    }
 }

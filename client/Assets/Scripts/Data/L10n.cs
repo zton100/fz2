@@ -38,9 +38,15 @@ namespace EquipmentIdle.Data
         public static string UIAccount             { get; private set; } = "Account:";
         public static string UIConnect             { get; private set; } = "Connect";
         public static string UIBackpack            { get; private set; } = "Backpack ({0} items):";
+        public static string UIEquipped            { get; private set; } = "Equipped ({0}/8):";
+        public static string UIEmptySlot           { get; private set; } = "(empty)";
         public static string UIEquipBest           { get; private set; } = "Equip Best";
+        public static string UIEquipBestDone       { get; private set; } = "<color=#4f4>Equipped {0} upgrade(s)</color>";
         public static string UIEquip               { get; private set; } = "Equip";
+        public static string UIUnequip             { get; private set; } = "Unequip";
         public static string UIDecompose           { get; private set; } = "Dec";
+        public static string UIDecomposeWeak       { get; private set; } = "Dec Common/Magic";
+        public static string UIDecomposeWeakDone   { get; private set; } = "<color=#4f4>Decomposed {0} item(s)</color>";
         public static string UIReforge             { get; private set; } = "Ref";
         public static string UIUpgrade             { get; private set; } = "Up";
         public static string UIWorkshop            { get; private set; } = "--- Workshop ---";

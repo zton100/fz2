@@ -1,4 +1,4 @@
-﻿package ws
+package ws
 
 import (
 	"encoding/json"
@@ -17,6 +17,7 @@ import (
 	"equipment-idle-server/internal/offline"
 	"equipment-idle-server/internal/protocol"
 	"equipment-idle-server/internal/reincarnation"
+	"equipment-idle-server/internal/starter"
 	"equipment-idle-server/internal/upgrade"
 )
 
@@ -56,7 +57,6 @@ func (h *Hub) handleLogin(sess *Session, env protocol.Envelope) {
 		log.Printf("login parse error: %v", err)
 		return
 	}
-	player := h.store.LoadOrCreate(req.Account)
 	sess.Account = req.Account
 
 	h.mu.Lock()
@@ -67,49 +67,53 @@ func (h *Hub) handleLogin(sess *Session, env protocol.Envelope) {
 	h.accountSessions[sess.Account] = sess
 	h.mu.Unlock()
 
-	if len(player.Equipped) == 0 && len(player.EquipBag) == 0 && len(player.Materials) == 0 {
-		player.Materials[data.MatBase] = 10
-		log.Printf("bootstrap: %s %s", locale.Current().MsgBootstrap, sess.Account)
-	}
-
 	sess.rng = rand.New(rand.NewSource(time.Now().UnixNano()))
 	sess.gen = loot.NewGenerator(sess.rng)
 	sess.drop = loot.NewDropTable(sess.gen)
-	now := time.Now()
-	if !player.LastOnline.IsZero() {
-		offlineDuration := now.Sub(player.LastOnline)
-		if offlineDuration > 0 {
-			drop := loot.NewDropTable(sess.gen)
-			result := offline.Calc(player, nil, drop, offlineDuration,
-				reincarnation.OfflineGainBonus(player),
-				reincarnation.DropBonus(player),
-				reincarnation.QualityFloor(player))
-			if result.TicksSimulated > 0 {
-				h.pushOfflineResult(sess, result)
+	var player *model.Player
+	if err := h.store.WithPlayerSave(req.Account, func(p *model.Player) {
+		player = p
+		if len(player.Equipped) == 0 && len(player.EquipBag) == 0 && len(player.Materials) == 0 {
+			starter.GrantLoadout(player, sess.gen)
+			log.Printf("bootstrap: %s %s", locale.Current().MsgBootstrap, sess.Account)
+		}
+
+		now := time.Now()
+		if !player.LastOnline.IsZero() {
+			offlineDuration := now.Sub(player.LastOnline)
+			if offlineDuration > 0 {
+				drop := loot.NewDropTable(sess.gen)
+				result := offline.Calc(player, nil, drop, offlineDuration,
+					reincarnation.OfflineGainBonus(player),
+					reincarnation.DropBonus(player),
+					reincarnation.QualityFloor(player))
+				if result.TicksSimulated > 0 {
+					h.pushOfflineResult(sess, result)
+				}
 			}
 		}
+		player.LastOnline = now
+
+		sync := protocol.SyncData{
+			Account: player.Account, Floor: player.Floor, Souls: player.Souls, Inventory: player.Inventory,
+		}
+		syncData, _ := json.Marshal(sync)
+		resp := protocol.Envelope{T: protocol.TypeSync, ID: env.ID, Data: syncData}
+		out, _ := json.Marshal(resp)
+		sess.Send <- out
+
+		h.pushBag(sess, player)
+		h.pushPower(sess, player)
+		h.pushMaterials(sess, player)
+		h.pushTalents(sess, player)
+	}); err != nil {
+		log.Printf("login save error for %s: %v", req.Account, err)
 	}
-	player.LastOnline = now
-
-	sync := protocol.SyncData{
-		Account: player.Account, Floor: player.Floor, Souls: player.Souls, Inventory: player.Inventory,
-	}
-	syncData, _ := json.Marshal(sync)
-	resp := protocol.Envelope{T: protocol.TypeSync, ID: env.ID, Data: syncData}
-	out, _ := json.Marshal(resp)
-	sess.Send <- out
-
-	h.pushBag(sess, player)
-	h.pushPower(sess, player)
-	h.pushMaterials(sess, player)
-	h.pushTalents(sess, player)
-
 
 	runner := dungeon.NewRunner(player, nil, sess.drop)
 	runner.LootCallback = func(eq *model.Equipment) {
 		h.pushLoot(sess, eq)
 		h.pushBag(sess, player)
-		h.store.MarkDirty(sess.Account)
 	}
 	runner.FloorCallback = func(newFloor int) {
 		h.pushFloor(sess, newFloor)
@@ -120,25 +124,41 @@ func (h *Hub) handleLogin(sess *Session, env protocol.Envelope) {
 }
 
 func (h *Hub) handleEquip(sess *Session, env protocol.Envelope) {
-	if sess.Account == "" { return }
-	player := h.store.LoadOrCreate(sess.Account)
+	if sess.Account == "" {
+		return
+	}
 	var req protocol.EquipRequest
-	if err := json.Unmarshal(env.Data, &req); err != nil { return }
-	if err := inventory.Equip(player, req.UID); err != nil { return }
-	h.pushBag(sess, player)
-	h.pushPower(sess, player)
-	h.store.Save(player.Account)
+	if err := json.Unmarshal(env.Data, &req); err != nil {
+		return
+	}
+	if err := h.store.WithPlayerSave(sess.Account, func(player *model.Player) {
+		if err := inventory.Equip(player, req.UID); err != nil {
+			return
+		}
+		h.pushBag(sess, player)
+		h.pushPower(sess, player)
+	}); err != nil {
+		log.Printf("equip save error for %s: %v", sess.Account, err)
+	}
 }
 
 func (h *Hub) handleUnequip(sess *Session, env protocol.Envelope) {
-	if sess.Account == "" { return }
-	player := h.store.LoadOrCreate(sess.Account)
+	if sess.Account == "" {
+		return
+	}
 	var req protocol.UnequipRequest
-	if err := json.Unmarshal(env.Data, &req); err != nil { return }
-	if err := inventory.Unequip(player, data.Slot(req.Slot)); err != nil { return }
-	h.pushBag(sess, player)
-	h.pushPower(sess, player)
-	h.store.Save(player.Account)
+	if err := json.Unmarshal(env.Data, &req); err != nil {
+		return
+	}
+	if err := h.store.WithPlayerSave(sess.Account, func(player *model.Player) {
+		if err := inventory.Unequip(player, data.Slot(req.Slot)); err != nil {
+			return
+		}
+		h.pushBag(sess, player)
+		h.pushPower(sess, player)
+	}); err != nil {
+		log.Printf("unequip save error for %s: %v", sess.Account, err)
+	}
 }
 
 func (h *Hub) battleLoop(sess *Session, runner *dungeon.Runner) {
@@ -148,13 +168,17 @@ func (h *Hub) battleLoop(sess *Session, runner *dungeon.Runner) {
 		select {
 		case <-sess.stopCh:
 			if sess.Account != "" {
-				p := h.store.LoadOrCreate(sess.Account)
-				p.LastOnline = time.Now()
-				h.store.Save(sess.Account)
+				if err := h.store.WithPlayerSave(sess.Account, func(p *model.Player) {
+					p.LastOnline = time.Now()
+				}); err != nil {
+					log.Printf("disconnect save error for %s: %v", sess.Account, err)
+				}
 			}
 			return
 		case <-ticker.C:
-			runner.Tick()
+			h.store.WithPlayer(sess.Account, func(*model.Player) {
+				runner.Tick()
+			})
 			h.store.MarkDirty(sess.Account)
 		}
 	}
@@ -169,7 +193,10 @@ func (h *Hub) pushLoot(sess *Session, eq *model.Equipment) {
 	dataBytes, _ := json.Marshal(ld)
 	env := protocol.Envelope{T: protocol.TypeLoot, Data: dataBytes}
 	out, _ := json.Marshal(env)
-	select { case sess.Send <- out: default: }
+	select {
+	case sess.Send <- out:
+	default:
+	}
 }
 
 func (h *Hub) pushFloor(sess *Session, newFloor int) {
@@ -177,7 +204,10 @@ func (h *Hub) pushFloor(sess *Session, newFloor int) {
 	dataBytes, _ := json.Marshal(fd)
 	env := protocol.Envelope{T: protocol.TypeFloor, Data: dataBytes}
 	out, _ := json.Marshal(env)
-	select { case sess.Send <- out: default: }
+	select {
+	case sess.Send <- out:
+	default:
+	}
 }
 
 func (h *Hub) pushBag(sess *Session, player *model.Player) {
@@ -185,11 +215,20 @@ func (h *Hub) pushBag(sess *Session, player *model.Player) {
 	for i, eq := range player.EquipBag {
 		items[i] = toEquipmentDTO(eq)
 	}
-	bd := protocol.BagData{Items: items}
+	equipped := make([]protocol.EquipmentDTO, 0, len(player.Equipped))
+	for _, slot := range data.AllSlots() {
+		if eq := player.Equipped[slot]; eq != nil {
+			equipped = append(equipped, toEquipmentDTO(eq))
+		}
+	}
+	bd := protocol.BagData{Items: items, Equipped: equipped}
 	dataBytes, _ := json.Marshal(bd)
 	env := protocol.Envelope{T: protocol.TypeBag, Data: dataBytes}
 	out, _ := json.Marshal(env)
-	select { case sess.Send <- out: default: }
+	select {
+	case sess.Send <- out:
+	default:
+	}
 }
 
 func (h *Hub) pushPower(sess *Session, player *model.Player) {
@@ -198,7 +237,10 @@ func (h *Hub) pushPower(sess *Session, player *model.Player) {
 	dataBytes, _ := json.Marshal(pd)
 	env := protocol.Envelope{T: protocol.TypePower, Data: dataBytes}
 	out, _ := json.Marshal(env)
-	select { case sess.Send <- out: default: }
+	select {
+	case sess.Send <- out:
+	default:
+	}
 }
 
 func toEquipmentDTO(eq *model.Equipment) protocol.EquipmentDTO {
@@ -219,90 +261,118 @@ func toAffixDTOs(affixes []model.AffixInstance) []protocol.AffixDTO {
 
 func findBagIndex(p *model.Player, uid string) int {
 	for i, eq := range p.EquipBag {
-		if eq.UID == uid { return i }
+		if eq.UID == uid {
+			return i
+		}
 	}
 	return -1
 }
 
 func (h *Hub) handleDecompose(sess *Session, env protocol.Envelope) {
-	if sess.Account == "" { return }
-	player := h.store.LoadOrCreate(sess.Account)
-	var req protocol.DecomposeRequest
-	if err := json.Unmarshal(env.Data, &req); err != nil { return }
-	idx := findBagIndex(player, req.UID)
-	if idx < 0 {
-		h.pushCraftResult(sess, false, locale.Current().MsgNotInBag, "", 0)
+	if sess.Account == "" {
 		return
 	}
-	eq := player.EquipBag[idx]
-	player.EquipBag = append(player.EquipBag[:idx], player.EquipBag[idx+1:]...)
-	crafting.Decompose(player, eq)
-	h.pushMaterials(sess, player)
-	h.pushBag(sess, player)
-	h.pushCraftResult(sess, true, locale.Current().MsgDecomposed, "", 0)
-	h.store.Save(player.Account)
+	var req protocol.DecomposeRequest
+	if err := json.Unmarshal(env.Data, &req); err != nil {
+		return
+	}
+	if err := h.store.WithPlayerSave(sess.Account, func(player *model.Player) {
+		idx := findBagIndex(player, req.UID)
+		if idx < 0 {
+			h.pushCraftResult(sess, false, locale.Current().MsgNotInBag, "", 0)
+			return
+		}
+		eq := player.EquipBag[idx]
+		player.EquipBag = append(player.EquipBag[:idx], player.EquipBag[idx+1:]...)
+		crafting.Decompose(player, eq)
+		h.pushMaterials(sess, player)
+		h.pushBag(sess, player)
+		h.pushCraftResult(sess, true, locale.Current().MsgDecomposed, "", 0)
+	}); err != nil {
+		log.Printf("decompose save error for %s: %v", sess.Account, err)
+	}
 }
 
 func (h *Hub) handleCompose(sess *Session, env protocol.Envelope) {
-	if sess.Account == "" { return }
-	player := h.store.LoadOrCreate(sess.Account)
-	var req protocol.ComposeRequest
-	if err := json.Unmarshal(env.Data, &req); err != nil { return }
-	eq, err := crafting.Compose(player, sess.gen, data.Slot(req.Slot))
-	if err != nil {
-		h.pushCraftResult(sess, false, err.Error(), "", 0)
+	if sess.Account == "" {
 		return
 	}
-	h.pushMaterials(sess, player)
-	h.pushBag(sess, player)
-	h.pushCraftResult(sess, true, locale.Current().MsgComposed, eq.UID, 0)
-	h.store.Save(player.Account)
+	var req protocol.ComposeRequest
+	if err := json.Unmarshal(env.Data, &req); err != nil {
+		return
+	}
+	if err := h.store.WithPlayerSave(sess.Account, func(player *model.Player) {
+		eq, err := crafting.Compose(player, sess.gen, data.Slot(req.Slot))
+		if err != nil {
+			h.pushCraftResult(sess, false, err.Error(), "", 0)
+			return
+		}
+		h.pushMaterials(sess, player)
+		h.pushBag(sess, player)
+		h.pushCraftResult(sess, true, locale.Current().MsgComposed, eq.UID, 0)
+	}); err != nil {
+		log.Printf("compose save error for %s: %v", sess.Account, err)
+	}
 }
 
 func (h *Hub) handleReforge(sess *Session, env protocol.Envelope) {
-	if sess.Account == "" { return }
-	player := h.store.LoadOrCreate(sess.Account)
+	if sess.Account == "" {
+		return
+	}
 	var req protocol.ReforgeRequest
-	if err := json.Unmarshal(env.Data, &req); err != nil { return }
-	idx := findBagIndex(player, req.UID)
-	if idx < 0 {
-		h.pushCraftResult(sess, false, locale.Current().MsgNotInBag, "", 0)
+	if err := json.Unmarshal(env.Data, &req); err != nil {
 		return
 	}
-	eq := player.EquipBag[idx]
-	if err := crafting.Reforge(player, sess.gen, eq); err != nil {
-		h.pushCraftResult(sess, false, err.Error(), "", 0)
-		return
+	if err := h.store.WithPlayerSave(sess.Account, func(player *model.Player) {
+		idx := findBagIndex(player, req.UID)
+		if idx < 0 {
+			h.pushCraftResult(sess, false, locale.Current().MsgNotInBag, "", 0)
+			return
+		}
+		eq := player.EquipBag[idx]
+		if err := crafting.Reforge(player, sess.gen, eq); err != nil {
+			h.pushCraftResult(sess, false, err.Error(), "", 0)
+			return
+		}
+		h.pushMaterials(sess, player)
+		h.pushBag(sess, player)
+		h.pushCraftResult(sess, true, locale.Current().MsgReforged, eq.UID, eq.Upgrade)
+	}); err != nil {
+		log.Printf("reforge save error for %s: %v", sess.Account, err)
 	}
-	h.pushMaterials(sess, player)
-	h.pushBag(sess, player)
-	h.pushCraftResult(sess, true, locale.Current().MsgReforged, eq.UID, eq.Upgrade)
-	h.store.Save(player.Account)
 }
 
 func (h *Hub) handleUpgrade(sess *Session, env protocol.Envelope) {
-	if sess.Account == "" { return }
-	player := h.store.LoadOrCreate(sess.Account)
+	if sess.Account == "" {
+		return
+	}
 	var req protocol.UpgradeRequest
-	if err := json.Unmarshal(env.Data, &req); err != nil { return }
-	idx := findBagIndex(player, req.UID)
-	if idx < 0 {
-		h.pushCraftResult(sess, false, locale.Current().MsgNotInBag, "", 0)
+	if err := json.Unmarshal(env.Data, &req); err != nil {
 		return
 	}
-	eq := player.EquipBag[idx]
-	result, err := upgrade.Upgrade(player, sess.rng, eq)
-	if err != nil {
-		h.pushCraftResult(sess, false, err.Error(), "", 0)
-		return
+	if err := h.store.WithPlayerSave(sess.Account, func(player *model.Player) {
+		idx := findBagIndex(player, req.UID)
+		if idx < 0 {
+			h.pushCraftResult(sess, false, locale.Current().MsgNotInBag, "", 0)
+			return
+		}
+		eq := player.EquipBag[idx]
+		result, err := upgrade.Upgrade(player, sess.rng, eq)
+		if err != nil {
+			h.pushCraftResult(sess, false, err.Error(), "", 0)
+			return
+		}
+		h.pushMaterials(sess, player)
+		h.pushBag(sess, player)
+		h.pushPower(sess, player)
+		msg := locale.Current().MsgUpgraded
+		if !result.Success {
+			msg = locale.Current().MsgUpgradeFailed
+		}
+		h.pushCraftResult(sess, result.Success, msg, eq.UID, eq.Upgrade)
+	}); err != nil {
+		log.Printf("upgrade save error for %s: %v", sess.Account, err)
 	}
-	h.pushMaterials(sess, player)
-	h.pushBag(sess, player)
-	h.pushPower(sess, player)
-	msg := locale.Current().MsgUpgraded
-	if !result.Success { msg = locale.Current().MsgUpgradeFailed }
-	h.pushCraftResult(sess, result.Success, msg, eq.UID, eq.Upgrade)
-	h.store.Save(player.Account)
 }
 
 func (h *Hub) pushMaterials(sess *Session, player *model.Player) {
@@ -310,12 +380,17 @@ func (h *Hub) pushMaterials(sess *Session, player *model.Player) {
 	for mt, n := range player.Materials {
 		mats = append(mats, protocol.MaterialKV{Key: string(mt), Val: n})
 	}
-	if mats == nil { mats = []protocol.MaterialKV{} }
+	if mats == nil {
+		mats = []protocol.MaterialKV{}
+	}
 	md := protocol.MaterialsData{Materials: mats}
 	dataBytes, _ := json.Marshal(md)
 	env := protocol.Envelope{T: protocol.TypeMaterials, Data: dataBytes}
 	out, _ := json.Marshal(env)
-	select { case sess.Send <- out: default: }
+	select {
+	case sess.Send <- out:
+	default:
+	}
 }
 
 func (h *Hub) pushCraftResult(sess *Session, ok bool, msg, uid string, upg int) {
@@ -323,7 +398,10 @@ func (h *Hub) pushCraftResult(sess *Session, ok bool, msg, uid string, upg int) 
 	dataBytes, _ := json.Marshal(cr)
 	env := protocol.Envelope{T: protocol.TypeCraftResult, Data: dataBytes}
 	out, _ := json.Marshal(env)
-	select { case sess.Send <- out: default: }
+	select {
+	case sess.Send <- out:
+	default:
+	}
 }
 
 func (h *Hub) pushOfflineResult(sess *Session, result offline.OfflineResult) {
@@ -336,37 +414,51 @@ func (h *Hub) pushOfflineResult(sess *Session, result offline.OfflineResult) {
 	dataBytes, _ := json.Marshal(od)
 	env := protocol.Envelope{T: protocol.TypeOfflineResult, Data: dataBytes}
 	out, _ := json.Marshal(env)
-	select { case sess.Send <- out: default: }
+	select {
+	case sess.Send <- out:
+	default:
+	}
 }
 
 func (h *Hub) handleReincarn(sess *Session, env protocol.Envelope) {
-	if sess.Account == "" { return }
-	player := h.store.LoadOrCreate(sess.Account)
-	if err := reincarnation.Reincarnate(player); err != nil {
-		h.pushCraftResult(sess, false, err.Error(), "", 0)
+	if sess.Account == "" {
 		return
 	}
-	h.pushSync(sess, player, env.ID)
-	h.pushBag(sess, player)
-	h.pushPower(sess, player)
-	h.pushMaterials(sess, player)
-	h.pushTalents(sess, player)
-	h.pushCraftResult(sess, true, locale.Current().MsgReincarnated, "", 0)
-	h.store.Save(player.Account)
+	if err := h.store.WithPlayerSave(sess.Account, func(player *model.Player) {
+		if err := reincarnation.Reincarnate(player); err != nil {
+			h.pushCraftResult(sess, false, err.Error(), "", 0)
+			return
+		}
+		starter.GrantLoadout(player, sess.gen)
+		h.pushSync(sess, player, env.ID)
+		h.pushBag(sess, player)
+		h.pushPower(sess, player)
+		h.pushMaterials(sess, player)
+		h.pushTalents(sess, player)
+		h.pushCraftResult(sess, true, locale.Current().MsgReincarnated, "", 0)
+	}); err != nil {
+		log.Printf("reincarn save error for %s: %v", sess.Account, err)
+	}
 }
 
 func (h *Hub) handleTalentUp(sess *Session, env protocol.Envelope) {
-	if sess.Account == "" { return }
-	player := h.store.LoadOrCreate(sess.Account)
-	var req protocol.TalentUpRequest
-	if err := json.Unmarshal(env.Data, &req); err != nil { return }
-	if err := reincarnation.UpgradeTalent(player, req.Name); err != nil {
-		h.pushCraftResult(sess, false, err.Error(), "", 0)
+	if sess.Account == "" {
 		return
 	}
-	h.pushTalents(sess, player)
-	h.pushCraftResult(sess, true, fmt.Sprintf(locale.Current().MsgTalentUpgraded, req.Name), "", 0)
-	h.store.Save(player.Account)
+	var req protocol.TalentUpRequest
+	if err := json.Unmarshal(env.Data, &req); err != nil {
+		return
+	}
+	if err := h.store.WithPlayerSave(sess.Account, func(player *model.Player) {
+		if err := reincarnation.UpgradeTalent(player, req.Name); err != nil {
+			h.pushCraftResult(sess, false, err.Error(), "", 0)
+			return
+		}
+		h.pushTalents(sess, player)
+		h.pushCraftResult(sess, true, fmt.Sprintf(locale.Current().MsgTalentUpgraded, req.Name), "", 0)
+	}); err != nil {
+		log.Printf("talent save error for %s: %v", sess.Account, err)
+	}
 }
 
 func (h *Hub) pushTalents(sess *Session, player *model.Player) {
@@ -374,16 +466,21 @@ func (h *Hub) pushTalents(sess *Session, player *model.Player) {
 	for name, level := range player.Talents {
 		talents = append(talents, protocol.TalentKV{Name: name, Level: level})
 	}
-	if talents == nil { talents = []protocol.TalentKV{} }
+	if talents == nil {
+		talents = []protocol.TalentKV{}
+	}
 	td := protocol.TalentsData{
 		Souls: player.Souls, MaxFloor: player.MaxFloor,
 		CanReincarn: reincarnation.CanReincarnate(player),
-		Talents: talents,
+		Talents:     talents,
 	}
 	dataBytes, _ := json.Marshal(td)
 	env := protocol.Envelope{T: protocol.TypeTalents, Data: dataBytes}
 	out, _ := json.Marshal(env)
-	select { case sess.Send <- out: default: }
+	select {
+	case sess.Send <- out:
+	default:
+	}
 }
 
 func (h *Hub) pushSync(sess *Session, player *model.Player, id string) {
@@ -394,5 +491,8 @@ func (h *Hub) pushSync(sess *Session, player *model.Player, id string) {
 	syncData, _ := json.Marshal(sync)
 	resp := protocol.Envelope{T: protocol.TypeSync, ID: id, Data: syncData}
 	out, _ := json.Marshal(resp)
-	select { case sess.Send <- out: default: }
+	select {
+	case sess.Send <- out:
+	default:
+	}
 }
