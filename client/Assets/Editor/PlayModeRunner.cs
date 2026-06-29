@@ -10,6 +10,10 @@ using UnityEngine;
 /// </summary>
 public static class PlayModeRunner
 {
+    private static bool _oldEnterPlayModeOptionsEnabled;
+    private static EnterPlayModeOptions _oldEnterPlayModeOptions;
+    private static double _mainSmokeStart;
+
     public static void Run()
     {
         EditorSceneManager.OpenScene("Assets/Scenes/Verify.unity");
@@ -38,6 +42,30 @@ public static class PlayModeRunner
             EditorApplication.update -= CheckResult;
             EditorApplication.Exit(1);
         }
+    }
+
+    public static void RunMainSmoke()
+    {
+        EditorSceneManager.OpenScene("Assets/Scenes/Main.unity");
+        File.WriteAllText("verify_result.txt", "PENDING");
+        _mainSmokeStart = EditorApplication.timeSinceStartup;
+        _oldEnterPlayModeOptionsEnabled = EditorSettings.enterPlayModeOptionsEnabled;
+        _oldEnterPlayModeOptions = EditorSettings.enterPlayModeOptions;
+        EditorSettings.enterPlayModeOptionsEnabled = true;
+        EditorSettings.enterPlayModeOptions = EnterPlayModeOptions.DisableDomainReload;
+        EditorApplication.update += CheckMainSmoke;
+        EditorApplication.EnterPlaymode();
+    }
+
+    private static void CheckMainSmoke()
+    {
+        if (EditorApplication.timeSinceStartup - _mainSmokeStart < 3.0) return;
+        File.WriteAllText("verify_result.txt", "MAIN_SMOKE_OK");
+        Debug.Log("[PlayModeRunner] MAIN_SMOKE_OK");
+        EditorApplication.update -= CheckMainSmoke;
+        EditorSettings.enterPlayModeOptionsEnabled = _oldEnterPlayModeOptionsEnabled;
+        EditorSettings.enterPlayModeOptions = _oldEnterPlayModeOptions;
+        EditorApplication.Exit(0);
     }
 }
 #endif

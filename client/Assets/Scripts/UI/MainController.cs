@@ -1,33 +1,41 @@
-﻿using EquipmentIdle.Data;
+using EquipmentIdle.Data;
 using EquipmentIdle.Net;
 using EquipmentIdle.State;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace EquipmentIdle.UI
 {
     public class MainController : MonoBehaviour
     {
-        private string _accountInput = "";
-        private string _statusText = L10n.UIStatusDisconnected;
-        private string _syncText = L10n.UINoSync;
-        private string _powerText = L10n.UIPowerLabel;
         private GameState _gameState;
-        private Vector2 _bagScroll;
-        private Vector2 _equippedScroll;
-        private bool _offlinePopup;
-        private string _offlineText = "";
-        private float _prevPower = 0;
+        private TextField _accountInput;
+        private Label _statusText;
+        private Label _syncText;
+        private Label _powerText;
+        private Label _stuckText;
+        private Label _materialsText;
+        private Label _reincarnText;
+        private Label _talentsText;
+        private Label _detailText;
+        private Label _toastText;
+        private Label _offlineText;
+        private VisualElement _offlinePanel;
+        private VisualElement _equippedContent;
+        private VisualElement _bagContent;
+        private EquipmentDTO _selected;
+        private float _prevPower;
+        private bool _prevCanReincarn;
 
         private struct Toast
         {
-            public string text;
-            public float expireAt;
-            public Color color;
+            public string Text;
+            public float ExpireAt;
         }
+
         private readonly List<Toast> _toasts = new List<Toast>();
         private const float ToastDuration = 3f;
-        private bool _prevCanReincarn = false;
 
         private void Start()
         {
@@ -36,6 +44,7 @@ namespace EquipmentIdle.UI
                 var go = new GameObject("GameState");
                 go.AddComponent<GameState>();
             }
+
             _gameState = GameState.Instance;
             _gameState.OnSyncReceived += OnSync;
             _gameState.OnBagReceived += OnBag;
@@ -45,44 +54,67 @@ namespace EquipmentIdle.UI
             _gameState.OnOfflineResultReceived += OnOfflineResult;
             _gameState.OnCraftResult += OnCraftResult;
             _gameState.OnTalentsReceived += OnTalents;
+
+            BuildUI();
+            RefreshAll();
+        }
+
+        private void OnDestroy()
+        {
+            if (_gameState == null) return;
+            _gameState.OnSyncReceived -= OnSync;
+            _gameState.OnBagReceived -= OnBag;
+            _gameState.OnPowerReceived -= OnPower;
+            _gameState.OnLootReceived -= OnLoot;
+            _gameState.OnFloorReceived -= OnFloor;
+            _gameState.OnOfflineResultReceived -= OnOfflineResult;
+            _gameState.OnCraftResult -= OnCraftResult;
+            _gameState.OnTalentsReceived -= OnTalents;
+        }
+
+        private void Update()
+        {
+            PruneToasts();
         }
 
         private void OnSync(SyncData data)
         {
-            _statusText = L10n.UIStatusConnected;
-            _syncText = $"account={data.account} floor={data.floor} souls={data.souls}";
+            RefreshAll();
         }
 
-        private void OnBag(List<EquipmentDTO> bag, List<EquipmentDTO> equipped) { }
+        private void OnBag(List<EquipmentDTO> bag, List<EquipmentDTO> equipped)
+        {
+            KeepSelectedIfPresent();
+            RefreshEquipmentLists();
+            RefreshDetail();
+        }
 
         private void OnPower(float power)
         {
             float delta = power - _prevPower;
-            if (delta > 0.5f)
-                _powerText = string.Format(L10n.UIPowerDeltaUp, power, delta);
-            else if (delta < -0.5f)
-                _powerText = string.Format(L10n.UIPowerDeltaDown, power, delta);
-            else
-                _powerText = string.Format(L10n.UIPowerLabel, power);
             _prevPower = power;
+            if (delta > 0.5f)
+                _powerText.text = $"power: {power:F1} +{delta:F1}";
+            else if (delta < -0.5f)
+                _powerText.text = $"power: {power:F1} {delta:F1}";
+            else
+                _powerText.text = string.Format(L10n.UIPowerLabel, power);
+            RefreshStuck();
         }
 
         private void OnLoot(EquipmentDTO eq)
         {
-            string color = RarityColor(eq.rarity);
-            string rname = L10n.RarityName(eq.rarity);
-            string msg = string.Format(L10n.UILootToast, rname, eq.name);
-            AddToast($"<color={color}>{msg}</color>", ToastDuration, Color.white);
+            AddToast($"{string.Format(L10n.UILootToast, L10n.RarityName(eq.rarity), eq.name)}", ToastDuration);
         }
 
         private void OnFloor(int newFloor)
         {
-            _syncText = $"account={_gameState.Account} floor={newFloor} souls={_gameState.Souls}";
-            int justCleared = newFloor - 1;
-            if (justCleared > 0 && justCleared % 5 == 0)
+            if (newFloor > 1 && (newFloor - 1) % 5 == 0)
             {
-                AddToast($"<color=#f80>Boss Defeated!</color> Floor {justCleared} cleared", ToastDuration, new Color(1f, 0.5f, 0f));
+                AddToast($"Boss defeated: floor {newFloor - 1}", ToastDuration);
             }
+            RefreshHeader();
+            RefreshStuck();
         }
 
         private void OnOfflineResult(OfflineResultData ord)
@@ -90,173 +122,329 @@ namespace EquipmentIdle.UI
             int h = ord.duration_seconds / 3600;
             int m = (ord.duration_seconds % 3600) / 60;
             string dur = h > 0 ? $"{h}h{m}m" : $"{m}m";
-            _offlineText = $"{L10n.UIOfflineTitle}\n"
-                         + $"{string.Format(L10n.UIOfflineDuration, dur)}\n"
-                         + $"{string.Format(L10n.UIOfflineLoot, ord.loot_count)}\n"
-                         + $"{string.Format(L10n.UIOfflineFloors, ord.floors_advanced)}\n"
-                         + $"{string.Format(L10n.UIOfflineTicks, ord.ticks_simulated)}";
-            _offlinePopup = true;
+            _offlineText.text = $"{L10n.UIOfflineTitle}\n"
+                + $"{string.Format(L10n.UIOfflineDuration, dur)}\n"
+                + $"{string.Format(L10n.UIOfflineLoot, ord.loot_count)}\n"
+                + $"{string.Format(L10n.UIOfflineFloors, ord.floors_advanced)}\n"
+                + $"{string.Format(L10n.UIOfflineTicks, ord.ticks_simulated)}";
+            _offlinePanel.style.display = DisplayStyle.Flex;
         }
 
         private void OnCraftResult(CraftResultData cr)
         {
-            if (cr.ok)
-            {
-                if (!string.IsNullOrEmpty(cr.uid))
-                    AddToast($"<color=#4f4>{cr.msg} +{cr.upgrade}</color>", ToastDuration, Color.green);
-                else
-                    AddToast($"<color=#4f4>{cr.msg}</color>", ToastDuration, Color.green);
-            }
-            else
-            {
-                AddToast($"<color=#f44>{cr.msg}</color>", ToastDuration, Color.red);
-            }
+            AddToast(cr.msg, ToastDuration);
         }
 
         private void OnTalents(int souls, int maxFloor, bool canReincarn, Dictionary<string, int> talents)
         {
             if (canReincarn && !_prevCanReincarn)
             {
-                AddToast("<color=#f80>Reincarnation available!</color> Tap REINCARNATE to reset for souls", 5f, new Color(1f, 0.5f, 0f));
+                AddToast("Reincarnation available", 5f);
             }
             _prevCanReincarn = canReincarn;
+            RefreshProgression();
         }
 
-        private void AddToast(string text, float duration, Color color)
+        private void BuildUI()
         {
-            _toasts.Add(new Toast { text = text, expireAt = Time.realtimeSinceStartup + duration, color = color });
-            if (_toasts.Count > 8) _toasts.RemoveAt(0);
-        }
+            var panelSettings = ScriptableObject.CreateInstance<PanelSettings>();
+            panelSettings.scaleMode = PanelScaleMode.ScaleWithScreenSize;
+            panelSettings.referenceResolution = new Vector2Int(1280, 720);
 
-        private void OnGUI()
-        {
-            float w = 620f, h = 640f;
-            float x = (Screen.width - w) / 2f;
-            float y = (Screen.height - h) / 2f;
-            GUILayout.BeginArea(new Rect(x, y, w, h), GUI.skin.box);
+            var doc = gameObject.AddComponent<UIDocument>();
+            doc.panelSettings = panelSettings;
 
-            GUILayout.Label(L10n.UIStage);
-            GUILayout.Space(4);
-            GUILayout.Label("Status: " + _statusText);
-            GUILayout.Label(_syncText);
+            var root = doc.rootVisualElement;
+            root.style.flexGrow = 1;
+            root.style.backgroundColor = new StyleColor(new Color32(18, 22, 28, 255));
+            root.style.paddingLeft = 16;
+            root.style.paddingRight = 16;
+            root.style.paddingTop = 12;
+            root.style.paddingBottom = 12;
 
-            var richStyle = new GUIStyle(GUI.skin.label) { richText = true };
-            GUILayout.Label(_powerText, richStyle);
+            var header = Panel("header");
+            header.style.height = 96;
+            header.style.flexDirection = FlexDirection.Row;
+            header.style.alignItems = Align.Center;
+            header.style.marginBottom = 10;
+            root.Add(header);
 
-            float curPower = _gameState.Power;
-            int curFloor = _gameState.Floor;
-            float monsterPower = MonsterPowerAtFloor(curFloor);
-            if (curPower > 0 && curPower <= monsterPower)
+            var titleCol = Column(360);
+            titleCol.Add(Text("Equipment Idle", 24, true));
+            _statusText = Text("", 14, false);
+            _syncText = Text("", 14, false);
+            titleCol.Add(_statusText);
+            titleCol.Add(_syncText);
+            header.Add(titleCol);
+
+            var powerCol = Column(300);
+            _powerText = Text("", 20, true);
+            _stuckText = Text("", 13, false);
+            _stuckText.style.color = new StyleColor(new Color32(248, 113, 113, 255));
+            powerCol.Add(_powerText);
+            powerCol.Add(_stuckText);
+            header.Add(powerCol);
+
+            var loginCol = Row();
+            loginCol.style.flexGrow = 1;
+            loginCol.style.justifyContent = Justify.FlexEnd;
+            _accountInput = new TextField { value = "hero" };
+            _accountInput.style.width = 260;
+            _accountInput.style.height = 38;
+            loginCol.Add(_accountInput);
+            loginCol.Add(ActionButton(L10n.UIConnect, () =>
             {
-                string stuckMsg = string.Format(L10n.UIStuckPrefix, curPower, monsterPower, curFloor);
-                GUILayout.Label($"<color=#f44>{stuckMsg}</color>", richStyle);
-            }
-
-            GUILayout.Space(6);
-
-            GUILayout.Label(L10n.UIAccount);
-            _accountInput = GUILayout.TextField(_accountInput);
-            if (GUILayout.Button(L10n.UIConnect, GUILayout.Height(24)))
-            {
-                string acc = _accountInput.Trim();
+                string acc = _accountInput.value.Trim();
                 if (string.IsNullOrEmpty(acc)) acc = "hero";
-                _statusText = L10n.UIStatusConnecting;
+                _statusText.text = "Status: " + L10n.UIStatusConnecting;
                 _gameState.ConnectAndLogin(acc);
-            }
+            }, 110));
+            header.Add(loginCol);
 
-            GUILayout.Space(8);
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(string.Format(L10n.UIEquipped, _gameState.Equipped.Count));
-            GUILayout.FlexibleSpace();
-            if (GUILayout.Button(L10n.UIEquipBest, GUILayout.Width(110)))
-            {
-                EquipBestBySlot();
-            }
-            GUILayout.EndHorizontal();
+            var body = Row();
+            body.style.flexGrow = 1;
+            root.Add(body);
 
-            _equippedScroll = GUILayout.BeginScrollView(_equippedScroll, GUILayout.Height(110));
+            var left = Panel("equipped");
+            left.style.width = 330;
+            body.Add(left);
+            left.Add(SectionTitle(string.Format(L10n.UIEquipped, 0)));
+            var equippedScroll = new ScrollView();
+            equippedScroll.style.flexGrow = 1;
+            _equippedContent = equippedScroll.contentContainer;
+            left.Add(equippedScroll);
+            left.Add(ActionButton(L10n.UIEquipBest, EquipBestBySlot));
+
+            var middle = Panel("bag");
+            middle.style.flexGrow = 1;
+            middle.style.marginLeft = 10;
+            middle.style.marginRight = 10;
+            body.Add(middle);
+            var bagHeader = Row();
+            bagHeader.Add(SectionTitle(L10n.UIBackpack));
+            bagHeader.Add(ActionButton(L10n.UIDecomposeWeak, DecomposeWeakItems, 160));
+            middle.Add(bagHeader);
+            var bagScroll = new ScrollView();
+            bagScroll.style.flexGrow = 1;
+            _bagContent = bagScroll.contentContainer;
+            middle.Add(bagScroll);
+
+            var right = Panel("details");
+            right.style.width = 370;
+            body.Add(right);
+            right.Add(SectionTitle("Details"));
+            _detailText = Text("", 14, false);
+            _detailText.style.flexGrow = 1;
+            right.Add(_detailText);
+            _materialsText = Text("", 13, false);
+            right.Add(_materialsText);
+            right.Add(SectionTitle(L10n.UIWorkshop));
+            var composeGrid = new VisualElement();
+            composeGrid.style.flexDirection = FlexDirection.Row;
+            composeGrid.style.flexWrap = Wrap.Wrap;
+            composeGrid.style.marginBottom = 8;
             for (int s = 0; s < 8; s++)
             {
-                EquipmentDTO eq = EquippedAtSlot(s);
-                GUILayout.BeginHorizontal(GUI.skin.box);
-                GUILayout.Label(L10n.SlotName(s), GUILayout.Width(54));
-                if (eq != null)
-                {
-                    GUILayout.Label(FormatEquipment(eq), richStyle, GUILayout.Width(420));
-                    if (GUILayout.Button(L10n.UIUnequip, GUILayout.Width(70))) _gameState.Unequip(s);
-                }
-                else
-                {
-                    GUILayout.Label(L10n.UIEmptySlot, GUILayout.Width(420));
-                }
-                GUILayout.EndHorizontal();
+                int slot = s;
+                composeGrid.Add(ActionButton(L10n.SlotName(slot), () => _gameState.Compose(slot), 82));
             }
-            GUILayout.EndScrollView();
-
-            GUILayout.Space(8);
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(string.Format(L10n.UIBackpack, _gameState.Bag.Count));
-            GUILayout.FlexibleSpace();
-            if (GUILayout.Button(L10n.UIDecomposeWeak, GUILayout.Width(130)))
+            right.Add(composeGrid);
+            right.Add(SectionTitle(L10n.UIReincarnation));
+            _reincarnText = Text("", 13, false);
+            right.Add(_reincarnText);
+            right.Add(ActionButton(L10n.UIReincarnate, () =>
             {
-                DecomposeWeakItems();
-            }
-            GUILayout.EndHorizontal();
+                if (_gameState.CanReincarn) _gameState.Reincarn();
+            }));
+            _talentsText = Text("", 13, false);
+            right.Add(_talentsText);
 
-            _bagScroll = GUILayout.BeginScrollView(_bagScroll, GUILayout.Height(180));
+            _toastText = Text("", 14, false);
+            _toastText.style.height = 58;
+            _toastText.style.marginTop = 10;
+            root.Add(_toastText);
+
+            BuildOfflinePanel(root);
+        }
+
+        private void BuildOfflinePanel(VisualElement root)
+        {
+            _offlinePanel = new VisualElement();
+            _offlinePanel.style.position = Position.Absolute;
+            _offlinePanel.style.left = 0;
+            _offlinePanel.style.right = 0;
+            _offlinePanel.style.top = 0;
+            _offlinePanel.style.bottom = 0;
+            _offlinePanel.style.backgroundColor = new Color(0, 0, 0, 0.65f);
+            _offlinePanel.style.alignItems = Align.Center;
+            _offlinePanel.style.justifyContent = Justify.Center;
+            _offlinePanel.style.display = DisplayStyle.None;
+
+            var box = Panel("offline");
+            box.style.width = 380;
+            box.style.height = 240;
+            _offlineText = Text("", 15, false);
+            _offlineText.style.flexGrow = 1;
+            box.Add(_offlineText);
+            box.Add(ActionButton(L10n.UIOK, () => _offlinePanel.style.display = DisplayStyle.None));
+            _offlinePanel.Add(box);
+            root.Add(_offlinePanel);
+        }
+
+        private void RefreshAll()
+        {
+            RefreshHeader();
+            RefreshEquipmentLists();
+            RefreshMaterials();
+            RefreshProgression();
+            RefreshDetail();
+            RefreshStuck();
+        }
+
+        private void RefreshHeader()
+        {
+            string status = _gameState.IsConnected ? L10n.UIStatusConnected : L10n.UIStatusDisconnected;
+            _statusText.text = "Status: " + status;
+            _syncText.text = $"Account: {_gameState.Account}   Floor: {_gameState.Floor}   Souls: {_gameState.Souls}";
+            _powerText.text = string.Format(L10n.UIPowerLabel, _gameState.Power);
+        }
+
+        private void RefreshStuck()
+        {
+            float monsterPower = MonsterPowerAtFloor(_gameState.Floor);
+            if (_gameState.Power > 0 && _gameState.Power <= monsterPower)
+                _stuckText.text = string.Format(L10n.UIStuckPrefix, _gameState.Power, monsterPower, _gameState.Floor);
+            else
+                _stuckText.text = $"Monster power: {monsterPower:F1}";
+        }
+
+        private void RefreshEquipmentLists()
+        {
+            _equippedContent.Clear();
+            for (int slot = 0; slot < 8; slot++)
+            {
+                int capturedSlot = slot;
+                EquipmentDTO eq = EquippedAtSlot(slot);
+                if (eq == null)
+                {
+                    _equippedContent.Add(EquipmentRow(L10n.SlotName(slot), L10n.UIEmptySlot, null, null, null, 0));
+                    continue;
+                }
+                EquipmentDTO capturedEq = eq;
+                _equippedContent.Add(EquipmentRow(L10n.SlotName(slot), ShortEquipment(eq), () => Select(capturedEq), null, () => _gameState.Unequip(capturedSlot), eq.rarity));
+            }
+
+            _bagContent.Clear();
+            foreach (var item in _gameState.Bag)
+            {
+                EquipmentDTO eq = item;
+                _bagContent.Add(EquipmentRow(L10n.SlotName(eq.slot), ShortEquipment(eq), () => Select(eq), () => _gameState.Equip(eq.uid), () => _gameState.Decompose(eq.uid), eq.rarity));
+            }
+        }
+
+        private VisualElement EquipmentRow(string slot, string label, System.Action select, System.Action primary, System.Action secondary, int rarity)
+        {
+            var row = Row();
+            row.style.backgroundColor = new StyleColor(new Color32(45, 55, 72, 255));
+            row.style.borderLeftWidth = 4;
+            row.style.borderLeftColor = RarityUIColor(rarity);
+            row.style.paddingLeft = 8;
+            row.style.paddingRight = 8;
+            row.style.paddingTop = 6;
+            row.style.paddingBottom = 6;
+            row.style.marginBottom = 6;
+
+            var slotLabel = Text(slot, 12, true);
+            slotLabel.style.width = 58;
+            row.Add(slotLabel);
+
+            var body = ActionButton(label, select ?? (() => { }));
+            body.SetEnabled(select != null);
+            body.style.flexGrow = 1;
+            row.Add(body);
+
+            if (primary != null) row.Add(ActionButton(L10n.UIEquip, primary, 54));
+            if (secondary != null) row.Add(ActionButton(primary == null ? L10n.UIUnequip : L10n.UIDecompose, secondary, 72));
+            return row;
+        }
+
+        private void RefreshMaterials()
+        {
+            string text = L10n.UIMaterials;
+            foreach (var kv in _gameState.Materials)
+            {
+                text += $"{kv.Key}={kv.Value}  ";
+            }
+            _materialsText.text = text;
+        }
+
+        private void RefreshProgression()
+        {
+            _reincarnText.text = string.Format(L10n.UISouls, _gameState.Souls, _gameState.MaxFloor, _gameState.CanReincarn);
+            string[] names = { L10n.TalentDamage, L10n.TalentQuality, L10n.TalentDrop, L10n.TalentOfflineGain };
+            string[] desc = { L10n.TalentDamageDesc, L10n.TalentQualityDesc, L10n.TalentDropDesc, L10n.TalentOfflineDesc };
+            int[] max = { 10, 3, 10, 5 };
+            string text = L10n.UITalentsLabel + "\n";
+            for (int i = 0; i < names.Length; i++)
+            {
+                int lv = _gameState.Talents.ContainsKey(names[i]) ? _gameState.Talents[names[i]] : 0;
+                text += $"{names[i]} Lv{lv}/{max[i]} - {desc[i]}\n";
+            }
+            _talentsText.text = text;
+        }
+
+        private void RefreshDetail()
+        {
+            if (_selected == null)
+            {
+                _detailText.text = "Select an equipment item to inspect stats and actions.";
+                return;
+            }
+
+            string text = $"{L10n.RarityName(_selected.rarity)} {_selected.name} +{_selected.upgrade}\n";
+            text += $"Slot: {L10n.SlotName(_selected.slot)}\n";
+            text += $"Score: {ScoreEquipment(_selected):F0}\n\n";
+            if (_selected.affixes == null || _selected.affixes.Length == 0)
+            {
+                text += "No affixes.";
+            }
+            else
+            {
+                text += "Affixes:\n";
+                foreach (var affix in _selected.affixes)
+                {
+                    text += $"- T{affix.tier} {affix.type} +{affix.value:F1}\n";
+                }
+            }
+            _detailText.text = text;
+        }
+
+        private void Select(EquipmentDTO eq)
+        {
+            _selected = eq;
+            RefreshDetail();
+        }
+
+        private void KeepSelectedIfPresent()
+        {
+            if (_selected == null) return;
             foreach (var eq in _gameState.Bag)
             {
-                GUILayout.BeginHorizontal(GUI.skin.box);
-                GUILayout.Label(FormatEquipment(eq), richStyle, GUILayout.Width(360));
-                if (GUILayout.Button(L10n.UIEquip, GUILayout.Width(55))) _gameState.Equip(eq.uid);
-                if (GUILayout.Button(L10n.UIDecompose, GUILayout.Width(48))) _gameState.Decompose(eq.uid);
-                if (GUILayout.Button(L10n.UIReforge, GUILayout.Width(48))) _gameState.Reforge(eq.uid);
-                if (GUILayout.Button(L10n.UIUpgrade, GUILayout.Width(48))) _gameState.Upgrade(eq.uid);
-                GUILayout.EndHorizontal();
+                if (eq.uid == _selected.uid)
+                {
+                    _selected = eq;
+                    return;
+                }
             }
-            GUILayout.EndScrollView();
-
-            GUILayout.Space(6);
-            GUILayout.Label(L10n.UIWorkshop);
-            string matStr = L10n.UIMaterials;
-            foreach (var kv in _gameState.Materials) matStr += kv.Key + "=" + kv.Value + " ";
-            GUILayout.Label(matStr);
-
-            GUILayout.Label(L10n.UIComposeLabel);
-            GUILayout.BeginHorizontal();
-            for (int s = 0; s < 8; s++)
+            foreach (var eq in _gameState.Equipped)
             {
-                if (GUILayout.Button(L10n.SlotName(s), GUILayout.Width(48)))
-                    _gameState.Compose(s);
+                if (eq.uid == _selected.uid)
+                {
+                    _selected = eq;
+                    return;
+                }
             }
-            GUILayout.EndHorizontal();
-
-            GUILayout.Space(8);
-            GUILayout.Label(L10n.UIReincarnation);
-            GUILayout.Label(string.Format(L10n.UISouls, _gameState.Souls, _gameState.MaxFloor, _gameState.CanReincarn));
-            if (_gameState.CanReincarn && GUILayout.Button(L10n.UIReincarnate, GUILayout.Height(26)))
-            {
-                _gameState.Reincarn();
-            }
-            GUILayout.Space(4);
-            GUILayout.Label(L10n.UITalentsLabel);
-            string[] talentNames = { L10n.TalentDamage, L10n.TalentQuality, L10n.TalentDrop, L10n.TalentOfflineGain };
-            string[] talentDesc = { L10n.TalentDamageDesc, L10n.TalentQualityDesc, L10n.TalentDropDesc, L10n.TalentOfflineDesc };
-            int[] talentMax = { 10, 3, 10, 5 };
-            for (int i = 0; i < 4; i++)
-            {
-                GUILayout.BeginHorizontal();
-                int lv = _gameState.Talents.ContainsKey(talentNames[i]) ? _gameState.Talents[talentNames[i]] : 0;
-                GUILayout.Label($"{talentNames[i]} Lv{lv}/{talentMax[i]} - {talentDesc[i]}", GUILayout.Width(300));
-                if (GUILayout.Button("+", GUILayout.Width(30)))
-                    _gameState.TalentUp(talentNames[i]);
-                GUILayout.EndHorizontal();
-            }
-
-            GUILayout.EndArea();
-
-            DrawToasts();
-            if (_offlinePopup) DrawOfflinePopup();
+            _selected = null;
         }
 
         private void EquipBestBySlot()
@@ -283,10 +471,7 @@ namespace EquipmentIdle.UI
                     equippedCount++;
                 }
             }
-            if (equippedCount > 0)
-            {
-                AddToast(string.Format(L10n.UIEquipBestDone, equippedCount), 2f, Color.green);
-            }
+            if (equippedCount > 0) AddToast(string.Format(L10n.UIEquipBestDone, equippedCount), ToastDuration);
         }
 
         private void DecomposeWeakItems()
@@ -300,24 +485,7 @@ namespace EquipmentIdle.UI
                     count++;
                 }
             }
-            if (count > 0)
-            {
-                AddToast(string.Format(L10n.UIDecomposeWeakDone, count), 2f, Color.green);
-            }
-        }
-
-        private static float ScoreEquipment(EquipmentDTO eq)
-        {
-            float s = (eq.rarity + 1) * 100f + eq.upgrade * 20f;
-            if (eq.affixes != null)
-            {
-                foreach (var affix in eq.affixes)
-                {
-                    s += affix.value;
-                    s += affix.tier * 10f;
-                }
-            }
-            return s;
+            if (count > 0) AddToast(string.Format(L10n.UIDecomposeWeakDone, count), ToastDuration);
         }
 
         private EquipmentDTO EquippedAtSlot(int slot)
@@ -329,53 +497,108 @@ namespace EquipmentIdle.UI
             return null;
         }
 
-        private static string FormatEquipment(EquipmentDTO eq)
+        private static float ScoreEquipment(EquipmentDTO eq)
         {
-            string color = RarityColor(eq.rarity);
-            string text = $"<color={color}>[{L10n.RarityName(eq.rarity)}]</color> {eq.name} +{eq.upgrade} ({L10n.SlotName(eq.slot)})";
+            float s = (eq.rarity + 1) * 100f + eq.upgrade * 20f;
+            if (eq.affixes != null)
+            {
+                foreach (var affix in eq.affixes)
+                {
+                    s += affix.value + affix.tier * 10f;
+                }
+            }
+            return s;
+        }
+
+        private static string ShortEquipment(EquipmentDTO eq)
+        {
+            string text = $"[{L10n.RarityName(eq.rarity)}] {eq.name} +{eq.upgrade}";
             if (eq.affixes != null && eq.affixes.Length > 0)
             {
-                text += "  ";
-                int max = Mathf.Min(2, eq.affixes.Length);
-                for (int i = 0; i < max; i++)
-                {
-                    if (i > 0) text += ", ";
-                    text += $"{eq.affixes[i].type}+{eq.affixes[i].value:F0}";
-                }
-                if (eq.affixes.Length > max) text += "...";
+                text += $"  {eq.affixes[0].type}+{eq.affixes[0].value:F0}";
             }
             return text;
         }
 
-        private void DrawToasts()
+        private void AddToast(string text, float duration)
         {
-            float now = Time.realtimeSinceStartup;
-            for (int i = _toasts.Count - 1; i >= 0; i--) { if (now >= _toasts[i].expireAt) _toasts.RemoveAt(i); }
-            if (_toasts.Count == 0) return;
-            float toastW = 280f, toastH = 28f;
-            float tx = Screen.width - toastW - 10f, ty = 10f;
-            var richStyle = new GUIStyle(GUI.skin.label) { richText = true, fontSize = 12 };
-            for (int i = 0; i < _toasts.Count; i++)
-            {
-                var t = _toasts[i];
-                float alpha = Mathf.Clamp01((t.expireAt - now) / 1f);
-                Color c = t.color; c.a *= alpha;
-                GUI.color = c;
-                GUI.Box(new Rect(tx, ty + i * (toastH + 4), toastW, toastH), t.text, GUI.skin.box);
-                GUI.color = Color.white;
-            }
+            _toasts.Add(new Toast { Text = text, ExpireAt = Time.realtimeSinceStartup + duration });
+            if (_toasts.Count > 5) _toasts.RemoveAt(0);
+            PruneToasts();
         }
 
-        private void DrawOfflinePopup()
+        private void PruneToasts()
         {
-            float pw = 300f, ph = 220f;
-            float px = (Screen.width - pw) / 2f, py = (Screen.height - ph) / 2f;
-            GUI.Box(new Rect(px, py, pw, ph), "");
-            GUILayout.BeginArea(new Rect(px, py, pw, ph), GUI.skin.box);
-            GUILayout.Label(_offlineText);
-            GUILayout.Space(12);
-            if (GUILayout.Button(L10n.UIOK, GUILayout.Height(28))) { _offlinePopup = false; }
-            GUILayout.EndArea();
+            float now = Time.realtimeSinceStartup;
+            for (int i = _toasts.Count - 1; i >= 0; i--)
+            {
+                if (now >= _toasts[i].ExpireAt) _toasts.RemoveAt(i);
+            }
+            if (_toastText == null) return;
+            string text = "";
+            foreach (var toast in _toasts) text += toast.Text + "\n";
+            _toastText.text = text;
+        }
+
+        private static VisualElement Panel(string name)
+        {
+            var el = new VisualElement { name = name };
+            el.style.backgroundColor = new StyleColor(new Color32(30, 36, 45, 255));
+            el.style.borderTopLeftRadius = 6;
+            el.style.borderTopRightRadius = 6;
+            el.style.borderBottomLeftRadius = 6;
+            el.style.borderBottomRightRadius = 6;
+            el.style.paddingLeft = 10;
+            el.style.paddingRight = 10;
+            el.style.paddingTop = 10;
+            el.style.paddingBottom = 10;
+            return el;
+        }
+
+        private static VisualElement Column(float width)
+        {
+            var el = new VisualElement();
+            el.style.width = width;
+            el.style.flexDirection = FlexDirection.Column;
+            el.style.marginRight = 12;
+            return el;
+        }
+
+        private static VisualElement Row()
+        {
+            var el = new VisualElement();
+            el.style.flexDirection = FlexDirection.Row;
+            el.style.alignItems = Align.Center;
+            return el;
+        }
+
+        private static Label Text(string value, int size, bool bold)
+        {
+            var label = new Label(value);
+            label.style.fontSize = size;
+            label.style.color = new StyleColor(new Color32(226, 232, 240, 255));
+            label.style.whiteSpace = WhiteSpace.Normal;
+            if (bold) label.style.unityFontStyleAndWeight = FontStyle.Bold;
+            return label;
+        }
+
+        private static Label SectionTitle(string value)
+        {
+            var label = Text(value, 18, true);
+            label.style.marginBottom = 6;
+            return label;
+        }
+
+        private static Button ActionButton(string label, System.Action action, float width = -1)
+        {
+            var button = new Button(action) { text = label };
+            button.style.height = 34;
+            button.style.marginLeft = 4;
+            button.style.marginRight = 4;
+            button.style.marginTop = 3;
+            button.style.marginBottom = 3;
+            if (width > 0) button.style.width = width;
+            return button;
         }
 
         private static float MonsterPowerAtFloor(int floor)
@@ -385,9 +608,17 @@ namespace EquipmentIdle.UI
             return p;
         }
 
-        private static string RarityColor(int r)
+        private static Color RarityUIColor(int r)
         {
-            switch (r) { case 0: return "#aaa"; case 1: return "#4af"; case 2: return "#fd4"; case 3: return "#f80"; case 4: return "#f44"; default: return "#fff"; }
+            switch (r)
+            {
+                case 0: return new Color32(148, 163, 184, 255);
+                case 1: return new Color32(56, 189, 248, 255);
+                case 2: return new Color32(250, 204, 21, 255);
+                case 3: return new Color32(251, 146, 60, 255);
+                case 4: return new Color32(248, 113, 113, 255);
+                default: return Color.white;
+            }
         }
     }
 }
