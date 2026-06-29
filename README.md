@@ -49,6 +49,13 @@ cd server
 go test ./...
 ```
 
+服务端端到端玩法验证（需先启动服务端）：
+```bash
+cd server
+go run ./cmd/verifyclient
+```
+会自动登录新账号，验证起步装备、自动战斗掉落、推进到 10 层、转生后再次发放起步装备。
+
 客户端自动化验证（需 Unity Editor）：
 ```bash
 Unity -batchmode -projectPath client -executeMethod PlayModeRunner.Run
