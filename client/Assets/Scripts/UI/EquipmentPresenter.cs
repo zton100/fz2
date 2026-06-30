@@ -215,6 +215,24 @@ namespace EquipmentIdle.UI
             return $"目标：自动战斗中，向第 {nextBoss} 层 Boss 关推进。";
         }
 
+        public static string BuildTalentLine(string name, int level, int maxLevel, string description, int souls)
+        {
+            string state;
+            if (level >= maxLevel)
+            {
+                state = "满级";
+            }
+            else if (souls > 0)
+            {
+                state = "可升级";
+            }
+            else
+            {
+                state = "需要魂点";
+            }
+            return $"{name} Lv{level}/{maxLevel} - {description}  {state}";
+        }
+
         public static List<EquipmentDTO> BulkDecomposeCandidates(IList<EquipmentDTO> bag, IList<EquipmentDTO> equipped)
         {
             var currentBySlot = new Dictionary<int, EquipmentDTO>();

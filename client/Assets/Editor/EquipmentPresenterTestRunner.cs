@@ -20,6 +20,7 @@ public static class EquipmentPresenterTestRunner
             DescribesDungeonStateWithServerMonsterCurve();
             RecommendsNextGoalFromProgressState();
             LabelsEquipmentRowsWithUpgradeContext();
+            LabelsTalentRowsWithUpgradeState();
             Debug.Log("[EquipmentPresenterTestRunner] OK");
             EditorApplication.Exit(0);
         }
@@ -150,6 +151,13 @@ public static class EquipmentPresenterTestRunner
         AssertContains(EquipmentPresenter.BuildEquipmentLine(weaker, current, false), "更弱", "weaker row should show negative context");
         AssertContains(EquipmentPresenter.BuildEquipmentLine(newSlot, null, false), "新部位", "empty slot item should be called out");
         AssertContains(EquipmentPresenter.BuildEquipmentLine(current, null, true), "已穿戴", "equipped row should show equipped state");
+    }
+
+    private static void LabelsTalentRowsWithUpgradeState()
+    {
+        AssertContains(EquipmentPresenter.BuildTalentLine("伤害", 0, 10, "每级伤害 +5%", 1), "可升级", "talent with souls should show upgrade available");
+        AssertContains(EquipmentPresenter.BuildTalentLine("品质", 3, 3, "品质下限", 5), "满级", "max talent should show max state");
+        AssertContains(EquipmentPresenter.BuildTalentLine("掉落", 1, 10, "高稀有度权重", 0), "需要魂点", "talent without souls should show soul requirement");
     }
 
     private static EquipmentDTO Equipment(string uid, int slot, int rarity, int upgrade, params AffixData[] affixes)

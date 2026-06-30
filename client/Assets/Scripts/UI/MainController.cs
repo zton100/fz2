@@ -30,6 +30,7 @@ namespace EquipmentIdle.UI
         private VisualElement _equippedContent;
         private VisualElement _bagContent;
         private VisualElement _detailActions;
+        private VisualElement _talentActions;
         private VisualElement _dungeonPanel;
         private VisualElement _lootPanel;
         private VisualElement _bossProgressFill;
@@ -50,6 +51,9 @@ namespace EquipmentIdle.UI
         private readonly List<Toast> _toasts = new List<Toast>();
         private readonly List<string> _lootFeed = new List<string>();
         private const float ToastDuration = 3f;
+        private static readonly string[] TalentKeys = { "damage", "quality", "drop", "offline_gain" };
+        private static readonly string[] TalentNames = { "伤害", "品质", "掉落", "离线" };
+        private static readonly int[] TalentMax = { 10, 3, 10, 5 };
 
         private void Start()
         {
@@ -296,6 +300,11 @@ namespace EquipmentIdle.UI
             }));
             _talentsText = Text("", 13, false);
             right.Add(_talentsText);
+            _talentActions = new VisualElement();
+            _talentActions.style.flexDirection = FlexDirection.Row;
+            _talentActions.style.flexWrap = Wrap.Wrap;
+            _talentActions.style.marginTop = 4;
+            right.Add(_talentActions);
 
             _toastText = Text("", 14, false);
             _toastText.style.height = 58;
@@ -549,17 +558,34 @@ namespace EquipmentIdle.UI
         private void RefreshProgression()
         {
             _reincarnText.text = string.Format(L10n.UISouls, _gameState.Souls, _gameState.MaxFloor, _gameState.CanReincarn);
-            string[] keys = { L10n.TalentDamage, L10n.TalentQuality, L10n.TalentDrop, L10n.TalentOfflineGain };
-            string[] names = { "伤害", "品质", "掉落", "离线" };
             string[] desc = { L10n.TalentDamageDesc, L10n.TalentQualityDesc, L10n.TalentDropDesc, L10n.TalentOfflineDesc };
-            int[] max = { 10, 3, 10, 5 };
             string text = L10n.UITalentsLabel + "\n";
-            for (int i = 0; i < names.Length; i++)
+            for (int i = 0; i < TalentNames.Length; i++)
             {
-                int lv = _gameState.Talents.ContainsKey(keys[i]) ? _gameState.Talents[keys[i]] : 0;
-                text += $"{names[i]} Lv{lv}/{max[i]} - {desc[i]}\n";
+                int lv = TalentLevel(TalentKeys[i]);
+                text += EquipmentPresenter.BuildTalentLine(TalentNames[i], lv, TalentMax[i], desc[i], _gameState.Souls) + "\n";
             }
             _talentsText.text = text;
+            RefreshTalentActions();
+        }
+
+        private void RefreshTalentActions()
+        {
+            if (_talentActions == null) return;
+            _talentActions.Clear();
+            for (int i = 0; i < TalentKeys.Length; i++)
+            {
+                int index = i;
+                int level = TalentLevel(TalentKeys[index]);
+                var button = ActionButton("升" + TalentNames[index], () => _gameState.TalentUp(TalentKeys[index]), 78);
+                button.SetEnabled(_gameState.Souls > 0 && level < TalentMax[index]);
+                _talentActions.Add(button);
+            }
+        }
+
+        private int TalentLevel(string key)
+        {
+            return _gameState.Talents.ContainsKey(key) ? _gameState.Talents[key] : 0;
         }
 
         private void RefreshDetail()
