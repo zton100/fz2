@@ -106,6 +106,37 @@ namespace EquipmentIdle.UI
             return text;
         }
 
+        public static string BuildEquipmentLine(EquipmentDTO eq, EquipmentDTO current, bool isEquipped)
+        {
+            if (eq == null) return "";
+            string text = $"[{RarityName(eq.rarity)}] {eq.name} +{eq.upgrade}";
+            if (eq.affixes != null && eq.affixes.Length > 0)
+            {
+                text += $"  {FormatAffix(eq.affixes[0])}";
+            }
+
+            if (isEquipped)
+            {
+                return text + "  Equipped";
+            }
+
+            if (current == null)
+            {
+                return text + "  New slot";
+            }
+
+            float delta = Score(eq) - Score(current);
+            if (delta > 0f)
+            {
+                return text + $"  Upgrade +{delta:F0}";
+            }
+            if (delta < 0f)
+            {
+                return text + $"  Weaker {delta:F0}";
+            }
+            return text + "  Sidegrade";
+        }
+
         public static List<EquipmentAction> DetailActions(EquipmentDTO eq, bool isEquipped)
         {
             var actions = new List<EquipmentAction>();

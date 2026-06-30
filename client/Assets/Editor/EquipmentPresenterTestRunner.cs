@@ -19,6 +19,7 @@ public static class EquipmentPresenterTestRunner
             OffersDetailActionsByEquipmentLocation();
             DescribesDungeonStateWithServerMonsterCurve();
             RecommendsNextGoalFromProgressState();
+            LabelsEquipmentRowsWithUpgradeContext();
             Debug.Log("[EquipmentPresenterTestRunner] OK");
             EditorApplication.Exit(0);
         }
@@ -136,6 +137,19 @@ public static class EquipmentPresenterTestRunner
 
         string clearing = EquipmentPresenter.BuildNextGoal(2, 30f, false, 0, 0);
         AssertContains(clearing, "Auto battling", "strong hero should show active progress");
+    }
+
+    private static void LabelsEquipmentRowsWithUpgradeContext()
+    {
+        var current = Equipment("current", 0, 1, 0, Affix("strength", 1, 5));
+        var upgrade = Equipment("upgrade", 0, 2, 0, Affix("strength", 2, 30));
+        var weaker = Equipment("weaker", 0, 0, 0, Affix("max_hp", 1, 3));
+        var newSlot = Equipment("new-slot", 1, 0, 0, Affix("armor", 1, 3));
+
+        AssertContains(EquipmentPresenter.BuildEquipmentLine(upgrade, current, false), "Upgrade +", "upgrade row should show positive delta");
+        AssertContains(EquipmentPresenter.BuildEquipmentLine(weaker, current, false), "Weaker", "weaker row should show negative context");
+        AssertContains(EquipmentPresenter.BuildEquipmentLine(newSlot, null, false), "New slot", "empty slot item should be called out");
+        AssertContains(EquipmentPresenter.BuildEquipmentLine(current, null, true), "Equipped", "equipped row should show equipped state");
     }
 
     private static EquipmentDTO Equipment(string uid, int slot, int rarity, int upgrade, params AffixData[] affixes)

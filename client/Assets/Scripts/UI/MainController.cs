@@ -499,14 +499,14 @@ namespace EquipmentIdle.UI
                     continue;
                 }
                 EquipmentDTO capturedEq = eq;
-                _equippedContent.Add(EquipmentRow(L10n.SlotName(slot), ShortEquipment(eq), () => Select(capturedEq), null, () => _gameState.Unequip(capturedSlot), eq.rarity));
+                _equippedContent.Add(EquipmentRow(L10n.SlotName(slot), EquipmentPresenter.BuildEquipmentLine(eq, null, true), () => Select(capturedEq), null, () => _gameState.Unequip(capturedSlot), eq.rarity));
             }
 
             _bagContent.Clear();
             foreach (var item in EquipmentPresenter.SortBagForDisplay(_gameState.Bag, _gameState.Equipped))
             {
                 EquipmentDTO eq = item;
-                _bagContent.Add(EquipmentRow(L10n.SlotName(eq.slot), ShortEquipment(eq), () => Select(eq), () => _gameState.Equip(eq.uid), () => _gameState.Decompose(eq.uid), eq.rarity));
+                _bagContent.Add(EquipmentRow(L10n.SlotName(eq.slot), EquipmentPresenter.BuildEquipmentLine(eq, EquippedAtSlot(eq.slot), false), () => Select(eq), () => _gameState.Equip(eq.uid), () => _gameState.Decompose(eq.uid), eq.rarity));
             }
         }
 
@@ -693,16 +693,6 @@ namespace EquipmentIdle.UI
                 if (eq.slot == slot) return eq;
             }
             return null;
-        }
-
-        private static string ShortEquipment(EquipmentDTO eq)
-        {
-            string text = $"[{L10n.RarityName(eq.rarity)}] {eq.name} +{eq.upgrade}";
-            if (eq.affixes != null && eq.affixes.Length > 0)
-            {
-                text += $"  {EquipmentPresenter.FormatAffix(eq.affixes[0])}";
-            }
-            return text;
         }
 
         private void AddToast(string text, float duration)
