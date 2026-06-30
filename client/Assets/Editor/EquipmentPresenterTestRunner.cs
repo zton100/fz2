@@ -21,6 +21,7 @@ public static class EquipmentPresenterTestRunner
             RecommendsNextGoalFromProgressState();
             LabelsEquipmentRowsWithUpgradeContext();
             LabelsTalentRowsWithUpgradeState();
+            HighlightsRareLootDrops();
             Debug.Log("[EquipmentPresenterTestRunner] OK");
             EditorApplication.Exit(0);
         }
@@ -158,6 +159,16 @@ public static class EquipmentPresenterTestRunner
         AssertContains(EquipmentPresenter.BuildTalentLine("伤害", 0, 10, "每级伤害 +5%", 1), "可升级", "talent with souls should show upgrade available");
         AssertContains(EquipmentPresenter.BuildTalentLine("品质", 3, 3, "品质下限", 5), "满级", "max talent should show max state");
         AssertContains(EquipmentPresenter.BuildTalentLine("掉落", 1, 10, "高稀有度权重", 0), "需要魂点", "talent without souls should show soul requirement");
+    }
+
+    private static void HighlightsRareLootDrops()
+    {
+        var common = Equipment("common", 0, 0, 0, Affix("strength", 1, 5));
+        var rare = Equipment("rare", 0, 2, 0, Affix("strength", 2, 30));
+
+        AssertContains(EquipmentPresenter.BuildLootLine(common), "普通", "common loot should show rarity");
+        AssertContains(EquipmentPresenter.BuildLootLine(rare), "稀有掉落", "rare loot should be highlighted");
+        AssertContains(EquipmentPresenter.BuildLootToast(rare), "稀有掉落", "rare loot toast should be highlighted");
     }
 
     private static EquipmentDTO Equipment(string uid, int slot, int rarity, int upgrade, params AffixData[] affixes)

@@ -106,6 +106,20 @@ namespace EquipmentIdle.UI
             return text;
         }
 
+        public static string BuildLootLine(EquipmentDTO eq)
+        {
+            if (eq == null) return "";
+            string prefix = eq.rarity >= 2 ? "稀有掉落" : "掉落";
+            return $"{prefix} [{RarityName(eq.rarity)}] {eq.name} +{eq.upgrade}";
+        }
+
+        public static string BuildLootToast(EquipmentDTO eq)
+        {
+            if (eq == null) return "";
+            string prefix = eq.rarity >= 2 ? "稀有掉落" : "掉落";
+            return $"{prefix}：{RarityName(eq.rarity)} {eq.name}";
+        }
+
         public static string BuildEquipmentLine(EquipmentDTO eq, EquipmentDTO current, bool isEquipped)
         {
             if (eq == null) return "";

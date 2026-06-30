@@ -126,12 +126,11 @@ namespace EquipmentIdle.UI
 
         private void OnLoot(EquipmentDTO eq)
         {
-            string line = $"{L10n.RarityName(eq.rarity)} {eq.name} +{eq.upgrade}";
-            _lootFeed.Insert(0, line);
+            _lootFeed.Insert(0, EquipmentPresenter.BuildLootLine(eq));
             if (_lootFeed.Count > 6) _lootFeed.RemoveAt(_lootFeed.Count - 1);
             RefreshLootFeed();
             _lootPulseUntil = Time.realtimeSinceStartup + 0.8f;
-            AddToast($"{string.Format(L10n.UILootToast, L10n.RarityName(eq.rarity), eq.name)}", ToastDuration);
+            AddToast(EquipmentPresenter.BuildLootToast(eq), ToastDuration);
         }
 
         private void OnFloor(int newFloor)
