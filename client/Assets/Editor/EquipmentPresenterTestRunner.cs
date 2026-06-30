@@ -24,6 +24,7 @@ public static class EquipmentPresenterTestRunner
             HighlightsRareLootDrops();
             DescribesBossDistanceAndRewards();
             BuildsBattleStageStateForVisualCombat();
+            NamesDungeonZonesAndMonsters();
             Debug.Log("[EquipmentPresenterTestRunner] OK");
             EditorApplication.Exit(0);
         }
@@ -190,15 +191,29 @@ public static class EquipmentPresenterTestRunner
     {
         var winning = EquipmentPresenter.BuildBattleStageState(2, 40f);
         AssertContains(winning.HeroPower, "战力", "hero power should be display-ready");
-        AssertContains(winning.MonsterName, "地下城怪物", "normal stage should name monster");
+        AssertContains(winning.MonsterName, "骸骨守卫", "normal stage should name monster");
         AssertContains(winning.Status, "压制", "strong hero should show pressure status");
         AssertNear(1f, winning.HeroHealth, 0.001f, "winning hero bar should be full");
         if (winning.MonsterHealth >= 1f) throw new Exception($"winning monster bar should be damaged, got {winning.MonsterHealth}");
 
         var boss = EquipmentPresenter.BuildBattleStageState(5, 20f);
-        AssertContains(boss.MonsterName, "Boss", "boss stage should name boss");
+        AssertContains(boss.MonsterName, "墓道巨像", "boss stage should name boss");
         AssertContains(boss.Status, "受阻", "weak boss fight should show blocked status");
         if (!boss.IsBoss) throw new Exception("boss stage should set IsBoss");
+    }
+
+    private static void NamesDungeonZonesAndMonsters()
+    {
+        var firstZone = EquipmentPresenter.BuildDungeonState(1, 10f);
+        AssertContains(firstZone.Title, "荒石墓道", "early floors should show first zone");
+        AssertContains(firstZone.Monster, "骸骨守卫", "normal encounter should use named monster");
+
+        var secondZone = EquipmentPresenter.BuildDungeonState(6, 100f);
+        AssertContains(secondZone.Title, "烛火地窖", "floor 6 should move to second zone");
+        AssertContains(secondZone.Monster, "地窖盗匪", "second zone should use matching monster");
+
+        var boss = EquipmentPresenter.BuildDungeonState(10, 100f);
+        AssertContains(boss.Monster, "守层 Boss：烛焰看守", "boss encounter should use named boss");
     }
 
     private static EquipmentDTO Equipment(string uid, int slot, int rarity, int upgrade, params AffixData[] affixes)

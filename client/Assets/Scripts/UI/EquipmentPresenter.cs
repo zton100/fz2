@@ -23,6 +23,7 @@ namespace EquipmentIdle.UI
         public string Monster;
         public string Battle;
         public string BossHint;
+        public string Zone;
         public float MonsterPower;
         public float GateProgress;
         public bool IsBoss;
@@ -33,6 +34,7 @@ namespace EquipmentIdle.UI
     {
         public string HeroName;
         public string HeroPower;
+        public string Zone;
         public string MonsterName;
         public string MonsterPower;
         public string Status;
@@ -195,15 +197,18 @@ namespace EquipmentIdle.UI
             string bossHint = boss
                 ? $"首通奖励：基础材料 +{bossReward}"
                 : $"距 Boss 关还差 {5 - gateProgress} 层，首通奖励基础材料 +{bossReward}";
+            string zone = ZoneName(floor);
+            string monsterName = MonsterName(floor, boss);
 
             return new DungeonState
             {
-                Title = boss ? $"第 {floor} 层 Boss 关" : $"第 {floor} 层地下城",
-                Monster = boss ? $"守层 Boss\n战力 {monsterPower:F1}" : $"地下城怪物\n战力 {monsterPower:F1}",
+                Title = boss ? $"第 {floor} 层 Boss 关 · {zone}" : $"第 {floor} 层 · {zone}",
+                Monster = boss ? $"守层 Boss：{monsterName}\n战力 {monsterPower:F1}" : $"{monsterName}\n战力 {monsterPower:F1}",
                 Battle = ratio >= 1f
                     ? $"优势 {ratio:F1}x，下一场战斗大概率通过。"
                     : $"战力不足 {ratio:F1}x，请强化或穿戴更强装备。",
                 BossHint = bossHint,
+                Zone = zone,
                 MonsterPower = monsterPower,
                 GateProgress = Clamp01(gateProgress / 5f),
                 IsBoss = boss,
@@ -239,7 +244,8 @@ namespace EquipmentIdle.UI
             {
                 HeroName = "冒险者",
                 HeroPower = $"战力 {playerPower:F1}",
-                MonsterName = dungeon.IsBoss ? "守层 Boss" : "地下城怪物",
+                Zone = dungeon.Zone,
+                MonsterName = MonsterName(floor, dungeon.IsBoss),
                 MonsterPower = $"战力 {dungeon.MonsterPower:F1}",
                 Status = status,
                 HeroHealth = heroHealth,
@@ -419,6 +425,42 @@ namespace EquipmentIdle.UI
             if (rarity == 3) return "传奇掉落";
             if (rarity == 2) return "稀有掉落";
             return "掉落";
+        }
+
+        private static string ZoneName(int floor)
+        {
+            string[] zones =
+            {
+                "荒石墓道",
+                "烛火地窖",
+                "寒铁监牢",
+                "龙骨回廊",
+                "深渊祭坛",
+            };
+            int index = Math.Max(0, (floor - 1) / 5) % zones.Length;
+            return zones[index];
+        }
+
+        private static string MonsterName(int floor, bool boss)
+        {
+            string[] bosses =
+            {
+                "墓道巨像",
+                "烛焰看守",
+                "寒铁典狱长",
+                "龙骨骑士",
+                "深渊司祭",
+            };
+            string[] monsters =
+            {
+                "骸骨守卫",
+                "地窖盗匪",
+                "铁链囚徒",
+                "骨翼猎手",
+                "深渊信徒",
+            };
+            int index = Math.Max(0, (floor - 1) / 5) % monsters.Length;
+            return boss ? bosses[index] : monsters[index];
         }
 
         private static string SlotName(int slot)

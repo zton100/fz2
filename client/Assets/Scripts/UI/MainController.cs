@@ -24,6 +24,7 @@ namespace EquipmentIdle.UI
         private Label _battleText;
         private Label _goalText;
         private Label _bossHintText;
+        private Label _stageZoneText;
         private Label _stageHeroNameText;
         private Label _stageHeroPowerText;
         private Label _stageMonsterNameText;
@@ -337,7 +338,7 @@ namespace EquipmentIdle.UI
         {
             var dungeon = Panel("dungeon");
             _dungeonPanel = dungeon;
-            dungeon.style.height = 174;
+            dungeon.style.height = 190;
             dungeon.style.marginBottom = 10;
             dungeon.style.flexDirection = FlexDirection.Row;
             dungeon.style.backgroundColor = new StyleColor(new Color32(36, 33, 25, 255));
@@ -412,6 +413,11 @@ namespace EquipmentIdle.UI
             stage.style.borderTopRightRadius = 6;
             stage.style.borderBottomLeftRadius = 6;
             stage.style.borderBottomRightRadius = 6;
+
+            _stageZoneText = Text("", 13, true);
+            _stageZoneText.style.unityTextAlign = TextAnchor.MiddleCenter;
+            _stageZoneText.style.marginBottom = 6;
+            stage.Add(_stageZoneText);
 
             var combatants = Row();
             combatants.style.alignItems = Align.Stretch;
@@ -571,6 +577,7 @@ namespace EquipmentIdle.UI
         {
             if (_stageHeroNameText == null) return;
             var stage = EquipmentPresenter.BuildBattleStageState(_gameState.Floor, _gameState.Power);
+            _stageZoneText.text = stage.Zone;
             _stageHeroNameText.text = stage.HeroName;
             _stageHeroPowerText.text = stage.HeroPower;
             _stageMonsterNameText.text = stage.MonsterName;
