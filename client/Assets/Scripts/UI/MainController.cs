@@ -28,10 +28,16 @@ namespace EquipmentIdle.UI
         private VisualElement _offlinePanel;
         private VisualElement _equippedContent;
         private VisualElement _bagContent;
+        private VisualElement _dungeonPanel;
+        private VisualElement _lootPanel;
         private VisualElement _bossProgressFill;
         private EquipmentDTO _selected;
         private float _prevPower;
         private bool _prevCanReincarn;
+        private float _battlePulseUntil;
+        private float _lootPulseUntil;
+        private float _bossProgressTarget;
+        private float _bossProgressCurrent;
 
         private struct Toast
         {
@@ -81,6 +87,7 @@ namespace EquipmentIdle.UI
         private void Update()
         {
             PruneToasts();
+            UpdateCombatFeedback();
         }
 
         private void OnSync(SyncData data)
@@ -114,11 +121,13 @@ namespace EquipmentIdle.UI
             _lootFeed.Insert(0, line);
             if (_lootFeed.Count > 6) _lootFeed.RemoveAt(_lootFeed.Count - 1);
             RefreshLootFeed();
+            _lootPulseUntil = Time.realtimeSinceStartup + 0.8f;
             AddToast($"{string.Format(L10n.UILootToast, L10n.RarityName(eq.rarity), eq.name)}", ToastDuration);
         }
 
         private void OnFloor(int newFloor)
         {
+            _battlePulseUntil = Time.realtimeSinceStartup + 0.7f;
             if (newFloor > 1 && (newFloor - 1) % 5 == 0)
             {
                 AddToast($"Boss defeated: floor {newFloor - 1}", ToastDuration);
@@ -282,6 +291,7 @@ namespace EquipmentIdle.UI
         private void BuildDungeonPanel(VisualElement root)
         {
             var dungeon = Panel("dungeon");
+            _dungeonPanel = dungeon;
             dungeon.style.height = 160;
             dungeon.style.marginBottom = 10;
             dungeon.style.flexDirection = FlexDirection.Row;
@@ -333,6 +343,7 @@ namespace EquipmentIdle.UI
             dungeon.Add(monster);
 
             var loot = Column(260);
+            _lootPanel = loot;
             loot.style.marginRight = 0;
             loot.Add(Text("RECENT LOOT", 12, true));
             _lootFeedText = Text("", 13, false);
@@ -404,6 +415,7 @@ namespace EquipmentIdle.UI
             float ratio = monsterPower <= 0 ? 0 : _gameState.Power / monsterPower;
             int gateProgress = ((floor - 1) % 5) + 1;
             float progress = Mathf.Clamp01(gateProgress / 5f);
+            _bossProgressTarget = progress;
 
             _dungeonTitleText.text = boss ? $"Floor {floor} Boss Gate" : $"Floor {floor} Dungeon Run";
             _monsterText.text = boss
@@ -412,7 +424,6 @@ namespace EquipmentIdle.UI
             _battleText.text = ratio >= 1f
                 ? $"Advantage {ratio:F1}x. Next battle should clear."
                 : $"Underpowered {ratio:F1}x. Upgrade or equip stronger loot.";
-            _bossProgressFill.style.width = Length.Percent(progress * 100f);
             _bossProgressFill.style.backgroundColor = new StyleColor(boss ? new Color32(220, 38, 38, 255) : new Color32(217, 119, 6, 255));
         }
 
@@ -427,6 +438,31 @@ namespace EquipmentIdle.UI
             string text = "";
             foreach (var line in _lootFeed) text += line + "\n";
             _lootFeedText.text = text;
+        }
+
+        private void UpdateCombatFeedback()
+        {
+            if (_bossProgressFill != null)
+            {
+                _bossProgressCurrent = Mathf.Lerp(_bossProgressCurrent, _bossProgressTarget, Time.deltaTime * 8f);
+                _bossProgressFill.style.width = Length.Percent(_bossProgressCurrent * 100f);
+            }
+
+            if (_dungeonPanel != null)
+            {
+                float pulse = Mathf.Clamp01((_battlePulseUntil - Time.realtimeSinceStartup) / 0.7f);
+                Color baseColor = new Color32(36, 33, 25, 255);
+                Color hitColor = new Color32(92, 64, 35, 255);
+                _dungeonPanel.style.backgroundColor = new StyleColor(Color.Lerp(baseColor, hitColor, pulse));
+            }
+
+            if (_lootPanel != null)
+            {
+                float pulse = Mathf.Clamp01((_lootPulseUntil - Time.realtimeSinceStartup) / 0.8f);
+                Color baseColor = Color.clear;
+                Color lootColor = new Color(0.75f, 0.50f, 0.12f, 0.35f);
+                _lootPanel.style.backgroundColor = new StyleColor(Color.Lerp(baseColor, lootColor, pulse));
+            }
         }
 
         private void RefreshEquipmentLists()
