@@ -31,6 +31,7 @@ namespace EquipmentIdle.UI
         private Label _stageMonsterPowerText;
         private Label _stageStatusText;
         private Label _lootFeedText;
+        private VisualElement _lootFeedContent;
         private Label _toastText;
         private Label _offlineText;
         private VisualElement _offlinePanel;
@@ -51,6 +52,9 @@ namespace EquipmentIdle.UI
         private float _lootPulseUntil;
         private float _bossProgressTarget;
         private float _bossProgressCurrent;
+        private string _pendingCraftUid;
+        private string _pendingCraftAction;
+        private float _pendingCraftScore;
 
         private struct Toast
         {
@@ -59,7 +63,7 @@ namespace EquipmentIdle.UI
         }
 
         private readonly List<Toast> _toasts = new List<Toast>();
-        private readonly List<string> _lootFeed = new List<string>();
+        private readonly List<EquipmentDTO> _lootFeed = new List<EquipmentDTO>();
         private const float ToastDuration = 3f;
         private static readonly string[] TalentKeys = { "damage", "quality", "drop", "offline_gain" };
         private static readonly string[] TalentNames = { "伤害", "品质", "掉落", "离线" };
@@ -115,6 +119,7 @@ namespace EquipmentIdle.UI
 
         private void OnBag(List<EquipmentDTO> bag, List<EquipmentDTO> equipped)
         {
+            TryReportPendingCraftScoreChange();
             KeepSelectedIfPresent();
             RefreshEquipmentLists();
             RefreshDetail();
@@ -136,7 +141,7 @@ namespace EquipmentIdle.UI
 
         private void OnLoot(EquipmentDTO eq)
         {
-            _lootFeed.Insert(0, EquipmentPresenter.BuildLootLine(eq));
+            _lootFeed.Insert(0, eq);
             if (_lootFeed.Count > 6) _lootFeed.RemoveAt(_lootFeed.Count - 1);
             RefreshLootFeed();
             _lootPulseUntil = Time.realtimeSinceStartup + 0.8f;
@@ -185,6 +190,15 @@ namespace EquipmentIdle.UI
         private void OnCraftResult(CraftResultData cr)
         {
             AddToast(cr.msg, ToastDuration);
+            if (!cr.ok)
+            {
+                ClearPendingCraft();
+            }
+            else if (!string.IsNullOrEmpty(_pendingCraftUid) && cr.uid == _pendingCraftUid)
+            {
+                AddToast($"{_pendingCraftAction}完成：评分未变化", ToastDuration);
+                ClearPendingCraft();
+            }
             RefreshMaterials();
             RefreshDetail();
         }
@@ -394,8 +408,9 @@ namespace EquipmentIdle.UI
             _lootPanel = loot;
             loot.style.marginRight = 0;
             loot.Add(Text("最近掉落", 12, true));
-            _lootFeedText = Text("", 13, false);
-            loot.Add(_lootFeedText);
+            _lootFeedContent = new VisualElement();
+            _lootFeedContent.style.flexGrow = 1;
+            loot.Add(_lootFeedContent);
             dungeon.Add(loot);
         }
 
@@ -595,15 +610,37 @@ namespace EquipmentIdle.UI
 
         private void RefreshLootFeed()
         {
-            if (_lootFeedText == null) return;
+            if (_lootFeedContent == null) return;
+            _lootFeedContent.Clear();
             if (_lootFeed.Count == 0)
             {
-                _lootFeedText.text = "暂无掉落。连接后自动战斗会开始产出装备。";
+                _lootFeedText = Text("暂无掉落。连接后自动战斗会开始产出装备。", 13, false);
+                _lootFeedContent.Add(_lootFeedText);
                 return;
             }
-            string text = "";
-            foreach (var line in _lootFeed) text += line + "\n";
-            _lootFeedText.text = text;
+            foreach (var eq in _lootFeed)
+            {
+                _lootFeedContent.Add(LootFeedRow(eq));
+            }
+        }
+
+        private VisualElement LootFeedRow(EquipmentDTO eq)
+        {
+            var row = Row();
+            row.style.backgroundColor = new StyleColor(new Color32(42, 38, 31, 255));
+            row.style.borderLeftWidth = 4;
+            row.style.borderLeftColor = RarityUIColor(eq != null ? eq.rarity : 0);
+            row.style.paddingLeft = 6;
+            row.style.paddingRight = 6;
+            row.style.paddingTop = 3;
+            row.style.paddingBottom = 3;
+            row.style.marginBottom = 4;
+
+            var label = Text(EquipmentPresenter.BuildLootLine(eq), 12, eq != null && eq.rarity >= 2);
+            label.style.color = RarityUIColor(eq != null ? eq.rarity : 0);
+            label.style.flexGrow = 1;
+            row.Add(label);
+            return row;
         }
 
         private void UpdateCombatFeedback()
@@ -762,10 +799,12 @@ namespace EquipmentIdle.UI
                     _gameState.Unequip(_selected.slot);
                     break;
                 case "upgrade":
+                    TrackPendingCraft("强化", _selected);
                     AddToast($"已发送强化：{_selected.name}", ToastDuration);
                     _gameState.Upgrade(_selected.uid);
                     break;
                 case "reforge":
+                    TrackPendingCraft("重铸", _selected);
                     AddToast($"已发送重铸：{_selected.name}", ToastDuration);
                     _gameState.Reforge(_selected.uid);
                     break;
@@ -774,6 +813,46 @@ namespace EquipmentIdle.UI
                     _gameState.Decompose(_selected.uid);
                     break;
             }
+        }
+
+        private void TrackPendingCraft(string action, EquipmentDTO eq)
+        {
+            if (eq == null) return;
+            _pendingCraftUid = eq.uid;
+            _pendingCraftAction = action;
+            _pendingCraftScore = EquipmentPresenter.Score(eq);
+        }
+
+        private void TryReportPendingCraftScoreChange()
+        {
+            if (string.IsNullOrEmpty(_pendingCraftUid)) return;
+            EquipmentDTO updated = FindEquipmentByUid(_pendingCraftUid);
+            if (updated == null) return;
+
+            float delta = EquipmentPresenter.Score(updated) - _pendingCraftScore;
+            if (Mathf.Abs(delta) < 0.1f) return;
+            AddToast($"{_pendingCraftAction}完成：评分 {delta:+0;-0;0}", ToastDuration + 1f);
+            ClearPendingCraft();
+        }
+
+        private void ClearPendingCraft()
+        {
+            _pendingCraftUid = null;
+            _pendingCraftAction = null;
+            _pendingCraftScore = 0f;
+        }
+
+        private EquipmentDTO FindEquipmentByUid(string uid)
+        {
+            foreach (var eq in _gameState.Bag)
+            {
+                if (eq.uid == uid) return eq;
+            }
+            foreach (var eq in _gameState.Equipped)
+            {
+                if (eq.uid == uid) return eq;
+            }
+            return null;
         }
 
         private bool IsLootUpgrade(EquipmentDTO eq)
