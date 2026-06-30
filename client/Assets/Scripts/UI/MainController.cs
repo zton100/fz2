@@ -23,6 +23,7 @@ namespace EquipmentIdle.UI
         private Label _monsterText;
         private Label _battleText;
         private Label _goalText;
+        private Label _bossHintText;
         private Label _lootFeedText;
         private Label _toastText;
         private Label _offlineText;
@@ -130,7 +131,16 @@ namespace EquipmentIdle.UI
             if (_lootFeed.Count > 6) _lootFeed.RemoveAt(_lootFeed.Count - 1);
             RefreshLootFeed();
             _lootPulseUntil = Time.realtimeSinceStartup + 0.8f;
-            AddToast(EquipmentPresenter.BuildLootToast(eq), ToastDuration);
+
+            string lootToast = EquipmentPresenter.BuildLootToast(eq);
+            if (IsLootUpgrade(eq))
+            {
+                Select(eq);
+                AddToast("发现提升装备：" + lootToast, ToastDuration + 1f);
+                return;
+            }
+
+            AddToast(lootToast, ToastDuration);
         }
 
         private void OnFloor(int newFloor)
@@ -166,6 +176,8 @@ namespace EquipmentIdle.UI
         private void OnCraftResult(CraftResultData cr)
         {
             AddToast(cr.msg, ToastDuration);
+            RefreshMaterials();
+            RefreshDetail();
         }
 
         private void OnTalents(int souls, int maxFloor, bool canReincarn, Dictionary<string, int> talents)
@@ -317,7 +329,7 @@ namespace EquipmentIdle.UI
         {
             var dungeon = Panel("dungeon");
             _dungeonPanel = dungeon;
-            dungeon.style.height = 160;
+            dungeon.style.height = 174;
             dungeon.style.marginBottom = 10;
             dungeon.style.flexDirection = FlexDirection.Row;
             dungeon.style.backgroundColor = new StyleColor(new Color32(36, 33, 25, 255));
@@ -337,6 +349,7 @@ namespace EquipmentIdle.UI
             _dungeonTitleText = Text("", 24, true);
             _battleText = Text("", 16, true);
             _goalText = Text("", 13, false);
+            _bossHintText = Text("", 13, true);
             run.Add(_dungeonTitleText);
             run.Add(_battleText);
             run.Add(_goalText);
@@ -359,7 +372,7 @@ namespace EquipmentIdle.UI
             _bossProgressFill.style.borderBottomRightRadius = 5;
             progressFrame.Add(_bossProgressFill);
             run.Add(progressFrame);
-            run.Add(Text("每 5 层出现一个 Boss 关", 12, false));
+            run.Add(_bossHintText);
             dungeon.Add(run);
 
             var monster = Column(260);
@@ -442,6 +455,7 @@ namespace EquipmentIdle.UI
             _dungeonTitleText.text = dungeon.Title;
             _monsterText.text = dungeon.Monster;
             _battleText.text = dungeon.Battle;
+            _bossHintText.text = dungeon.BossHint;
             _goalText.text = EquipmentPresenter.BuildNextGoal(
                 _gameState.Floor,
                 _gameState.Power,
@@ -624,15 +638,24 @@ namespace EquipmentIdle.UI
                     _gameState.Unequip(_selected.slot);
                     break;
                 case "upgrade":
+                    AddToast($"已发送强化：{_selected.name}", ToastDuration);
                     _gameState.Upgrade(_selected.uid);
                     break;
                 case "reforge":
+                    AddToast($"已发送重铸：{_selected.name}", ToastDuration);
                     _gameState.Reforge(_selected.uid);
                     break;
                 case "decompose":
+                    AddToast($"已发送分解：{_selected.name}", ToastDuration);
                     _gameState.Decompose(_selected.uid);
                     break;
             }
+        }
+
+        private bool IsLootUpgrade(EquipmentDTO eq)
+        {
+            if (eq == null) return false;
+            return EquipmentPresenter.Score(eq) > EquipmentPresenter.Score(EquippedAtSlot(eq.slot));
         }
 
         private void Select(EquipmentDTO eq)

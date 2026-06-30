@@ -22,6 +22,7 @@ public static class EquipmentPresenterTestRunner
             LabelsEquipmentRowsWithUpgradeContext();
             LabelsTalentRowsWithUpgradeState();
             HighlightsRareLootDrops();
+            DescribesBossDistanceAndRewards();
             Debug.Log("[EquipmentPresenterTestRunner] OK");
             EditorApplication.Exit(0);
         }
@@ -165,10 +166,23 @@ public static class EquipmentPresenterTestRunner
     {
         var common = Equipment("common", 0, 0, 0, Affix("strength", 1, 5));
         var rare = Equipment("rare", 0, 2, 0, Affix("strength", 2, 30));
+        var legendary = Equipment("legendary", 0, 3, 0, Affix("strength", 3, 50));
 
         AssertContains(EquipmentPresenter.BuildLootLine(common), "普通", "common loot should show rarity");
         AssertContains(EquipmentPresenter.BuildLootLine(rare), "稀有掉落", "rare loot should be highlighted");
         AssertContains(EquipmentPresenter.BuildLootToast(rare), "稀有掉落", "rare loot toast should be highlighted");
+        AssertContains(EquipmentPresenter.BuildLootToast(legendary), "传奇掉落", "legendary loot toast should have its own emphasis");
+    }
+
+    private static void DescribesBossDistanceAndRewards()
+    {
+        var beforeBoss = EquipmentPresenter.BuildDungeonState(4, 100f);
+        AssertContains(beforeBoss.BossHint, "距 Boss 关还差 1 层", "pre-boss hint should show distance");
+        AssertContains(beforeBoss.BossHint, "基础材料 +10", "pre-boss hint should show next reward");
+
+        var boss = EquipmentPresenter.BuildDungeonState(5, 100f);
+        AssertContains(boss.BossHint, "首通奖励：基础材料 +10", "boss hint should show current reward");
+        if (boss.BossReward != 10) throw new Exception($"boss reward should match server rule, got {boss.BossReward}");
     }
 
     private static EquipmentDTO Equipment(string uid, int slot, int rarity, int upgrade, params AffixData[] affixes)

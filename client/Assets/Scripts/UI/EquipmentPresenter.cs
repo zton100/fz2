@@ -22,9 +22,11 @@ namespace EquipmentIdle.UI
         public string Title;
         public string Monster;
         public string Battle;
+        public string BossHint;
         public float MonsterPower;
         public float GateProgress;
         public bool IsBoss;
+        public int BossReward;
     }
 
     public static class EquipmentPresenter
@@ -109,14 +111,14 @@ namespace EquipmentIdle.UI
         public static string BuildLootLine(EquipmentDTO eq)
         {
             if (eq == null) return "";
-            string prefix = eq.rarity >= 2 ? "稀有掉落" : "掉落";
+            string prefix = LootPrefix(eq.rarity);
             return $"{prefix} [{RarityName(eq.rarity)}] {eq.name} +{eq.upgrade}";
         }
 
         public static string BuildLootToast(EquipmentDTO eq)
         {
             if (eq == null) return "";
-            string prefix = eq.rarity >= 2 ? "稀有掉落" : "掉落";
+            string prefix = LootPrefix(eq.rarity);
             return $"{prefix}：{RarityName(eq.rarity)} {eq.name}";
         }
 
@@ -176,6 +178,11 @@ namespace EquipmentIdle.UI
             float monsterPower = MonsterPowerAtFloor(floor);
             float ratio = monsterPower <= 0f ? 0f : playerPower / monsterPower;
             int gateProgress = ((floor - 1) % 5) + 1;
+            int nextBoss = boss ? floor : floor + (5 - gateProgress);
+            int bossReward = BossRewardAtFloor(nextBoss);
+            string bossHint = boss
+                ? $"首通奖励：基础材料 +{bossReward}"
+                : $"距 Boss 关还差 {5 - gateProgress} 层，首通奖励基础材料 +{bossReward}";
 
             return new DungeonState
             {
@@ -184,10 +191,17 @@ namespace EquipmentIdle.UI
                 Battle = ratio >= 1f
                     ? $"优势 {ratio:F1}x，下一场战斗大概率通过。"
                     : $"战力不足 {ratio:F1}x，请强化或穿戴更强装备。",
+                BossHint = bossHint,
                 MonsterPower = monsterPower,
                 GateProgress = Clamp01(gateProgress / 5f),
                 IsBoss = boss,
+                BossReward = bossReward,
             };
+        }
+
+        public static int BossRewardAtFloor(int floor)
+        {
+            return floor > 0 && floor % 5 == 0 ? floor * 2 : 0;
         }
 
         public static float MonsterPowerAtFloor(int floor)
@@ -348,6 +362,14 @@ namespace EquipmentIdle.UI
                 case 4: return "神器";
                 default: return "?";
             }
+        }
+
+        private static string LootPrefix(int rarity)
+        {
+            if (rarity >= 4) return "神器掉落";
+            if (rarity == 3) return "传奇掉落";
+            if (rarity == 2) return "稀有掉落";
+            return "掉落";
         }
 
         private static string SlotName(int slot)
