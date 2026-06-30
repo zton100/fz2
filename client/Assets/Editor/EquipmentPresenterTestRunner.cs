@@ -23,6 +23,7 @@ public static class EquipmentPresenterTestRunner
             LabelsTalentRowsWithUpgradeState();
             HighlightsRareLootDrops();
             DescribesBossDistanceAndRewards();
+            BuildsBattleStageStateForVisualCombat();
             Debug.Log("[EquipmentPresenterTestRunner] OK");
             EditorApplication.Exit(0);
         }
@@ -183,6 +184,21 @@ public static class EquipmentPresenterTestRunner
         var boss = EquipmentPresenter.BuildDungeonState(5, 100f);
         AssertContains(boss.BossHint, "首通奖励：基础材料 +10", "boss hint should show current reward");
         if (boss.BossReward != 10) throw new Exception($"boss reward should match server rule, got {boss.BossReward}");
+    }
+
+    private static void BuildsBattleStageStateForVisualCombat()
+    {
+        var winning = EquipmentPresenter.BuildBattleStageState(2, 40f);
+        AssertContains(winning.HeroPower, "战力", "hero power should be display-ready");
+        AssertContains(winning.MonsterName, "地下城怪物", "normal stage should name monster");
+        AssertContains(winning.Status, "压制", "strong hero should show pressure status");
+        AssertNear(1f, winning.HeroHealth, 0.001f, "winning hero bar should be full");
+        if (winning.MonsterHealth >= 1f) throw new Exception($"winning monster bar should be damaged, got {winning.MonsterHealth}");
+
+        var boss = EquipmentPresenter.BuildBattleStageState(5, 20f);
+        AssertContains(boss.MonsterName, "Boss", "boss stage should name boss");
+        AssertContains(boss.Status, "受阻", "weak boss fight should show blocked status");
+        if (!boss.IsBoss) throw new Exception("boss stage should set IsBoss");
     }
 
     private static EquipmentDTO Equipment(string uid, int slot, int rarity, int upgrade, params AffixData[] affixes)

@@ -24,6 +24,11 @@ namespace EquipmentIdle.UI
         private Label _battleText;
         private Label _goalText;
         private Label _bossHintText;
+        private Label _stageHeroNameText;
+        private Label _stageHeroPowerText;
+        private Label _stageMonsterNameText;
+        private Label _stageMonsterPowerText;
+        private Label _stageStatusText;
         private Label _lootFeedText;
         private Label _toastText;
         private Label _offlineText;
@@ -35,6 +40,9 @@ namespace EquipmentIdle.UI
         private VisualElement _dungeonPanel;
         private VisualElement _lootPanel;
         private VisualElement _bossProgressFill;
+        private VisualElement _stageHeroHealthFill;
+        private VisualElement _stageMonsterHealthFill;
+        private VisualElement _stageSlash;
         private EquipmentDTO _selected;
         private float _prevPower;
         private bool _prevCanReincarn;
@@ -335,11 +343,10 @@ namespace EquipmentIdle.UI
             dungeon.style.backgroundColor = new StyleColor(new Color32(36, 33, 25, 255));
             root.Add(dungeon);
 
-            var hero = Column(270);
+            var hero = Column(330);
             hero.style.marginRight = 16;
-            hero.Add(Text("英雄", 12, true));
-            hero.Add(Text("在线自动战斗", 22, true));
-            hero.Add(Text("装备决定战力。掉落、对比、穿戴、继续推进。", 13, false));
+            hero.Add(Text("战斗舞台", 12, true));
+            hero.Add(BuildBattleStage());
             dungeon.Add(hero);
 
             var run = new VisualElement();
@@ -389,6 +396,100 @@ namespace EquipmentIdle.UI
             _lootFeedText = Text("", 13, false);
             loot.Add(_lootFeedText);
             dungeon.Add(loot);
+        }
+
+        private VisualElement BuildBattleStage()
+        {
+            var stage = new VisualElement();
+            stage.style.flexGrow = 1;
+            stage.style.marginTop = 4;
+            stage.style.paddingLeft = 8;
+            stage.style.paddingRight = 8;
+            stage.style.paddingTop = 8;
+            stage.style.paddingBottom = 8;
+            stage.style.backgroundColor = new StyleColor(new Color32(24, 27, 23, 255));
+            stage.style.borderTopLeftRadius = 6;
+            stage.style.borderTopRightRadius = 6;
+            stage.style.borderBottomLeftRadius = 6;
+            stage.style.borderBottomRightRadius = 6;
+
+            var combatants = Row();
+            combatants.style.alignItems = Align.Stretch;
+            combatants.style.flexGrow = 1;
+
+            VisualElement heroCard = CombatantCard(
+                new Color32(59, 130, 246, 255),
+                out _stageHeroNameText,
+                out _stageHeroPowerText,
+                out _stageHeroHealthFill);
+            combatants.Add(heroCard);
+
+            var center = new VisualElement();
+            center.style.width = 54;
+            center.style.alignItems = Align.Center;
+            center.style.justifyContent = Justify.Center;
+            _stageSlash = Text("VS", 20, true);
+            _stageSlash.style.unityTextAlign = TextAnchor.MiddleCenter;
+            center.Add(_stageSlash);
+            combatants.Add(center);
+
+            VisualElement monsterCard = CombatantCard(
+                new Color32(220, 38, 38, 255),
+                out _stageMonsterNameText,
+                out _stageMonsterPowerText,
+                out _stageMonsterHealthFill);
+            combatants.Add(monsterCard);
+            stage.Add(combatants);
+
+            _stageStatusText = Text("", 14, true);
+            _stageStatusText.style.unityTextAlign = TextAnchor.MiddleCenter;
+            _stageStatusText.style.marginTop = 6;
+            stage.Add(_stageStatusText);
+            return stage;
+        }
+
+        private static VisualElement CombatantCard(Color accent, out Label name, out Label power, out VisualElement healthFill)
+        {
+            var card = new VisualElement();
+            card.style.flexGrow = 1;
+            card.style.paddingLeft = 8;
+            card.style.paddingRight = 8;
+            card.style.paddingTop = 6;
+            card.style.paddingBottom = 6;
+            card.style.backgroundColor = new StyleColor(new Color32(42, 39, 33, 255));
+            card.style.borderBottomWidth = 3;
+            card.style.borderBottomColor = accent;
+            card.style.borderTopLeftRadius = 5;
+            card.style.borderTopRightRadius = 5;
+            card.style.borderBottomLeftRadius = 5;
+            card.style.borderBottomRightRadius = 5;
+
+            name = Text("", 16, true);
+            name.style.unityTextAlign = TextAnchor.MiddleCenter;
+            power = Text("", 12, false);
+            power.style.unityTextAlign = TextAnchor.MiddleCenter;
+            card.Add(name);
+            card.Add(power);
+
+            var healthFrame = new VisualElement();
+            healthFrame.style.height = 8;
+            healthFrame.style.marginTop = 8;
+            healthFrame.style.backgroundColor = new StyleColor(new Color32(15, 18, 16, 255));
+            healthFrame.style.borderTopLeftRadius = 4;
+            healthFrame.style.borderTopRightRadius = 4;
+            healthFrame.style.borderBottomLeftRadius = 4;
+            healthFrame.style.borderBottomRightRadius = 4;
+            healthFill = new VisualElement();
+            healthFill.style.height = Length.Percent(100);
+            healthFill.style.backgroundColor = new StyleColor(accent);
+            healthFill.style.borderTopLeftRadius = 4;
+            healthFill.style.borderTopRightRadius = 4;
+            healthFill.style.borderBottomLeftRadius = 4;
+            healthFill.style.borderBottomRightRadius = 4;
+            healthFrame.Add(healthFill);
+            card.Add(healthFrame);
+
+            return card;
         }
 
         private void BuildOfflinePanel(VisualElement root)
@@ -456,6 +557,7 @@ namespace EquipmentIdle.UI
             _monsterText.text = dungeon.Monster;
             _battleText.text = dungeon.Battle;
             _bossHintText.text = dungeon.BossHint;
+            RefreshBattleStage();
             _goalText.text = EquipmentPresenter.BuildNextGoal(
                 _gameState.Floor,
                 _gameState.Power,
@@ -463,6 +565,20 @@ namespace EquipmentIdle.UI
                 _gameState.Bag.Count,
                 BaseMaterialCount());
             _bossProgressFill.style.backgroundColor = new StyleColor(dungeon.IsBoss ? new Color32(220, 38, 38, 255) : new Color32(217, 119, 6, 255));
+        }
+
+        private void RefreshBattleStage()
+        {
+            if (_stageHeroNameText == null) return;
+            var stage = EquipmentPresenter.BuildBattleStageState(_gameState.Floor, _gameState.Power);
+            _stageHeroNameText.text = stage.HeroName;
+            _stageHeroPowerText.text = stage.HeroPower;
+            _stageMonsterNameText.text = stage.MonsterName;
+            _stageMonsterPowerText.text = stage.MonsterPower;
+            _stageStatusText.text = stage.IsBoss ? $"Boss 战：{stage.Status}" : $"自动战斗：{stage.Status}";
+            _stageHeroHealthFill.style.width = Length.Percent(stage.HeroHealth * 100f);
+            _stageMonsterHealthFill.style.width = Length.Percent(stage.MonsterHealth * 100f);
+            _stageMonsterHealthFill.style.backgroundColor = new StyleColor(stage.IsBoss ? new Color32(220, 38, 38, 255) : new Color32(245, 158, 11, 255));
         }
 
         private int BaseMaterialCount()
@@ -497,6 +613,7 @@ namespace EquipmentIdle.UI
                 Color baseColor = new Color32(36, 33, 25, 255);
                 Color hitColor = new Color32(92, 64, 35, 255);
                 _dungeonPanel.style.backgroundColor = new StyleColor(Color.Lerp(baseColor, hitColor, pulse));
+                if (_stageSlash != null) _stageSlash.style.opacity = 0.65f + pulse * 0.35f;
             }
 
             if (_lootPanel != null)

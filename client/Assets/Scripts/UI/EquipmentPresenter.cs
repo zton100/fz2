@@ -29,6 +29,18 @@ namespace EquipmentIdle.UI
         public int BossReward;
     }
 
+    public struct BattleStageState
+    {
+        public string HeroName;
+        public string HeroPower;
+        public string MonsterName;
+        public string MonsterPower;
+        public string Status;
+        public float HeroHealth;
+        public float MonsterHealth;
+        public bool IsBoss;
+    }
+
     public static class EquipmentPresenter
     {
         public static List<EquipmentDTO> SortBagForDisplay(IList<EquipmentDTO> bag, IList<EquipmentDTO> equipped)
@@ -196,6 +208,43 @@ namespace EquipmentIdle.UI
                 GateProgress = Clamp01(gateProgress / 5f),
                 IsBoss = boss,
                 BossReward = bossReward,
+            };
+        }
+
+        public static BattleStageState BuildBattleStageState(int floor, float playerPower)
+        {
+            var dungeon = BuildDungeonState(floor, playerPower);
+            float ratio = dungeon.MonsterPower <= 0f ? 0f : playerPower / dungeon.MonsterPower;
+            float heroHealth = ratio >= 1f ? 1f : Clamp01(ratio);
+            float monsterHealth = ratio >= 1f ? Clamp01(1f / ratio) : 1f;
+            string status;
+            if (ratio >= 1.5f)
+            {
+                status = "压制";
+            }
+            else if (ratio >= 1f)
+            {
+                status = "优势";
+            }
+            else if (ratio >= 0.75f)
+            {
+                status = "僵持";
+            }
+            else
+            {
+                status = "受阻";
+            }
+
+            return new BattleStageState
+            {
+                HeroName = "冒险者",
+                HeroPower = $"战力 {playerPower:F1}",
+                MonsterName = dungeon.IsBoss ? "守层 Boss" : "地下城怪物",
+                MonsterPower = $"战力 {dungeon.MonsterPower:F1}",
+                Status = status,
+                HeroHealth = heroHealth,
+                MonsterHealth = monsterHealth,
+                IsBoss = dungeon.IsBoss,
             };
         }
 
