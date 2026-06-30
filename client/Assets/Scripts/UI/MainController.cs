@@ -482,7 +482,7 @@ namespace EquipmentIdle.UI
             }
 
             _bagContent.Clear();
-            foreach (var item in _gameState.Bag)
+            foreach (var item in EquipmentPresenter.SortBagForDisplay(_gameState.Bag, _gameState.Equipped))
             {
                 EquipmentDTO eq = item;
                 _bagContent.Add(EquipmentRow(L10n.SlotName(eq.slot), ShortEquipment(eq), () => Select(eq), () => _gameState.Equip(eq.uid), () => _gameState.Decompose(eq.uid), eq.rarity));
@@ -544,26 +544,10 @@ namespace EquipmentIdle.UI
         {
             if (_selected == null)
             {
-                _detailText.text = "Select an equipment item to inspect stats and actions.";
+                _detailText.text = EquipmentPresenter.BuildDetail(null, null);
                 return;
             }
-
-            string text = $"{L10n.RarityName(_selected.rarity)} {_selected.name} +{_selected.upgrade}\n";
-            text += $"Slot: {L10n.SlotName(_selected.slot)}\n";
-            text += $"Score: {ScoreEquipment(_selected):F0}\n\n";
-            if (_selected.affixes == null || _selected.affixes.Length == 0)
-            {
-                text += "No affixes.";
-            }
-            else
-            {
-                text += "Affixes:\n";
-                foreach (var affix in _selected.affixes)
-                {
-                    text += $"- T{affix.tier} {affix.type} +{affix.value:F1}\n";
-                }
-            }
-            _detailText.text = text;
+            _detailText.text = EquipmentPresenter.BuildDetail(_selected, EquippedAtSlot(_selected.slot));
         }
 
         private void Select(EquipmentDTO eq)
@@ -601,11 +585,11 @@ namespace EquipmentIdle.UI
             {
                 EquipmentDTO current = EquippedAtSlot(slot);
                 EquipmentDTO best = null;
-                float bestScore = current != null ? ScoreEquipment(current) : -1f;
+                float bestScore = current != null ? EquipmentPresenter.Score(current) : -1f;
                 foreach (var eq in _gameState.Bag)
                 {
                     if (eq.slot != slot) continue;
-                    float score = ScoreEquipment(eq);
+                    float score = EquipmentPresenter.Score(eq);
                     if (score > bestScore)
                     {
                         bestScore = score;
@@ -644,25 +628,12 @@ namespace EquipmentIdle.UI
             return null;
         }
 
-        private static float ScoreEquipment(EquipmentDTO eq)
-        {
-            float s = (eq.rarity + 1) * 100f + eq.upgrade * 20f;
-            if (eq.affixes != null)
-            {
-                foreach (var affix in eq.affixes)
-                {
-                    s += affix.value + affix.tier * 10f;
-                }
-            }
-            return s;
-        }
-
         private static string ShortEquipment(EquipmentDTO eq)
         {
             string text = $"[{L10n.RarityName(eq.rarity)}] {eq.name} +{eq.upgrade}";
             if (eq.affixes != null && eq.affixes.Length > 0)
             {
-                text += $"  {eq.affixes[0].type}+{eq.affixes[0].value:F0}";
+                text += $"  {EquipmentPresenter.FormatAffix(eq.affixes[0])}";
             }
             return text;
         }
