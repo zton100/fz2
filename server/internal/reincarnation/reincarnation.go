@@ -28,7 +28,7 @@ func CanReincarnate(p *model.Player) bool {
 // MaxFloor 只作历史最高记录，不作为发奖基础。
 func Reincarnate(p *model.Player) error {
 	if !CanReincarnate(p) {
-		return errors.New("floor not enough to reincarnate")
+		return errors.New("层数不足，无法转生")
 	}
 	// 魂点按当前轮次层数发放
 	earned := p.Floor / 5
@@ -58,13 +58,13 @@ func AdvanceFloor(p *model.Player) {
 func UpgradeTalent(p *model.Player, name string) error {
 	maxLv, ok := talentMaxLevel[name]
 	if !ok {
-		return errors.New("unknown talent: " + name)
+		return errors.New("未知天赋：" + name)
 	}
 	if p.Souls < 1 {
-		return errors.New("not enough souls")
+		return errors.New("魂点不足")
 	}
 	if p.Talents[name] >= maxLv {
-		return errors.New("talent at max level: " + name)
+		return errors.New("天赋已满级：" + name)
 	}
 	p.Souls--
 	p.Talents[name]++

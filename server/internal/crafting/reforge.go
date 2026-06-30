@@ -1,4 +1,4 @@
-﻿package crafting
+package crafting
 
 import (
 	"errors"
@@ -12,13 +12,13 @@ import (
 // 消耗词缀材料（按当前词缀类型和 Tier 各 1 个）。
 func Reforge(p *model.Player, gen *loot.Generator, eq *model.Equipment) error {
 	if eq == nil {
-		return errors.New("nil equipment")
+		return errors.New("装备不存在")
 	}
 	// 统计消耗
 	for _, a := range eq.Affixes {
 		matType := data.AffixMaterialByTier(a.Tier)
 		if !p.HasMaterial(matType, data.ReforgeCostPerAffix) {
-			return errors.New("insufficient affix material")
+			return errors.New("词缀材料不足")
 		}
 	}
 	// 扣除材料

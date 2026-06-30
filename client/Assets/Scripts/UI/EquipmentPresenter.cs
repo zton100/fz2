@@ -81,23 +81,23 @@ namespace EquipmentIdle.UI
 
         public static string BuildDetail(EquipmentDTO eq, EquipmentDTO current)
         {
-            if (eq == null) return "Select an equipment item to inspect stats and actions.";
+            if (eq == null) return "选择一件装备查看属性和操作。";
             float score = Score(eq);
             float delta = score - Score(current);
             string text = $"{eq.name} +{eq.upgrade}\n";
-            text += $"Slot: {SlotName(eq.slot)}\n";
-            text += $"Rarity: {RarityName(eq.rarity)}\n";
-            text += $"Score: {score:F0}\n";
-            if (current != null) text += $"Delta: {delta:+0;-0;0}\n";
+            text += $"部位：{SlotName(eq.slot)}\n";
+            text += $"品质：{RarityName(eq.rarity)}\n";
+            text += $"评分：{score:F0}\n";
+            if (current != null) text += $"对比：{delta:+0;-0;0}\n";
             text += "\n";
 
             if (eq.affixes == null || eq.affixes.Length == 0)
             {
-                text += "No affixes.";
+                text += "无词缀。";
             }
             else
             {
-                text += "Affixes:\n";
+                text += "词缀：\n";
                 foreach (var affix in eq.affixes)
                 {
                     text += $"- {FormatAffix(affix)}\n";
@@ -117,24 +117,24 @@ namespace EquipmentIdle.UI
 
             if (isEquipped)
             {
-                return text + "  Equipped";
+                return text + "  已穿戴";
             }
 
             if (current == null)
             {
-                return text + "  New slot";
+                return text + "  新部位";
             }
 
             float delta = Score(eq) - Score(current);
             if (delta > 0f)
             {
-                return text + $"  Upgrade +{delta:F0}";
+                return text + $"  提升 +{delta:F0}";
             }
             if (delta < 0f)
             {
-                return text + $"  Weaker {delta:F0}";
+                return text + $"  更弱 {delta:F0}";
             }
-            return text + "  Sidegrade";
+            return text + "  持平";
         }
 
         public static List<EquipmentAction> DetailActions(EquipmentDTO eq, bool isEquipped)
@@ -165,11 +165,11 @@ namespace EquipmentIdle.UI
 
             return new DungeonState
             {
-                Title = boss ? $"Floor {floor} Boss Gate" : $"Floor {floor} Dungeon Run",
-                Monster = boss ? $"Boss Warden\nPower {monsterPower:F1}" : $"Dungeon Enemy\nPower {monsterPower:F1}",
+                Title = boss ? $"第 {floor} 层 Boss 关" : $"第 {floor} 层地下城",
+                Monster = boss ? $"守层 Boss\n战力 {monsterPower:F1}" : $"地下城怪物\n战力 {monsterPower:F1}",
                 Battle = ratio >= 1f
-                    ? $"Advantage {ratio:F1}x. Next battle should clear."
-                    : $"Underpowered {ratio:F1}x. Upgrade or equip stronger loot.",
+                    ? $"优势 {ratio:F1}x，下一场战斗大概率通过。"
+                    : $"战力不足 {ratio:F1}x，请强化或穿戴更强装备。",
                 MonsterPower = monsterPower,
                 GateProgress = Clamp01(gateProgress / 5f),
                 IsBoss = boss,
@@ -195,24 +195,24 @@ namespace EquipmentIdle.UI
         {
             if (canReincarn)
             {
-                return "Goal: Reincarnate to claim souls and grow permanent talents.";
+                return "目标：进行转生，领取魂点并提升永久天赋。";
             }
 
             float monsterPower = MonsterPowerAtFloor(floor);
             if (playerPower <= 0f)
             {
-                return "Goal: Connect and sync your hero to start auto battle.";
+                return "目标：连接并同步角色，开始自动战斗。";
             }
 
             if (playerPower < monsterPower)
             {
-                if (bagCount > 0) return "Goal: Equip stronger loot or upgrade key gear to break this floor.";
-                if (baseMaterials >= 10) return "Goal: Compose new gear, then equip upgrades to break this floor.";
-                return "Goal: Wait for drops or decompose weak gear to fund upgrades.";
+                if (bagCount > 0) return "目标：穿戴更强掉落，或强化核心装备突破本层。";
+                if (baseMaterials >= 10) return "目标：先合成新装备，再穿戴提升装备突破本层。";
+                return "目标：等待掉落，或分解弱装积累强化材料。";
             }
 
             int nextBoss = floor + (5 - ((floor - 1) % 5));
-            return $"Goal: Auto battling toward floor {nextBoss} boss gate.";
+            return $"目标：自动战斗中，向第 {nextBoss} 层 Boss 关推进。";
         }
 
         public static List<EquipmentDTO> BulkDecomposeCandidates(IList<EquipmentDTO> bag, IList<EquipmentDTO> equipped)
@@ -289,18 +289,18 @@ namespace EquipmentIdle.UI
         {
             switch (type)
             {
-                case "strength": return "Strength";
-                case "max_hp": return "Max Health";
-                case "armor": return "Armor";
-                case "fire_dmg": return "Fire Damage";
-                case "cold_dmg": return "Cold Damage";
-                case "lightning_dmg": return "Lightning Damage";
-                case "crit_rate": return "Critical Chance";
-                case "crit_damage": return "Critical Damage";
-                case "attack_speed": return "Attack Speed";
-                case "agility": return "Agility";
-                case "intellect": return "Intellect";
-                case "vitality": return "Vitality";
+                case "strength": return "力量";
+                case "max_hp": return "最大生命";
+                case "armor": return "护甲";
+                case "fire_dmg": return "火焰伤害";
+                case "cold_dmg": return "冰霜伤害";
+                case "lightning_dmg": return "闪电伤害";
+                case "crit_rate": return "暴击率";
+                case "crit_damage": return "暴击伤害";
+                case "attack_speed": return "攻击速度";
+                case "agility": return "敏捷";
+                case "intellect": return "智力";
+                case "vitality": return "体质";
                 default: return type;
             }
         }
@@ -309,11 +309,11 @@ namespace EquipmentIdle.UI
         {
             switch (rarity)
             {
-                case 0: return "Common";
-                case 1: return "Magic";
-                case 2: return "Rare";
-                case 3: return "Legendary";
-                case 4: return "Artifact";
+                case 0: return "普通";
+                case 1: return "魔法";
+                case 2: return "稀有";
+                case 3: return "传奇";
+                case 4: return "神器";
                 default: return "?";
             }
         }
@@ -322,14 +322,14 @@ namespace EquipmentIdle.UI
         {
             switch (slot)
             {
-                case 0: return "Weapon";
-                case 1: return "Helmet";
-                case 2: return "Armor";
-                case 3: return "Gloves";
-                case 4: return "Boots";
-                case 5: return "Ring 1";
-                case 6: return "Ring 2";
-                case 7: return "Neck";
+                case 0: return "武器";
+                case 1: return "头盔";
+                case 2: return "护甲";
+                case 3: return "手套";
+                case 4: return "靴子";
+                case 5: return "戒指1";
+                case 6: return "戒指2";
+                case 7: return "项链";
                 default: return "?";
             }
         }

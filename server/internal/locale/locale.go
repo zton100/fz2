@@ -1,4 +1,4 @@
-﻿package locale
+package locale
 
 import (
 	"encoding/json"
@@ -80,15 +80,15 @@ var defaultZH = L{
 	MonsterNormal: "史莱姆",
 	MonsterBoss:   "守层Boss",
 
-	MsgDecomposed:     "decomposed",
-	MsgComposed:       "composed",
-	MsgReforged:       "reforged",
-	MsgUpgraded:       "upgraded",
-	MsgUpgradeFailed:  "upgrade failed (no degrade)",
-	MsgReincarnated:   "reincarnated",
-	MsgTalentUpgraded: "talent upgraded: %s",
-	MsgNotInBag:       "equipment not in bag",
-		MsgBootstrap:      "granted 10 base mats to new player",
+	MsgDecomposed:     "已分解",
+	MsgComposed:       "已合成",
+	MsgReforged:       "已重铸",
+	MsgUpgraded:       "强化成功",
+	MsgUpgradeFailed:  "强化失败（不降级）",
+	MsgReincarnated:   "已转生",
+	MsgTalentUpgraded: "天赋已提升：%s",
+	MsgNotInBag:       "装备不在背包中",
+	MsgBootstrap:      "新角色已获得 10 个基础材料",
 }
 
 var (
@@ -225,5 +225,3 @@ func merge(dst, src *L) {
 		dst.MsgNotInBag = src.MsgNotInBag
 	}
 }
-
-

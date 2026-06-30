@@ -455,9 +455,24 @@ func (h *Hub) handleTalentUp(sess *Session, env protocol.Envelope) {
 			return
 		}
 		h.pushTalents(sess, player)
-		h.pushCraftResult(sess, true, fmt.Sprintf(locale.Current().MsgTalentUpgraded, req.Name), "", 0)
+		h.pushCraftResult(sess, true, fmt.Sprintf(locale.Current().MsgTalentUpgraded, talentDisplayName(req.Name)), "", 0)
 	}); err != nil {
 		log.Printf("talent save error for %s: %v", sess.Account, err)
+	}
+}
+
+func talentDisplayName(name string) string {
+	switch name {
+	case "damage":
+		return "伤害"
+	case "quality":
+		return "品质"
+	case "drop":
+		return "掉落"
+	case "offline_gain":
+		return "离线"
+	default:
+		return name
 	}
 }
 

@@ -46,8 +46,8 @@ public static class EquipmentPresenterTestRunner
 
     private static void FormatsAffixesForPlayers()
     {
-        AssertEqual("Strength +12", EquipmentPresenter.FormatAffix(Affix("strength", 1, 12)), "strength affix label");
-        AssertEqual("Critical Chance +8.0%", EquipmentPresenter.FormatAffix(Affix("crit_rate", 2, 0.08f)), "crit rate affix label");
+        AssertEqual("力量 +12", EquipmentPresenter.FormatAffix(Affix("strength", 1, 12)), "strength affix label");
+        AssertEqual("暴击率 +8.0%", EquipmentPresenter.FormatAffix(Affix("crit_rate", 2, 0.08f)), "crit rate affix label");
     }
 
     private static void SummarizesEquipmentWithSlotComparison()
@@ -56,9 +56,9 @@ public static class EquipmentPresenterTestRunner
         var upgrade = Equipment("upgrade", 0, 2, 0, Affix("strength", 2, 30));
         string summary = EquipmentPresenter.BuildDetail(upgrade, current);
 
-        AssertContains(summary, "Score:", "detail should show score");
-        AssertContains(summary, "Delta: +", "detail should show positive comparison");
-        AssertContains(summary, "Strength +30", "detail should use readable affix names");
+        AssertContains(summary, "评分：", "detail should show score");
+        AssertContains(summary, "对比：+", "detail should show positive comparison");
+        AssertContains(summary, "力量 +30", "detail should use readable affix names");
     }
 
     private static void ProtectsLowRarityUpgradesFromBulkDecompose()
@@ -118,25 +118,25 @@ public static class EquipmentPresenterTestRunner
             throw new Exception($"monster curve should accelerate after floor 20, got ratio {floor41.MonsterPower / floor21.MonsterPower:F2}");
 
         var boss = EquipmentPresenter.BuildDungeonState(10, 10f);
-        AssertContains(boss.Title, "Boss Gate", "boss floor should be labeled");
-        AssertContains(boss.Monster, "Boss Warden", "boss encounter should name boss");
-        AssertContains(boss.Battle, "Underpowered", "weak hero should show blocked state");
+        AssertContains(boss.Title, "Boss 关", "boss floor should be labeled");
+        AssertContains(boss.Monster, "守层 Boss", "boss encounter should name boss");
+        AssertContains(boss.Battle, "战力不足", "weak hero should show blocked state");
         AssertNear(1f, boss.GateProgress, 0.001f, "boss gate should be full at every fifth floor");
 
         var clear = EquipmentPresenter.BuildDungeonState(2, 20f);
-        AssertContains(clear.Battle, "Advantage", "strong hero should show winning state");
+        AssertContains(clear.Battle, "优势", "strong hero should show winning state");
     }
 
     private static void RecommendsNextGoalFromProgressState()
     {
         string reincarn = EquipmentPresenter.BuildNextGoal(10, 100f, true, 0, 0);
-        AssertContains(reincarn, "Reincarnate", "reincarnation should be the highest priority goal");
+        AssertContains(reincarn, "转生", "reincarnation should be the highest priority goal");
 
         string blocked = EquipmentPresenter.BuildNextGoal(4, 5f, false, 3, 12);
-        AssertContains(blocked, "Equip", "underpowered hero with bag upgrades should be guided to equipment");
+        AssertContains(blocked, "穿戴", "underpowered hero with bag upgrades should be guided to equipment");
 
         string clearing = EquipmentPresenter.BuildNextGoal(2, 30f, false, 0, 0);
-        AssertContains(clearing, "Auto battling", "strong hero should show active progress");
+        AssertContains(clearing, "自动战斗", "strong hero should show active progress");
     }
 
     private static void LabelsEquipmentRowsWithUpgradeContext()
@@ -146,10 +146,10 @@ public static class EquipmentPresenterTestRunner
         var weaker = Equipment("weaker", 0, 0, 0, Affix("max_hp", 1, 3));
         var newSlot = Equipment("new-slot", 1, 0, 0, Affix("armor", 1, 3));
 
-        AssertContains(EquipmentPresenter.BuildEquipmentLine(upgrade, current, false), "Upgrade +", "upgrade row should show positive delta");
-        AssertContains(EquipmentPresenter.BuildEquipmentLine(weaker, current, false), "Weaker", "weaker row should show negative context");
-        AssertContains(EquipmentPresenter.BuildEquipmentLine(newSlot, null, false), "New slot", "empty slot item should be called out");
-        AssertContains(EquipmentPresenter.BuildEquipmentLine(current, null, true), "Equipped", "equipped row should show equipped state");
+        AssertContains(EquipmentPresenter.BuildEquipmentLine(upgrade, current, false), "提升 +", "upgrade row should show positive delta");
+        AssertContains(EquipmentPresenter.BuildEquipmentLine(weaker, current, false), "更弱", "weaker row should show negative context");
+        AssertContains(EquipmentPresenter.BuildEquipmentLine(newSlot, null, false), "新部位", "empty slot item should be called out");
+        AssertContains(EquipmentPresenter.BuildEquipmentLine(current, null, true), "已穿戴", "equipped row should show equipped state");
     }
 
     private static EquipmentDTO Equipment(string uid, int slot, int rarity, int upgrade, params AffixData[] affixes)

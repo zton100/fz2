@@ -21,12 +21,12 @@ type UpgradeResult struct {
 // 消耗基础材料（按目标等级查表），按成功率判定，失败不掉级。
 func Upgrade(p *model.Player, rng *rand.Rand, eq *model.Equipment) (UpgradeResult, error) {
 	if eq.Upgrade >= MaxUpgrade {
-		return UpgradeResult{}, errors.New("already at max upgrade level")
+		return UpgradeResult{}, errors.New("已达到最高强化等级")
 	}
 	targetLvl := eq.Upgrade + 1
 	cost := data.UpgradeCostTable[targetLvl]
 	if !p.HasMaterial(data.MatBase, cost) {
-		return UpgradeResult{}, errors.New("insufficient base material")
+		return UpgradeResult{}, errors.New("基础材料不足")
 	}
 	p.SpendMaterial(data.MatBase, cost)
 

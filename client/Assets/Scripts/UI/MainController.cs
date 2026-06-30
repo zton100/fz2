@@ -112,9 +112,9 @@ namespace EquipmentIdle.UI
             float delta = power - _prevPower;
             _prevPower = power;
             if (delta > 0.5f)
-                _powerText.text = $"power: {power:F1} +{delta:F1}";
+                _powerText.text = $"战力：{power:F1} +{delta:F1}";
             else if (delta < -0.5f)
-                _powerText.text = $"power: {power:F1} {delta:F1}";
+                _powerText.text = $"战力：{power:F1} {delta:F1}";
             else
                 _powerText.text = string.Format(L10n.UIPowerLabel, power);
             RefreshStuck();
@@ -135,7 +135,7 @@ namespace EquipmentIdle.UI
             _battlePulseUntil = Time.realtimeSinceStartup + 0.7f;
             if (newFloor > 1 && (newFloor - 1) % 5 == 0)
             {
-                AddToast($"Boss defeated: floor {newFloor - 1}", ToastDuration);
+                AddToast($"击败 Boss：第 {newFloor - 1} 层", ToastDuration);
             }
             RefreshHeader();
             RefreshStuck();
@@ -145,7 +145,7 @@ namespace EquipmentIdle.UI
         {
             int h = ord.duration_seconds / 3600;
             int m = (ord.duration_seconds % 3600) / 60;
-            string dur = h > 0 ? $"{h}h{m}m" : $"{m}m";
+            string dur = h > 0 ? $"{h}小时{m}分" : $"{m}分";
             _offlineText.text = $"{L10n.UIOfflineTitle}\n"
                 + $"{string.Format(L10n.UIOfflineDuration, dur)}\n"
                 + $"{string.Format(L10n.UIOfflineLoot, ord.loot_count)}\n"
@@ -169,7 +169,7 @@ namespace EquipmentIdle.UI
         {
             if (canReincarn && !_prevCanReincarn)
             {
-                AddToast("Reincarnation available", 5f);
+                AddToast("可以转生了", 5f);
             }
             _prevCanReincarn = canReincarn;
             RefreshProgression();
@@ -201,7 +201,7 @@ namespace EquipmentIdle.UI
             root.Add(header);
 
             var titleCol = Column(360);
-            titleCol.Add(Text("Equipment Idle", 24, true));
+            titleCol.Add(Text("装备放置", 24, true));
             _statusText = Text("", 14, false);
             _syncText = Text("", 14, false);
             titleCol.Add(_statusText);
@@ -227,7 +227,7 @@ namespace EquipmentIdle.UI
             {
                 string acc = _accountInput.value.Trim();
                 if (string.IsNullOrEmpty(acc)) acc = "hero";
-                _statusText.text = "Status: " + L10n.UIStatusConnecting;
+                _statusText.text = "状态：" + L10n.UIStatusConnecting;
                 _gameState.ConnectAndLogin(acc);
             }, 110));
             header.Add(loginCol);
@@ -265,7 +265,7 @@ namespace EquipmentIdle.UI
             var right = Panel("details");
             right.style.width = 370;
             body.Add(right);
-            right.Add(SectionTitle("Details"));
+            right.Add(SectionTitle("详情"));
             _detailText = Text("", 14, false);
             _detailText.style.flexGrow = 1;
             right.Add(_detailText);
@@ -317,9 +317,9 @@ namespace EquipmentIdle.UI
 
             var hero = Column(270);
             hero.style.marginRight = 16;
-            hero.Add(Text("HERO", 12, true));
-            hero.Add(Text("Auto battle online", 22, true));
-            hero.Add(Text("Equipment drives all power. Loot, compare, equip, repeat.", 13, false));
+            hero.Add(Text("英雄", 12, true));
+            hero.Add(Text("在线自动战斗", 22, true));
+            hero.Add(Text("装备决定战力。掉落、对比、穿戴、继续推进。", 13, false));
             dungeon.Add(hero);
 
             var run = new VisualElement();
@@ -351,12 +351,12 @@ namespace EquipmentIdle.UI
             _bossProgressFill.style.borderBottomRightRadius = 5;
             progressFrame.Add(_bossProgressFill);
             run.Add(progressFrame);
-            run.Add(Text("Boss gate every 5 floors", 12, false));
+            run.Add(Text("每 5 层出现一个 Boss 关", 12, false));
             dungeon.Add(run);
 
             var monster = Column(260);
             monster.style.marginRight = 16;
-            monster.Add(Text("ENCOUNTER", 12, true));
+            monster.Add(Text("遭遇", 12, true));
             _monsterText = Text("", 17, true);
             monster.Add(_monsterText);
             dungeon.Add(monster);
@@ -364,7 +364,7 @@ namespace EquipmentIdle.UI
             var loot = Column(260);
             _lootPanel = loot;
             loot.style.marginRight = 0;
-            loot.Add(Text("RECENT LOOT", 12, true));
+            loot.Add(Text("最近掉落", 12, true));
             _lootFeedText = Text("", 13, false);
             loot.Add(_lootFeedText);
             dungeon.Add(loot);
@@ -409,8 +409,8 @@ namespace EquipmentIdle.UI
         private void RefreshHeader()
         {
             string status = _gameState.IsConnected ? L10n.UIStatusConnected : L10n.UIStatusDisconnected;
-            _statusText.text = "Status: " + status;
-            _syncText.text = $"Account: {_gameState.Account}   Floor: {_gameState.Floor}   Souls: {_gameState.Souls}";
+            _statusText.text = "状态：" + status;
+            _syncText.text = $"账号：{_gameState.Account}   层数：{_gameState.Floor}   魂点：{_gameState.Souls}";
             _powerText.text = string.Format(L10n.UIPowerLabel, _gameState.Power);
             RefreshDungeon();
         }
@@ -421,7 +421,7 @@ namespace EquipmentIdle.UI
             if (_gameState.Power > 0 && _gameState.Power <= monsterPower)
                 _stuckText.text = string.Format(L10n.UIStuckPrefix, _gameState.Power, monsterPower, _gameState.Floor);
             else
-                _stuckText.text = $"Monster power: {monsterPower:F1}";
+                _stuckText.text = $"怪物战力：{monsterPower:F1}";
             RefreshDungeon();
         }
 
@@ -453,7 +453,7 @@ namespace EquipmentIdle.UI
             if (_lootFeedText == null) return;
             if (_lootFeed.Count == 0)
             {
-                _lootFeedText.text = "No drops yet. Connect and let auto battle run.";
+                _lootFeedText.text = "暂无掉落。连接后自动战斗会开始产出装备。";
                 return;
             }
             string text = "";
@@ -541,7 +541,7 @@ namespace EquipmentIdle.UI
             string text = L10n.UIMaterials;
             foreach (var kv in _gameState.Materials)
             {
-                text += $"{kv.Key}={kv.Value}  ";
+                text += $"{MaterialName(kv.Key)}={kv.Value}  ";
             }
             _materialsText.text = text;
         }
@@ -549,13 +549,14 @@ namespace EquipmentIdle.UI
         private void RefreshProgression()
         {
             _reincarnText.text = string.Format(L10n.UISouls, _gameState.Souls, _gameState.MaxFloor, _gameState.CanReincarn);
-            string[] names = { L10n.TalentDamage, L10n.TalentQuality, L10n.TalentDrop, L10n.TalentOfflineGain };
+            string[] keys = { L10n.TalentDamage, L10n.TalentQuality, L10n.TalentDrop, L10n.TalentOfflineGain };
+            string[] names = { "伤害", "品质", "掉落", "离线" };
             string[] desc = { L10n.TalentDamageDesc, L10n.TalentQualityDesc, L10n.TalentDropDesc, L10n.TalentOfflineDesc };
             int[] max = { 10, 3, 10, 5 };
             string text = L10n.UITalentsLabel + "\n";
             for (int i = 0; i < names.Length; i++)
             {
-                int lv = _gameState.Talents.ContainsKey(names[i]) ? _gameState.Talents[names[i]] : 0;
+                int lv = _gameState.Talents.ContainsKey(keys[i]) ? _gameState.Talents[keys[i]] : 0;
                 text += $"{names[i]} Lv{lv}/{max[i]} - {desc[i]}\n";
             }
             _talentsText.text = text;
@@ -672,7 +673,7 @@ namespace EquipmentIdle.UI
                     equippedCount++;
                 }
             }
-            if (equippedCount > 0) AddToast($"{string.Format(L10n.UIEquipBestDone, equippedCount)}  score +{expectedDelta:F0}", ToastDuration);
+            if (equippedCount > 0) AddToast($"{string.Format(L10n.UIEquipBestDone, equippedCount)}  评分 +{expectedDelta:F0}", ToastDuration);
         }
 
         private void DecomposeWeakItems()
@@ -693,6 +694,20 @@ namespace EquipmentIdle.UI
                 if (eq.slot == slot) return eq;
             }
             return null;
+        }
+
+        private static string MaterialName(string key)
+        {
+            switch (key)
+            {
+                case "base_mat": return "基础材料";
+                case "affix_mat_1": return "词缀材料1";
+                case "affix_mat_2": return "词缀材料2";
+                case "affix_mat_3": return "词缀材料3";
+                case "affix_mat_4": return "词缀材料4";
+                case "affix_mat_5": return "词缀材料5";
+                default: return key;
+            }
         }
 
         private void AddToast(string text, float duration)

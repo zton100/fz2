@@ -29,7 +29,7 @@ func Equip(p *model.Player, uid string) error {
 func Unequip(p *model.Player, slot data.Slot) error {
 	eq := p.Equipped[slot]
 	if eq == nil {
-		return errors.New("no equipment in slot")
+		return errors.New("该槽位没有装备")
 	}
 	p.EquipBag = append(p.EquipBag, eq)
 	delete(p.Equipped, slot)

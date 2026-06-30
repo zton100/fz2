@@ -11,7 +11,7 @@ import (
 // 调用方负责确保装备已从背包/穿戴移除。
 func Decompose(p *model.Player, eq *model.Equipment) (map[data.MaterialType]int, error) {
 	if eq == nil {
-		return nil, errors.New("cannot decompose nil equipment")
+		return nil, errors.New("无法分解空装备")
 	}
 	yield := map[data.MaterialType]int{}
 	yield[data.MatBase] = data.DecomposeBaseYield[eq.Rarity]
