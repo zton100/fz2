@@ -28,6 +28,7 @@ namespace EquipmentIdle.UI
         private VisualElement _offlinePanel;
         private VisualElement _equippedContent;
         private VisualElement _bagContent;
+        private VisualElement _detailActions;
         private VisualElement _dungeonPanel;
         private VisualElement _lootPanel;
         private VisualElement _bossProgressFill;
@@ -257,6 +258,11 @@ namespace EquipmentIdle.UI
             _detailText = Text("", 14, false);
             _detailText.style.flexGrow = 1;
             right.Add(_detailText);
+            _detailActions = new VisualElement();
+            _detailActions.style.flexDirection = FlexDirection.Row;
+            _detailActions.style.flexWrap = Wrap.Wrap;
+            _detailActions.style.marginBottom = 8;
+            right.Add(_detailActions);
             _materialsText = Text("", 13, false);
             right.Add(_materialsText);
             right.Add(SectionTitle(L10n.UIWorkshop));
@@ -545,9 +551,47 @@ namespace EquipmentIdle.UI
             if (_selected == null)
             {
                 _detailText.text = EquipmentPresenter.BuildDetail(null, null);
+                RefreshDetailActions();
                 return;
             }
             _detailText.text = EquipmentPresenter.BuildDetail(_selected, EquippedAtSlot(_selected.slot));
+            RefreshDetailActions();
+        }
+
+        private void RefreshDetailActions()
+        {
+            if (_detailActions == null) return;
+            _detailActions.Clear();
+
+            bool isEquipped = IsSelectedEquipped();
+            foreach (var action in EquipmentPresenter.DetailActions(_selected, isEquipped))
+            {
+                var captured = action;
+                _detailActions.Add(ActionButton(captured.Label, () => RunDetailAction(captured.Id), 84));
+            }
+        }
+
+        private void RunDetailAction(string id)
+        {
+            if (_selected == null) return;
+            switch (id)
+            {
+                case "equip":
+                    _gameState.Equip(_selected.uid);
+                    break;
+                case "unequip":
+                    _gameState.Unequip(_selected.slot);
+                    break;
+                case "upgrade":
+                    _gameState.Upgrade(_selected.uid);
+                    break;
+                case "reforge":
+                    _gameState.Reforge(_selected.uid);
+                    break;
+                case "decompose":
+                    _gameState.Decompose(_selected.uid);
+                    break;
+            }
         }
 
         private void Select(EquipmentDTO eq)
@@ -576,6 +620,16 @@ namespace EquipmentIdle.UI
                 }
             }
             _selected = null;
+        }
+
+        private bool IsSelectedEquipped()
+        {
+            if (_selected == null) return false;
+            foreach (var eq in _gameState.Equipped)
+            {
+                if (eq.uid == _selected.uid) return true;
+            }
+            return false;
         }
 
         private void EquipBestBySlot()

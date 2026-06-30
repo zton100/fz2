@@ -16,6 +16,7 @@ public static class EquipmentPresenterTestRunner
             SummarizesEquipmentWithSlotComparison();
             ProtectsLowRarityUpgradesFromBulkDecompose();
             EstimatesEquipBestDeltaAcrossSlots();
+            OffersDetailActionsByEquipmentLocation();
             Debug.Log("[EquipmentPresenterTestRunner] OK");
             EditorApplication.Exit(0);
         }
@@ -87,6 +88,25 @@ public static class EquipmentPresenterTestRunner
         if (delta <= 0f) throw new Exception($"equip best delta should be positive, got {delta}");
     }
 
+    private static void OffersDetailActionsByEquipmentLocation()
+    {
+        var selected = Equipment("selected", 0, 1, 0, Affix("strength", 1, 5));
+
+        var bagActions = EquipmentPresenter.DetailActions(selected, false);
+        AssertContainsAction(bagActions, "equip", "bag item should offer equip");
+        AssertContainsAction(bagActions, "upgrade", "bag item should offer upgrade");
+        AssertContainsAction(bagActions, "reforge", "bag item should offer reforge");
+        AssertContainsAction(bagActions, "decompose", "bag item should offer decompose");
+        AssertMissingAction(bagActions, "unequip", "bag item should not offer unequip");
+
+        var equippedActions = EquipmentPresenter.DetailActions(selected, true);
+        AssertContainsAction(equippedActions, "unequip", "equipped item should offer unequip");
+        AssertMissingAction(equippedActions, "equip", "equipped item should not offer equip");
+
+        var emptyActions = EquipmentPresenter.DetailActions(null, false);
+        if (emptyActions.Count != 0) throw new Exception("empty detail should not offer actions");
+    }
+
     private static EquipmentDTO Equipment(string uid, int slot, int rarity, int upgrade, params AffixData[] affixes)
     {
         return new EquipmentDTO
@@ -143,6 +163,23 @@ public static class EquipmentPresenterTestRunner
         foreach (var item in items)
         {
             if (item.uid == uid) throw new Exception($"{message}: found {uid}");
+        }
+    }
+
+    private static void AssertContainsAction(System.Collections.Generic.IList<EquipmentAction> actions, string id, string message)
+    {
+        foreach (var action in actions)
+        {
+            if (action.Id == id) return;
+        }
+        throw new Exception($"{message}: missing {id}");
+    }
+
+    private static void AssertMissingAction(System.Collections.Generic.IList<EquipmentAction> actions, string id, string message)
+    {
+        foreach (var action in actions)
+        {
+            if (action.Id == id) throw new Exception($"{message}: found {id}");
         }
     }
 }

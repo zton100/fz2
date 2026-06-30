@@ -1,8 +1,21 @@
+using EquipmentIdle.Data;
 using EquipmentIdle.Net;
 using System.Collections.Generic;
 
 namespace EquipmentIdle.UI
 {
+    public struct EquipmentAction
+    {
+        public string Id;
+        public string Label;
+
+        public EquipmentAction(string id, string label)
+        {
+            Id = id;
+            Label = label;
+        }
+    }
+
     public static class EquipmentPresenter
     {
         public static List<EquipmentDTO> SortBagForDisplay(IList<EquipmentDTO> bag, IList<EquipmentDTO> equipped)
@@ -80,6 +93,24 @@ namespace EquipmentIdle.UI
                 }
             }
             return text;
+        }
+
+        public static List<EquipmentAction> DetailActions(EquipmentDTO eq, bool isEquipped)
+        {
+            var actions = new List<EquipmentAction>();
+            if (eq == null) return actions;
+
+            if (isEquipped)
+            {
+                actions.Add(new EquipmentAction("unequip", L10n.UIUnequip));
+                return actions;
+            }
+
+            actions.Add(new EquipmentAction("equip", L10n.UIEquip));
+            actions.Add(new EquipmentAction("upgrade", L10n.UIUpgrade));
+            actions.Add(new EquipmentAction("reforge", L10n.UIReforge));
+            actions.Add(new EquipmentAction("decompose", L10n.UIDecompose));
+            return actions;
         }
 
         public static List<EquipmentDTO> BulkDecomposeCandidates(IList<EquipmentDTO> bag, IList<EquipmentDTO> equipped)
