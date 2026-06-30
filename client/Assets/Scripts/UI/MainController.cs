@@ -19,11 +19,16 @@ namespace EquipmentIdle.UI
         private Label _reincarnText;
         private Label _talentsText;
         private Label _detailText;
+        private Label _dungeonTitleText;
+        private Label _monsterText;
+        private Label _battleText;
+        private Label _lootFeedText;
         private Label _toastText;
         private Label _offlineText;
         private VisualElement _offlinePanel;
         private VisualElement _equippedContent;
         private VisualElement _bagContent;
+        private VisualElement _bossProgressFill;
         private EquipmentDTO _selected;
         private float _prevPower;
         private bool _prevCanReincarn;
@@ -35,6 +40,7 @@ namespace EquipmentIdle.UI
         }
 
         private readonly List<Toast> _toasts = new List<Toast>();
+        private readonly List<string> _lootFeed = new List<string>();
         private const float ToastDuration = 3f;
 
         private void Start()
@@ -104,6 +110,10 @@ namespace EquipmentIdle.UI
 
         private void OnLoot(EquipmentDTO eq)
         {
+            string line = $"{L10n.RarityName(eq.rarity)} {eq.name} +{eq.upgrade}";
+            _lootFeed.Insert(0, line);
+            if (_lootFeed.Count > 6) _lootFeed.RemoveAt(_lootFeed.Count - 1);
+            RefreshLootFeed();
             AddToast($"{string.Format(L10n.UILootToast, L10n.RarityName(eq.rarity), eq.name)}", ToastDuration);
         }
 
@@ -156,7 +166,7 @@ namespace EquipmentIdle.UI
 
             var root = doc.rootVisualElement;
             root.style.flexGrow = 1;
-            root.style.backgroundColor = new StyleColor(new Color32(18, 22, 28, 255));
+            root.style.backgroundColor = new StyleColor(new Color32(20, 19, 17, 255));
             root.style.paddingLeft = 16;
             root.style.paddingRight = 16;
             root.style.paddingTop = 12;
@@ -200,6 +210,8 @@ namespace EquipmentIdle.UI
                 _gameState.ConnectAndLogin(acc);
             }, 110));
             header.Add(loginCol);
+
+            BuildDungeonPanel(root);
 
             var body = Row();
             body.style.flexGrow = 1;
@@ -267,6 +279,67 @@ namespace EquipmentIdle.UI
             BuildOfflinePanel(root);
         }
 
+        private void BuildDungeonPanel(VisualElement root)
+        {
+            var dungeon = Panel("dungeon");
+            dungeon.style.height = 160;
+            dungeon.style.marginBottom = 10;
+            dungeon.style.flexDirection = FlexDirection.Row;
+            dungeon.style.backgroundColor = new StyleColor(new Color32(36, 33, 25, 255));
+            root.Add(dungeon);
+
+            var hero = Column(270);
+            hero.style.marginRight = 16;
+            hero.Add(Text("HERO", 12, true));
+            hero.Add(Text("Auto battle online", 22, true));
+            hero.Add(Text("Equipment drives all power. Loot, compare, equip, repeat.", 13, false));
+            dungeon.Add(hero);
+
+            var run = new VisualElement();
+            run.style.flexGrow = 1;
+            run.style.flexDirection = FlexDirection.Column;
+            run.style.marginRight = 16;
+            _dungeonTitleText = Text("", 24, true);
+            _battleText = Text("", 16, true);
+            run.Add(_dungeonTitleText);
+            run.Add(_battleText);
+
+            var progressFrame = new VisualElement();
+            progressFrame.style.height = 18;
+            progressFrame.style.marginTop = 14;
+            progressFrame.style.marginBottom = 10;
+            progressFrame.style.backgroundColor = new StyleColor(new Color32(12, 16, 14, 255));
+            progressFrame.style.borderTopLeftRadius = 5;
+            progressFrame.style.borderTopRightRadius = 5;
+            progressFrame.style.borderBottomLeftRadius = 5;
+            progressFrame.style.borderBottomRightRadius = 5;
+            _bossProgressFill = new VisualElement();
+            _bossProgressFill.style.height = Length.Percent(100);
+            _bossProgressFill.style.backgroundColor = new StyleColor(new Color32(217, 119, 6, 255));
+            _bossProgressFill.style.borderTopLeftRadius = 5;
+            _bossProgressFill.style.borderTopRightRadius = 5;
+            _bossProgressFill.style.borderBottomLeftRadius = 5;
+            _bossProgressFill.style.borderBottomRightRadius = 5;
+            progressFrame.Add(_bossProgressFill);
+            run.Add(progressFrame);
+            run.Add(Text("Boss gate every 5 floors", 12, false));
+            dungeon.Add(run);
+
+            var monster = Column(260);
+            monster.style.marginRight = 16;
+            monster.Add(Text("ENCOUNTER", 12, true));
+            _monsterText = Text("", 17, true);
+            monster.Add(_monsterText);
+            dungeon.Add(monster);
+
+            var loot = Column(260);
+            loot.style.marginRight = 0;
+            loot.Add(Text("RECENT LOOT", 12, true));
+            _lootFeedText = Text("", 13, false);
+            loot.Add(_lootFeedText);
+            dungeon.Add(loot);
+        }
+
         private void BuildOfflinePanel(VisualElement root)
         {
             _offlinePanel = new VisualElement();
@@ -299,6 +372,8 @@ namespace EquipmentIdle.UI
             RefreshProgression();
             RefreshDetail();
             RefreshStuck();
+            RefreshDungeon();
+            RefreshLootFeed();
         }
 
         private void RefreshHeader()
@@ -307,6 +382,7 @@ namespace EquipmentIdle.UI
             _statusText.text = "Status: " + status;
             _syncText.text = $"Account: {_gameState.Account}   Floor: {_gameState.Floor}   Souls: {_gameState.Souls}";
             _powerText.text = string.Format(L10n.UIPowerLabel, _gameState.Power);
+            RefreshDungeon();
         }
 
         private void RefreshStuck()
@@ -316,6 +392,41 @@ namespace EquipmentIdle.UI
                 _stuckText.text = string.Format(L10n.UIStuckPrefix, _gameState.Power, monsterPower, _gameState.Floor);
             else
                 _stuckText.text = $"Monster power: {monsterPower:F1}";
+            RefreshDungeon();
+        }
+
+        private void RefreshDungeon()
+        {
+            if (_dungeonTitleText == null) return;
+            int floor = Mathf.Max(1, _gameState.Floor);
+            bool boss = floor % 5 == 0;
+            float monsterPower = MonsterPowerAtFloor(floor);
+            float ratio = monsterPower <= 0 ? 0 : _gameState.Power / monsterPower;
+            int gateProgress = ((floor - 1) % 5) + 1;
+            float progress = Mathf.Clamp01(gateProgress / 5f);
+
+            _dungeonTitleText.text = boss ? $"Floor {floor} Boss Gate" : $"Floor {floor} Dungeon Run";
+            _monsterText.text = boss
+                ? $"Boss Warden\nPower {monsterPower:F1}"
+                : $"Dungeon Enemy\nPower {monsterPower:F1}";
+            _battleText.text = ratio >= 1f
+                ? $"Advantage {ratio:F1}x. Next battle should clear."
+                : $"Underpowered {ratio:F1}x. Upgrade or equip stronger loot.";
+            _bossProgressFill.style.width = Length.Percent(progress * 100f);
+            _bossProgressFill.style.backgroundColor = new StyleColor(boss ? new Color32(220, 38, 38, 255) : new Color32(217, 119, 6, 255));
+        }
+
+        private void RefreshLootFeed()
+        {
+            if (_lootFeedText == null) return;
+            if (_lootFeed.Count == 0)
+            {
+                _lootFeedText.text = "No drops yet. Connect and let auto battle run.";
+                return;
+            }
+            string text = "";
+            foreach (var line in _lootFeed) text += line + "\n";
+            _lootFeedText.text = text;
         }
 
         private void RefreshEquipmentLists()
@@ -345,7 +456,7 @@ namespace EquipmentIdle.UI
         private VisualElement EquipmentRow(string slot, string label, System.Action select, System.Action primary, System.Action secondary, int rarity)
         {
             var row = Row();
-            row.style.backgroundColor = new StyleColor(new Color32(45, 55, 72, 255));
+            row.style.backgroundColor = new StyleColor(new Color32(48, 43, 36, 255));
             row.style.borderLeftWidth = 4;
             row.style.borderLeftColor = RarityUIColor(rarity);
             row.style.paddingLeft = 8;
@@ -543,7 +654,7 @@ namespace EquipmentIdle.UI
         private static VisualElement Panel(string name)
         {
             var el = new VisualElement { name = name };
-            el.style.backgroundColor = new StyleColor(new Color32(30, 36, 45, 255));
+            el.style.backgroundColor = new StyleColor(new Color32(32, 36, 30, 255));
             el.style.borderTopLeftRadius = 6;
             el.style.borderTopRightRadius = 6;
             el.style.borderBottomLeftRadius = 6;
@@ -576,7 +687,7 @@ namespace EquipmentIdle.UI
         {
             var label = new Label(value);
             label.style.fontSize = size;
-            label.style.color = new StyleColor(new Color32(226, 232, 240, 255));
+            label.style.color = new StyleColor(new Color32(232, 226, 214, 255));
             label.style.whiteSpace = WhiteSpace.Normal;
             if (bold) label.style.unityFontStyleAndWeight = FontStyle.Bold;
             return label;
@@ -593,6 +704,8 @@ namespace EquipmentIdle.UI
         {
             var button = new Button(action) { text = label };
             button.style.height = 34;
+            button.style.backgroundColor = new StyleColor(new Color32(62, 52, 38, 255));
+            button.style.color = new StyleColor(new Color32(255, 247, 237, 255));
             button.style.marginLeft = 4;
             button.style.marginRight = 4;
             button.style.marginTop = 3;
