@@ -17,6 +17,7 @@ public static class EquipmentPresenterTestRunner
             ProtectsLowRarityUpgradesFromBulkDecompose();
             EstimatesEquipBestDeltaAcrossSlots();
             OffersDetailActionsByEquipmentLocation();
+            DescribesDungeonStateWithServerMonsterCurve();
             Debug.Log("[EquipmentPresenterTestRunner] OK");
             EditorApplication.Exit(0);
         }
@@ -107,6 +108,23 @@ public static class EquipmentPresenterTestRunner
         if (emptyActions.Count != 0) throw new Exception("empty detail should not offer actions");
     }
 
+    private static void DescribesDungeonStateWithServerMonsterCurve()
+    {
+        var floor21 = EquipmentPresenter.BuildDungeonState(21, 120f);
+        var floor41 = EquipmentPresenter.BuildDungeonState(41, 120f);
+        if (floor41.MonsterPower / floor21.MonsterPower < 2.3f)
+            throw new Exception($"monster curve should accelerate after floor 20, got ratio {floor41.MonsterPower / floor21.MonsterPower:F2}");
+
+        var boss = EquipmentPresenter.BuildDungeonState(10, 10f);
+        AssertContains(boss.Title, "Boss Gate", "boss floor should be labeled");
+        AssertContains(boss.Monster, "Boss Warden", "boss encounter should name boss");
+        AssertContains(boss.Battle, "Underpowered", "weak hero should show blocked state");
+        AssertNear(1f, boss.GateProgress, 0.001f, "boss gate should be full at every fifth floor");
+
+        var clear = EquipmentPresenter.BuildDungeonState(2, 20f);
+        AssertContains(clear.Battle, "Advantage", "strong hero should show winning state");
+    }
+
     private static EquipmentDTO Equipment(string uid, int slot, int rarity, int upgrade, params AffixData[] affixes)
     {
         return new EquipmentDTO
@@ -147,6 +165,12 @@ public static class EquipmentPresenterTestRunner
     {
         if (text == null || !text.Contains(expected))
             throw new Exception($"{message}: missing {expected} in {text}");
+    }
+
+    private static void AssertNear(float want, float got, float tolerance, string message)
+    {
+        if (Math.Abs(want - got) > tolerance)
+            throw new Exception($"{message}: got {got}, want {want}");
     }
 
     private static void AssertContainsUid(System.Collections.Generic.IList<EquipmentDTO> items, string uid, string message)

@@ -404,7 +404,7 @@ namespace EquipmentIdle.UI
 
         private void RefreshStuck()
         {
-            float monsterPower = MonsterPowerAtFloor(_gameState.Floor);
+            float monsterPower = EquipmentPresenter.MonsterPowerAtFloor(_gameState.Floor);
             if (_gameState.Power > 0 && _gameState.Power <= monsterPower)
                 _stuckText.text = string.Format(L10n.UIStuckPrefix, _gameState.Power, monsterPower, _gameState.Floor);
             else
@@ -415,22 +415,13 @@ namespace EquipmentIdle.UI
         private void RefreshDungeon()
         {
             if (_dungeonTitleText == null) return;
-            int floor = Mathf.Max(1, _gameState.Floor);
-            bool boss = floor % 5 == 0;
-            float monsterPower = MonsterPowerAtFloor(floor);
-            float ratio = monsterPower <= 0 ? 0 : _gameState.Power / monsterPower;
-            int gateProgress = ((floor - 1) % 5) + 1;
-            float progress = Mathf.Clamp01(gateProgress / 5f);
-            _bossProgressTarget = progress;
+            var dungeon = EquipmentPresenter.BuildDungeonState(_gameState.Floor, _gameState.Power);
+            _bossProgressTarget = dungeon.GateProgress;
 
-            _dungeonTitleText.text = boss ? $"Floor {floor} Boss Gate" : $"Floor {floor} Dungeon Run";
-            _monsterText.text = boss
-                ? $"Boss Warden\nPower {monsterPower:F1}"
-                : $"Dungeon Enemy\nPower {monsterPower:F1}";
-            _battleText.text = ratio >= 1f
-                ? $"Advantage {ratio:F1}x. Next battle should clear."
-                : $"Underpowered {ratio:F1}x. Upgrade or equip stronger loot.";
-            _bossProgressFill.style.backgroundColor = new StyleColor(boss ? new Color32(220, 38, 38, 255) : new Color32(217, 119, 6, 255));
+            _dungeonTitleText.text = dungeon.Title;
+            _monsterText.text = dungeon.Monster;
+            _battleText.text = dungeon.Battle;
+            _bossProgressFill.style.backgroundColor = new StyleColor(dungeon.IsBoss ? new Color32(220, 38, 38, 255) : new Color32(217, 119, 6, 255));
         }
 
         private void RefreshLootFeed()
@@ -771,13 +762,6 @@ namespace EquipmentIdle.UI
             button.style.marginBottom = 3;
             if (width > 0) button.style.width = width;
             return button;
-        }
-
-        private static float MonsterPowerAtFloor(int floor)
-        {
-            float p = 3f + (floor - 1) * 5f;
-            if (floor % 5 == 0) p *= 1.8f;
-            return p;
         }
 
         private static Color RarityUIColor(int r)

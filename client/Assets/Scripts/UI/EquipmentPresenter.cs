@@ -1,5 +1,6 @@
 using EquipmentIdle.Data;
 using EquipmentIdle.Net;
+using System;
 using System.Collections.Generic;
 
 namespace EquipmentIdle.UI
@@ -14,6 +15,16 @@ namespace EquipmentIdle.UI
             Id = id;
             Label = label;
         }
+    }
+
+    public struct DungeonState
+    {
+        public string Title;
+        public string Monster;
+        public string Battle;
+        public float MonsterPower;
+        public float GateProgress;
+        public bool IsBoss;
     }
 
     public static class EquipmentPresenter
@@ -113,6 +124,42 @@ namespace EquipmentIdle.UI
             return actions;
         }
 
+        public static DungeonState BuildDungeonState(int floor, float playerPower)
+        {
+            if (floor < 1) floor = 1;
+            bool boss = floor % 5 == 0;
+            float monsterPower = MonsterPowerAtFloor(floor);
+            float ratio = monsterPower <= 0f ? 0f : playerPower / monsterPower;
+            int gateProgress = ((floor - 1) % 5) + 1;
+
+            return new DungeonState
+            {
+                Title = boss ? $"Floor {floor} Boss Gate" : $"Floor {floor} Dungeon Run",
+                Monster = boss ? $"Boss Warden\nPower {monsterPower:F1}" : $"Dungeon Enemy\nPower {monsterPower:F1}",
+                Battle = ratio >= 1f
+                    ? $"Advantage {ratio:F1}x. Next battle should clear."
+                    : $"Underpowered {ratio:F1}x. Upgrade or equip stronger loot.",
+                MonsterPower = monsterPower,
+                GateProgress = Clamp01(gateProgress / 5f),
+                IsBoss = boss,
+            };
+        }
+
+        public static float MonsterPowerAtFloor(int floor)
+        {
+            if (floor <= 0) return 3f;
+            float normal;
+            if (floor <= 20)
+            {
+                normal = 3f + (floor - 1) * 5f;
+            }
+            else
+            {
+                normal = 98f * (float)Math.Pow(1.05f, floor - 20);
+            }
+            return floor % 5 == 0 ? normal * 1.8f : normal;
+        }
+
         public static List<EquipmentDTO> BulkDecomposeCandidates(IList<EquipmentDTO> bag, IList<EquipmentDTO> equipped)
         {
             var currentBySlot = new Dictionary<int, EquipmentDTO>();
@@ -174,6 +221,13 @@ namespace EquipmentIdle.UI
         private static EquipmentDTO CurrentForSlot(Dictionary<int, EquipmentDTO> currentBySlot, int slot)
         {
             return currentBySlot.TryGetValue(slot, out var eq) ? eq : null;
+        }
+
+        private static float Clamp01(float value)
+        {
+            if (value < 0f) return 0f;
+            if (value > 1f) return 1f;
+            return value;
         }
 
         private static string AffixName(string type)
