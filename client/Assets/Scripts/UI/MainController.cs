@@ -581,6 +581,7 @@ namespace EquipmentIdle.UI
         private void EquipBestBySlot()
         {
             int equippedCount = 0;
+            float expectedDelta = EquipmentPresenter.EquipBestDelta(_gameState.Bag, _gameState.Equipped);
             for (int slot = 0; slot < 8; slot++)
             {
                 EquipmentDTO current = EquippedAtSlot(slot);
@@ -602,19 +603,16 @@ namespace EquipmentIdle.UI
                     equippedCount++;
                 }
             }
-            if (equippedCount > 0) AddToast(string.Format(L10n.UIEquipBestDone, equippedCount), ToastDuration);
+            if (equippedCount > 0) AddToast($"{string.Format(L10n.UIEquipBestDone, equippedCount)}  score +{expectedDelta:F0}", ToastDuration);
         }
 
         private void DecomposeWeakItems()
         {
             int count = 0;
-            foreach (var eq in _gameState.Bag)
+            foreach (var eq in EquipmentPresenter.BulkDecomposeCandidates(_gameState.Bag, _gameState.Equipped))
             {
-                if (eq.rarity <= 1)
-                {
-                    _gameState.Decompose(eq.uid);
-                    count++;
-                }
+                _gameState.Decompose(eq.uid);
+                count++;
             }
             if (count > 0) AddToast(string.Format(L10n.UIDecomposeWeakDone, count), ToastDuration);
         }

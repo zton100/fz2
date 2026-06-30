@@ -82,6 +82,64 @@ namespace EquipmentIdle.UI
             return text;
         }
 
+        public static List<EquipmentDTO> BulkDecomposeCandidates(IList<EquipmentDTO> bag, IList<EquipmentDTO> equipped)
+        {
+            var currentBySlot = new Dictionary<int, EquipmentDTO>();
+            if (equipped != null)
+            {
+                foreach (var eq in equipped)
+                {
+                    if (eq != null) currentBySlot[eq.slot] = eq;
+                }
+            }
+
+            var candidates = new List<EquipmentDTO>();
+            if (bag == null) return candidates;
+            foreach (var eq in bag)
+            {
+                if (eq == null || eq.rarity > 1) continue;
+                float delta = Score(eq) - Score(CurrentForSlot(currentBySlot, eq.slot));
+                if (delta <= 0f) candidates.Add(eq);
+            }
+            return candidates;
+        }
+
+        public static float EquipBestDelta(IList<EquipmentDTO> bag, IList<EquipmentDTO> equipped)
+        {
+            var currentBySlot = new Dictionary<int, EquipmentDTO>();
+            if (equipped != null)
+            {
+                foreach (var eq in equipped)
+                {
+                    if (eq != null) currentBySlot[eq.slot] = eq;
+                }
+            }
+
+            float delta = 0f;
+            if (bag == null) return delta;
+            foreach (var eq in bag)
+            {
+                if (eq == null) continue;
+                var current = CurrentForSlot(currentBySlot, eq.slot);
+                float gain = Score(eq) - Score(current);
+                if (gain <= 0f) continue;
+                currentBySlot[eq.slot] = eq;
+            }
+
+            if (equipped != null)
+            {
+                foreach (var eq in equipped)
+                {
+                    if (eq != null) delta -= Score(eq);
+                }
+            }
+            foreach (var eq in currentBySlot.Values)
+            {
+                delta += Score(eq);
+            }
+            return delta;
+        }
+
         private static EquipmentDTO CurrentForSlot(Dictionary<int, EquipmentDTO> currentBySlot, int slot)
         {
             return currentBySlot.TryGetValue(slot, out var eq) ? eq : null;
