@@ -75,3 +75,47 @@ func TestRunner_DamageTalentEnablesWin(t *testing.T) {
 		t.Fatal("should advance with damage talent boost")
 	}
 }
+
+func TestRunner_BossFirstClearGrantsBaseMaterials(t *testing.T) {
+	p := makePlayer()
+	p.Floor = 5
+	p.MaxFloor = 5
+	p.Equipped[data.SlotWeapon] = &model.Equipment{
+		BaseStats: map[data.AffixType]float64{data.ATStrength: 1000},
+	}
+	gen := loot.NewGenerator(rand.New(rand.NewSource(1)))
+	r := NewRunner(p, nil, loot.NewDropTable(gen))
+
+	rewardFloor := 0
+	rewardAmount := 0
+	r.BossRewardCallback = func(floor int, amount int) {
+		rewardFloor = floor
+		rewardAmount = amount
+	}
+
+	r.Tick()
+
+	if p.Materials[data.MatBase] != 10 {
+		t.Fatalf("base materials = %d, want 10", p.Materials[data.MatBase])
+	}
+	if rewardFloor != 5 || rewardAmount != 10 {
+		t.Fatalf("reward callback floor=%d amount=%d, want floor=5 amount=10", rewardFloor, rewardAmount)
+	}
+}
+
+func TestRunner_ReclearingOldBossDoesNotGrantMaterials(t *testing.T) {
+	p := makePlayer()
+	p.Floor = 5
+	p.MaxFloor = 10
+	p.Equipped[data.SlotWeapon] = &model.Equipment{
+		BaseStats: map[data.AffixType]float64{data.ATStrength: 1000},
+	}
+	gen := loot.NewGenerator(rand.New(rand.NewSource(1)))
+	r := NewRunner(p, nil, loot.NewDropTable(gen))
+
+	r.Tick()
+
+	if p.Materials[data.MatBase] != 0 {
+		t.Fatalf("base materials = %d, want 0 for old boss reclear", p.Materials[data.MatBase])
+	}
+}

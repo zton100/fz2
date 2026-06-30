@@ -119,6 +119,10 @@ func (h *Hub) handleLogin(sess *Session, env protocol.Envelope) {
 		h.pushFloor(sess, newFloor)
 		h.pushTalents(sess, player)
 	}
+	runner.BossRewardCallback = func(floor int, amount int) {
+		h.pushMaterials(sess, player)
+		h.pushCraftResult(sess, true, fmt.Sprintf("Boss 首通奖励：基础材料 +%d", amount), "", 0)
+	}
 	sess.runner = runner
 	go h.battleLoop(sess, runner)
 }

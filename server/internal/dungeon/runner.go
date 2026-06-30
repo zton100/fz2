@@ -13,13 +13,15 @@ type PowerFunc func(*model.Player) float64
 
 // Runner 单玩家地下城推进器。
 type Runner struct {
-	player   *model.Player
-	powerFn  PowerFunc
-	drop     *loot.DropTable
+	player  *model.Player
+	powerFn PowerFunc
+	drop    *loot.DropTable
 	// LootCallback 每次掉落时回调（用于 ws 层 push 给客户端）。
 	LootCallback func(eq *model.Equipment)
 	// FloorCallback 每次推进层数时回调。
 	FloorCallback func(newFloor int)
+	// BossRewardCallback 首次击败历史最高 Boss 层时回调。
+	BossRewardCallback func(floor int, amount int)
 }
 
 // NewRunner 创建推进器。powerFn 传 nil 时默认用统一战力函数（含 damage 天赋）。
@@ -50,9 +52,22 @@ func (r *Runner) Tick() {
 			r.LootCallback(eq)
 		}
 	}
+	if reward := BossFirstClearReward(r.player.Floor, r.player.MaxFloor); reward > 0 {
+		r.player.AddMaterial(data.MatBase, reward)
+		if r.BossRewardCallback != nil {
+			r.BossRewardCallback(r.player.Floor, reward)
+		}
+	}
 	// 推进下一层（同时更新 MaxFloor）
 	reincarnation.AdvanceFloor(r.player)
 	if r.FloorCallback != nil {
 		r.FloorCallback(r.player.Floor)
 	}
+}
+
+func BossFirstClearReward(floor int, maxFloor int) int {
+	if floor <= 0 || floor%5 != 0 || floor < maxFloor {
+		return 0
+	}
+	return floor * 2
 }

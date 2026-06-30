@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"equipment-idle-server/internal/data"
+	"equipment-idle-server/internal/dungeon"
 	"equipment-idle-server/internal/loot"
 	"equipment-idle-server/internal/model"
 	"equipment-idle-server/internal/reincarnation"
@@ -60,6 +61,9 @@ func Calc(
 		if eq != nil {
 			p.AddEquipment(eq)
 			result.LootCount++
+		}
+		if reward := dungeon.BossFirstClearReward(p.Floor, p.MaxFloor); reward > 0 {
+			p.AddMaterial(data.MatBase, reward)
 		}
 		reincarnation.AdvanceFloor(p)
 		result.FloorsAdvanced++

@@ -78,3 +78,20 @@ func TestCalc_AdvancesFloor(t *testing.T) {
 		t.Fatal("should report floor advances")
 	}
 }
+
+func TestCalc_BossFirstClearGrantsBaseMaterials(t *testing.T) {
+	p := model.NewPlayer("t")
+	p.Floor = 5
+	p.MaxFloor = 5
+	p.Equipped[data.SlotWeapon] = &model.Equipment{
+		BaseStats: map[data.AffixType]float64{data.ATStrength: 100000},
+	}
+	gen := loot.NewGenerator(rand.New(rand.NewSource(1)))
+	drop := loot.NewDropTable(gen)
+
+	Calc(p, nil, drop, 2*time.Second, 0, 0, 0)
+
+	if p.Materials[data.MatBase] != 10 {
+		t.Fatalf("base materials = %d, want 10", p.Materials[data.MatBase])
+	}
+}
