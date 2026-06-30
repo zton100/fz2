@@ -160,6 +160,30 @@ namespace EquipmentIdle.UI
             return floor % 5 == 0 ? normal * 1.8f : normal;
         }
 
+        public static string BuildNextGoal(int floor, float playerPower, bool canReincarn, int bagCount, int baseMaterials)
+        {
+            if (canReincarn)
+            {
+                return "Goal: Reincarnate to claim souls and grow permanent talents.";
+            }
+
+            float monsterPower = MonsterPowerAtFloor(floor);
+            if (playerPower <= 0f)
+            {
+                return "Goal: Connect and sync your hero to start auto battle.";
+            }
+
+            if (playerPower < monsterPower)
+            {
+                if (bagCount > 0) return "Goal: Equip stronger loot or upgrade key gear to break this floor.";
+                if (baseMaterials >= 10) return "Goal: Compose new gear, then equip upgrades to break this floor.";
+                return "Goal: Wait for drops or decompose weak gear to fund upgrades.";
+            }
+
+            int nextBoss = floor + (5 - ((floor - 1) % 5));
+            return $"Goal: Auto battling toward floor {nextBoss} boss gate.";
+        }
+
         public static List<EquipmentDTO> BulkDecomposeCandidates(IList<EquipmentDTO> bag, IList<EquipmentDTO> equipped)
         {
             var currentBySlot = new Dictionary<int, EquipmentDTO>();

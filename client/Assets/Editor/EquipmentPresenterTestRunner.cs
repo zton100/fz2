@@ -18,6 +18,7 @@ public static class EquipmentPresenterTestRunner
             EstimatesEquipBestDeltaAcrossSlots();
             OffersDetailActionsByEquipmentLocation();
             DescribesDungeonStateWithServerMonsterCurve();
+            RecommendsNextGoalFromProgressState();
             Debug.Log("[EquipmentPresenterTestRunner] OK");
             EditorApplication.Exit(0);
         }
@@ -123,6 +124,18 @@ public static class EquipmentPresenterTestRunner
 
         var clear = EquipmentPresenter.BuildDungeonState(2, 20f);
         AssertContains(clear.Battle, "Advantage", "strong hero should show winning state");
+    }
+
+    private static void RecommendsNextGoalFromProgressState()
+    {
+        string reincarn = EquipmentPresenter.BuildNextGoal(10, 100f, true, 0, 0);
+        AssertContains(reincarn, "Reincarnate", "reincarnation should be the highest priority goal");
+
+        string blocked = EquipmentPresenter.BuildNextGoal(4, 5f, false, 3, 12);
+        AssertContains(blocked, "Equip", "underpowered hero with bag upgrades should be guided to equipment");
+
+        string clearing = EquipmentPresenter.BuildNextGoal(2, 30f, false, 0, 0);
+        AssertContains(clearing, "Auto battling", "strong hero should show active progress");
     }
 
     private static EquipmentDTO Equipment(string uid, int slot, int rarity, int upgrade, params AffixData[] affixes)

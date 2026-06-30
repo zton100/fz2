@@ -22,6 +22,7 @@ namespace EquipmentIdle.UI
         private Label _dungeonTitleText;
         private Label _monsterText;
         private Label _battleText;
+        private Label _goalText;
         private Label _lootFeedText;
         private Label _toastText;
         private Label _offlineText;
@@ -64,6 +65,7 @@ namespace EquipmentIdle.UI
             _gameState.OnPowerReceived += OnPower;
             _gameState.OnLootReceived += OnLoot;
             _gameState.OnFloorReceived += OnFloor;
+            _gameState.OnMaterialsReceived += OnMaterials;
             _gameState.OnOfflineResultReceived += OnOfflineResult;
             _gameState.OnCraftResult += OnCraftResult;
             _gameState.OnTalentsReceived += OnTalents;
@@ -80,6 +82,7 @@ namespace EquipmentIdle.UI
             _gameState.OnPowerReceived -= OnPower;
             _gameState.OnLootReceived -= OnLoot;
             _gameState.OnFloorReceived -= OnFloor;
+            _gameState.OnMaterialsReceived -= OnMaterials;
             _gameState.OnOfflineResultReceived -= OnOfflineResult;
             _gameState.OnCraftResult -= OnCraftResult;
             _gameState.OnTalentsReceived -= OnTalents;
@@ -101,6 +104,7 @@ namespace EquipmentIdle.UI
             KeepSelectedIfPresent();
             RefreshEquipmentLists();
             RefreshDetail();
+            RefreshDungeon();
         }
 
         private void OnPower(float power)
@@ -150,6 +154,12 @@ namespace EquipmentIdle.UI
             _offlinePanel.style.display = DisplayStyle.Flex;
         }
 
+        private void OnMaterials(Dictionary<string, int> materials)
+        {
+            RefreshMaterials();
+            RefreshDungeon();
+        }
+
         private void OnCraftResult(CraftResultData cr)
         {
             AddToast(cr.msg, ToastDuration);
@@ -163,6 +173,7 @@ namespace EquipmentIdle.UI
             }
             _prevCanReincarn = canReincarn;
             RefreshProgression();
+            RefreshDungeon();
         }
 
         private void BuildUI()
@@ -317,12 +328,14 @@ namespace EquipmentIdle.UI
             run.style.marginRight = 16;
             _dungeonTitleText = Text("", 24, true);
             _battleText = Text("", 16, true);
+            _goalText = Text("", 13, false);
             run.Add(_dungeonTitleText);
             run.Add(_battleText);
+            run.Add(_goalText);
 
             var progressFrame = new VisualElement();
             progressFrame.style.height = 18;
-            progressFrame.style.marginTop = 14;
+            progressFrame.style.marginTop = 10;
             progressFrame.style.marginBottom = 10;
             progressFrame.style.backgroundColor = new StyleColor(new Color32(12, 16, 14, 255));
             progressFrame.style.borderTopLeftRadius = 5;
@@ -421,7 +434,18 @@ namespace EquipmentIdle.UI
             _dungeonTitleText.text = dungeon.Title;
             _monsterText.text = dungeon.Monster;
             _battleText.text = dungeon.Battle;
+            _goalText.text = EquipmentPresenter.BuildNextGoal(
+                _gameState.Floor,
+                _gameState.Power,
+                _gameState.CanReincarn,
+                _gameState.Bag.Count,
+                BaseMaterialCount());
             _bossProgressFill.style.backgroundColor = new StyleColor(dungeon.IsBoss ? new Color32(220, 38, 38, 255) : new Color32(217, 119, 6, 255));
+        }
+
+        private int BaseMaterialCount()
+        {
+            return _gameState.Materials.TryGetValue("base_mat", out var value) ? value : 0;
         }
 
         private void RefreshLootFeed()
