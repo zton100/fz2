@@ -15,6 +15,8 @@ namespace EquipmentIdle.UI
         private Label _syncText;
         private Label _powerText;
         private Label _stuckText;
+        private Label _floorText;
+        private Label _soulsText;
         private Label _materialsText;
         private Label _reincarnText;
         private Label _talentsText;
@@ -30,6 +32,8 @@ namespace EquipmentIdle.UI
         private Label _stageMonsterNameText;
         private Label _stageMonsterPowerText;
         private Label _stageStatusText;
+        private Label _objectiveCardText;
+        private Label _bossProgressCardText;
         private Label _lootFeedText;
         private VisualElement _lootFeedContent;
         private Label _toastText;
@@ -68,6 +72,18 @@ namespace EquipmentIdle.UI
         private static readonly string[] TalentKeys = { "damage", "quality", "drop", "offline_gain" };
         private static readonly string[] TalentNames = { "伤害", "品质", "掉落", "离线" };
         private static readonly int[] TalentMax = { 10, 3, 10, 5 };
+        private static readonly Color32 RootBg = new Color32(8, 10, 10, 255);
+        private static readonly Color32 PanelBg = new Color32(20, 21, 19, 255);
+        private static readonly Color32 PanelBgWarm = new Color32(30, 25, 20, 255);
+        private static readonly Color32 PanelBorder = new Color32(83, 70, 49, 255);
+        private static readonly Color32 TextMain = new Color32(238, 229, 207, 255);
+        private static readonly Color32 TextMuted = new Color32(178, 165, 139, 255);
+        private static readonly Color32 ButtonDefault = new Color32(67, 49, 31, 255);
+        private static readonly Color32 ButtonEquip = new Color32(48, 97, 38, 255);
+        private static readonly Color32 ButtonCraft = new Color32(130, 84, 22, 255);
+        private static readonly Color32 ButtonReforge = new Color32(28, 76, 120, 255);
+        private static readonly Color32 ButtonDanger = new Color32(110, 36, 30, 255);
+        private static readonly Color32 ButtonAscend = new Color32(116, 55, 22, 255);
 
         private void Start()
         {
@@ -218,168 +234,160 @@ namespace EquipmentIdle.UI
         {
             var panelSettings = ScriptableObject.CreateInstance<PanelSettings>();
             panelSettings.scaleMode = PanelScaleMode.ScaleWithScreenSize;
-            panelSettings.referenceResolution = new Vector2Int(1280, 720);
+            panelSettings.referenceResolution = new Vector2Int(945, 1672);
 
             var doc = gameObject.AddComponent<UIDocument>();
             doc.panelSettings = panelSettings;
 
             var root = doc.rootVisualElement;
             root.style.flexGrow = 1;
-            root.style.backgroundColor = new StyleColor(new Color32(20, 19, 17, 255));
+            root.style.backgroundColor = new StyleColor(RootBg);
             root.style.paddingLeft = 16;
             root.style.paddingRight = 16;
             root.style.paddingTop = 12;
             root.style.paddingBottom = 12;
 
-            var header = Panel("header");
-            header.style.height = 96;
+            BuildTopHud(root);
+
+            BuildDungeonPanel(root);
+
+            BuildMobileStatusCards(root);
+            BuildMobileFeatureCards(root);
+            BuildMobileDetailPanel(root);
+
+            BuildBottomBar(root);
+
+            BuildOfflinePanel(root);
+        }
+
+        private void BuildTopHud(VisualElement root)
+        {
+            var header = Panel("top-hud");
+            header.style.height = 108;
             header.style.flexDirection = FlexDirection.Row;
             header.style.alignItems = Align.Center;
             header.style.marginBottom = 10;
+            header.style.paddingTop = 6;
+            header.style.paddingBottom = 6;
             root.Add(header);
 
-            var titleCol = Column(360);
-            titleCol.Add(Text("装备放置", 24, true));
-            _statusText = Text("", 14, false);
-            _syncText = Text("", 14, false);
+            var titleCol = Column(180);
+            var title = Text("装备放置", 28, true);
+            title.style.color = new StyleColor(new Color32(244, 202, 121, 255));
+            titleCol.Add(title);
+            _statusText = Text("", 13, true);
             titleCol.Add(_statusText);
-            titleCol.Add(_syncText);
             header.Add(titleCol);
 
-            var powerCol = Column(300);
-            _powerText = Text("", 20, true);
-            _stuckText = Text("", 13, false);
-            _stuckText.style.color = new StyleColor(new Color32(248, 113, 113, 255));
-            powerCol.Add(_powerText);
-            powerCol.Add(_stuckText);
-            header.Add(powerCol);
+            _floorText = HudCell(header, "层数", "1", 110);
+            _powerText = HudCell(header, "战力", "0", 170);
+            _soulsText = HudCell(header, "魂点", "0", 145);
+            _syncText = HudCell(header, "账号", "hero", 160);
+            _powerText.style.color = new StyleColor(new Color32(255, 171, 64, 255));
 
             var loginCol = Row();
             loginCol.style.flexGrow = 1;
             loginCol.style.justifyContent = Justify.FlexEnd;
             _accountInput = new TextField { value = "hero" };
-            _accountInput.style.width = 260;
-            _accountInput.style.height = 38;
+            _accountInput.style.width = 170;
+            _accountInput.style.height = 34;
             loginCol.Add(_accountInput);
             loginCol.Add(ActionButton(L10n.UIConnect, () =>
             {
                 string acc = _accountInput.value.Trim();
                 if (string.IsNullOrEmpty(acc)) acc = "hero";
-                _statusText.text = "状态：" + L10n.UIStatusConnecting;
+                _statusText.text = "在线状态：连接中...";
                 _gameState.ConnectAndLogin(acc);
-            }, 110));
+            }, 82, ButtonEquip));
             header.Add(loginCol);
+        }
 
-            BuildDungeonPanel(root);
+        private static Label HudCell(VisualElement parent, string label, string value, float width)
+        {
+            var cell = new VisualElement();
+            cell.style.width = width;
+            cell.style.marginRight = 10;
+            cell.style.paddingLeft = 10;
+            cell.style.paddingRight = 10;
+            cell.style.paddingTop = 4;
+            cell.style.paddingBottom = 4;
+            cell.style.backgroundColor = new StyleColor(new Color32(13, 14, 13, 255));
+            cell.style.borderBottomWidth = 1;
+            cell.style.borderBottomColor = new StyleColor(PanelBorder);
 
-            var body = Row();
-            body.style.flexGrow = 1;
-            root.Add(body);
+            var labelText = Text(label, 11, true);
+            labelText.style.color = new StyleColor(TextMuted);
+            var valueText = Text(value, 18, true);
+            cell.Add(labelText);
+            cell.Add(valueText);
+            parent.Add(cell);
+            return valueText;
+        }
 
-            var left = Panel("equipped");
-            left.style.width = 330;
-            body.Add(left);
-            left.Add(SectionTitle(string.Format(L10n.UIEquipped, 0)));
-            var equippedScroll = new ScrollView();
-            equippedScroll.style.flexGrow = 1;
-            _equippedContent = equippedScroll.contentContainer;
-            left.Add(equippedScroll);
-            left.Add(ActionButton(L10n.UIEquipBest, EquipBestBySlot));
+        private void BuildBottomBar(VisualElement root)
+        {
+            var bottom = Panel("bottom-bar");
+            bottom.style.height = 112;
+            bottom.style.marginTop = 10;
+            bottom.style.flexDirection = FlexDirection.Column;
+            root.Add(bottom);
 
-            var middle = Panel("bag");
-            middle.style.flexGrow = 1;
-            middle.style.marginLeft = 10;
-            middle.style.marginRight = 10;
-            body.Add(middle);
-            var bagHeader = Row();
-            bagHeader.Add(SectionTitle(L10n.UIBackpack));
-            bagHeader.Add(ActionButton(L10n.UIDecomposeWeak, DecomposeWeakItems, 160));
-            middle.Add(bagHeader);
-            var bagScroll = new ScrollView();
-            bagScroll.style.flexGrow = 1;
-            _bagContent = bagScroll.contentContainer;
-            middle.Add(bagScroll);
+            var log = new VisualElement();
+            log.style.height = 38;
+            log.style.paddingLeft = 8;
+            log.style.paddingRight = 8;
+            log.style.justifyContent = Justify.Center;
+            _toastText = Text("", 13, false);
+            _toastText.style.color = new StyleColor(new Color32(244, 202, 121, 255));
+            log.Add(_toastText);
+            bottom.Add(log);
 
-            var right = Panel("details");
-            right.style.width = 370;
-            body.Add(right);
-            right.Add(SectionTitle("详情"));
-            _detailText = Text("", 14, false);
-            _detailText.style.flexGrow = 1;
-            right.Add(_detailText);
-            _detailActions = new VisualElement();
-            _detailActions.style.flexDirection = FlexDirection.Row;
-            _detailActions.style.flexWrap = Wrap.Wrap;
-            _detailActions.style.marginBottom = 8;
-            right.Add(_detailActions);
-            _materialsText = Text("", 13, false);
-            right.Add(_materialsText);
-            right.Add(SectionTitle(L10n.UIWorkshop));
-            var composeGrid = new VisualElement();
-            composeGrid.style.flexDirection = FlexDirection.Row;
-            composeGrid.style.flexWrap = Wrap.Wrap;
-            composeGrid.style.marginBottom = 8;
-            for (int s = 0; s < 8; s++)
-            {
-                int slot = s;
-                composeGrid.Add(ActionButton(L10n.SlotName(slot), () => _gameState.Compose(slot), 82));
-            }
-            right.Add(composeGrid);
-            right.Add(SectionTitle(L10n.UIReincarnation));
-            _reincarnText = Text("", 13, false);
-            right.Add(_reincarnText);
-            right.Add(ActionButton(L10n.UIReincarnate, () =>
-            {
-                if (_gameState.CanReincarn) _gameState.Reincarn();
-            }));
-            _talentsText = Text("", 13, false);
-            right.Add(_talentsText);
-            _talentActions = new VisualElement();
-            _talentActions.style.flexDirection = FlexDirection.Row;
-            _talentActions.style.flexWrap = Wrap.Wrap;
-            _talentActions.style.marginTop = 4;
-            right.Add(_talentActions);
+            var nav = Row();
+            nav.style.flexGrow = 1;
+            nav.style.alignItems = Align.Stretch;
+            bottom.Add(nav);
 
-            _toastText = Text("", 14, false);
-            _toastText.style.height = 58;
-            _toastText.style.marginTop = 10;
-            root.Add(_toastText);
+            nav.Add(NavButton("战斗", () => AddToast("自动战斗中，击败怪物推进层数。", ToastDuration), ButtonCraft));
+            nav.Add(NavButton("背包", () => AddToast($"背包：{_gameState.Bag.Count}/120", ToastDuration), ButtonDefault));
+            nav.Add(NavButton("锻造", () => AddToast("锻造：选择装备后可强化、重铸、分解。", ToastDuration), ButtonDanger));
+            nav.Add(NavButton("天赋", () => AddToast(_gameState.CanReincarn ? "可以转生，领取魂点提升天赋。" : "第 10 层后可转生。", ToastDuration), ButtonAscend));
+        }
 
-            BuildOfflinePanel(root);
+        private static Button NavButton(string label, System.Action action, Color32 color)
+        {
+            var button = ActionButton(label, action, -1, color);
+            button.style.flexGrow = 1;
+            button.style.height = Length.Percent(100);
+            button.style.fontSize = 20;
+            button.style.unityFontStyleAndWeight = FontStyle.Bold;
+            button.style.marginLeft = 2;
+            button.style.marginRight = 2;
+            return button;
         }
 
         private void BuildDungeonPanel(VisualElement root)
         {
             var dungeon = Panel("dungeon");
             _dungeonPanel = dungeon;
-            dungeon.style.height = 190;
+            dungeon.style.height = 560;
             dungeon.style.marginBottom = 10;
-            dungeon.style.flexDirection = FlexDirection.Row;
-            dungeon.style.backgroundColor = new StyleColor(new Color32(36, 33, 25, 255));
+            dungeon.style.flexDirection = FlexDirection.Column;
+            dungeon.style.backgroundColor = new StyleColor(PanelBgWarm);
             root.Add(dungeon);
 
-            var hero = Column(330);
-            hero.style.marginRight = 16;
-            hero.Add(Text("战斗舞台", 12, true));
-            hero.Add(BuildBattleStage());
-            dungeon.Add(hero);
-
-            var run = new VisualElement();
-            run.style.flexGrow = 1;
-            run.style.flexDirection = FlexDirection.Column;
-            run.style.marginRight = 16;
+            var bossRow = Row();
+            bossRow.style.marginBottom = 8;
             _dungeonTitleText = Text("", 24, true);
-            _battleText = Text("", 16, true);
-            _goalText = Text("", 13, false);
-            _bossHintText = Text("", 13, true);
-            run.Add(_dungeonTitleText);
-            run.Add(_battleText);
-            run.Add(_goalText);
+            _dungeonTitleText.style.flexGrow = 1;
+            bossRow.Add(_dungeonTitleText);
+            _monsterText = Text("", 16, true);
+            _monsterText.style.unityTextAlign = TextAnchor.MiddleRight;
+            bossRow.Add(_monsterText);
+            dungeon.Add(bossRow);
 
             var progressFrame = new VisualElement();
-            progressFrame.style.height = 18;
-            progressFrame.style.marginTop = 10;
-            progressFrame.style.marginBottom = 10;
+            progressFrame.style.height = 26;
+            progressFrame.style.marginBottom = 12;
             progressFrame.style.backgroundColor = new StyleColor(new Color32(12, 16, 14, 255));
             progressFrame.style.borderTopLeftRadius = 5;
             progressFrame.style.borderTopRightRadius = 5;
@@ -387,31 +395,158 @@ namespace EquipmentIdle.UI
             progressFrame.style.borderBottomRightRadius = 5;
             _bossProgressFill = new VisualElement();
             _bossProgressFill.style.height = Length.Percent(100);
-            _bossProgressFill.style.backgroundColor = new StyleColor(new Color32(217, 119, 6, 255));
+            _bossProgressFill.style.backgroundColor = new StyleColor(new Color32(234, 88, 12, 255));
             _bossProgressFill.style.borderTopLeftRadius = 5;
             _bossProgressFill.style.borderTopRightRadius = 5;
             _bossProgressFill.style.borderBottomLeftRadius = 5;
             _bossProgressFill.style.borderBottomRightRadius = 5;
             progressFrame.Add(_bossProgressFill);
-            run.Add(progressFrame);
-            run.Add(_bossHintText);
-            dungeon.Add(run);
+            dungeon.Add(progressFrame);
 
-            var monster = Column(260);
-            monster.style.marginRight = 16;
-            monster.Add(Text("遭遇", 12, true));
-            _monsterText = Text("", 17, true);
-            monster.Add(_monsterText);
-            dungeon.Add(monster);
+            dungeon.Add(BuildBattleStage());
 
-            var loot = Column(260);
-            _lootPanel = loot;
-            loot.style.marginRight = 0;
-            loot.Add(Text("最近掉落", 12, true));
+            var combatFooter = Row();
+            combatFooter.style.marginTop = 10;
+            combatFooter.style.alignItems = Align.FlexStart;
+            _battleText = Text("", 16, true);
+            _stuckText = Text("", 13, false);
+            _stuckText.style.color = new StyleColor(new Color32(248, 113, 113, 255));
+            _goalText = Text("", 13, false);
+            _bossHintText = Text("", 13, true);
+            var left = new VisualElement();
+            left.style.flexGrow = 1;
+            left.Add(_battleText);
+            left.Add(_stuckText);
+            left.Add(_goalText);
+            var right = new VisualElement();
+            right.style.width = 300;
+            right.Add(_bossHintText);
+            combatFooter.Add(left);
+            combatFooter.Add(right);
+            dungeon.Add(combatFooter);
+        }
+
+        private void BuildMobileStatusCards(VisualElement root)
+        {
+            var row = Row();
+            row.style.height = 150;
+            row.style.marginBottom = 10;
+            root.Add(row);
+
+            _objectiveCardText = StatusCard(row, "当前目标", "连接后开始自动战斗。");
+            _bossProgressCardText = StatusCard(row, "BOSS 进度", "每 5 层出现 Boss。");
+            var lootCard = Panel("recent-loot-card");
+            _lootPanel = lootCard;
+            lootCard.style.flexGrow = 1;
+            lootCard.style.marginLeft = 10;
+            lootCard.Add(SectionTitle("最近掉落"));
             _lootFeedContent = new VisualElement();
             _lootFeedContent.style.flexGrow = 1;
-            loot.Add(_lootFeedContent);
-            dungeon.Add(loot);
+            lootCard.Add(_lootFeedContent);
+            row.Add(lootCard);
+        }
+
+        private Label StatusCard(VisualElement parent, string title, string initialText)
+        {
+            var card = Panel(title);
+            card.style.flexGrow = 1;
+            card.style.marginRight = 10;
+            card.Add(SectionTitle(title));
+            var label = Text(initialText, 15, true);
+            label.style.flexGrow = 1;
+            card.Add(label);
+            parent.Add(card);
+            return label;
+        }
+
+        private void BuildMobileFeatureCards(VisualElement root)
+        {
+            var row = Row();
+            row.style.height = 210;
+            row.style.marginBottom = 10;
+            root.Add(row);
+
+            var equipped = Panel("mobile-equipped");
+            equipped.style.flexGrow = 1.35f;
+            equipped.style.marginRight = 10;
+            equipped.Add(SectionTitle("穿戴装备"));
+            var equippedScroll = new ScrollView();
+            equippedScroll.style.flexGrow = 1;
+            _equippedContent = equippedScroll.contentContainer;
+            equipped.Add(equippedScroll);
+            row.Add(equipped);
+
+            var bag = Panel("mobile-bag");
+            bag.style.flexGrow = 0.9f;
+            bag.style.marginRight = 10;
+            bag.Add(SectionTitle("背包"));
+            var bagScroll = new ScrollView();
+            bagScroll.style.flexGrow = 1;
+            _bagContent = bagScroll.contentContainer;
+            bag.Add(bagScroll);
+            row.Add(bag);
+
+            var craft = Panel("mobile-craft");
+            craft.style.flexGrow = 0.9f;
+            craft.style.marginRight = 10;
+            craft.Add(SectionTitle("强化"));
+            craft.Add(Text("选择装备后可强化", 14, false));
+            craft.Add(ActionButton(L10n.UIEquipBest, EquipBestBySlot, -1, ButtonEquip));
+            craft.Add(ActionButton(L10n.UIDecomposeWeak, DecomposeWeakItems, -1, ButtonDanger));
+            row.Add(craft);
+
+            var mats = Panel("mobile-materials");
+            mats.style.flexGrow = 0.9f;
+            mats.Add(SectionTitle("材料摘要"));
+            _materialsText = Text("", 14, false);
+            _materialsText.style.flexGrow = 1;
+            mats.Add(_materialsText);
+            row.Add(mats);
+        }
+
+        private void BuildMobileDetailPanel(VisualElement root)
+        {
+            var detail = Panel("mobile-detail");
+            detail.style.flexGrow = 1;
+            detail.style.marginBottom = 0;
+            root.Add(detail);
+
+            detail.Add(SectionTitle("装备详情"));
+            _detailText = Text("", 18, false);
+            _detailText.style.flexGrow = 1;
+            detail.Add(_detailText);
+
+            _detailActions = new VisualElement();
+            _detailActions.style.flexDirection = FlexDirection.Row;
+            _detailActions.style.flexWrap = Wrap.Wrap;
+            _detailActions.style.marginTop = 8;
+            _detailActions.style.marginBottom = 8;
+            detail.Add(_detailActions);
+
+            var composeGrid = new VisualElement();
+            composeGrid.style.flexDirection = FlexDirection.Row;
+            composeGrid.style.flexWrap = Wrap.Wrap;
+            composeGrid.style.marginBottom = 8;
+            for (int s = 0; s < 8; s++)
+            {
+                int slot = s;
+                composeGrid.Add(ActionButton(L10n.SlotName(slot), () => _gameState.Compose(slot), 100, ButtonCraft));
+            }
+            detail.Add(composeGrid);
+
+            _reincarnText = Text("", 13, false);
+            detail.Add(_reincarnText);
+            detail.Add(ActionButton(L10n.UIReincarnate, () =>
+            {
+                if (_gameState.CanReincarn) _gameState.Reincarn();
+            }, -1, ButtonAscend));
+            _talentsText = Text("", 13, false);
+            detail.Add(_talentsText);
+            _talentActions = new VisualElement();
+            _talentActions.style.flexDirection = FlexDirection.Row;
+            _talentActions.style.flexWrap = Wrap.Wrap;
+            _talentActions.style.marginTop = 4;
+            detail.Add(_talentActions);
         }
 
         private VisualElement BuildBattleStage()
@@ -423,7 +558,15 @@ namespace EquipmentIdle.UI
             stage.style.paddingRight = 8;
             stage.style.paddingTop = 8;
             stage.style.paddingBottom = 8;
-            stage.style.backgroundColor = new StyleColor(new Color32(24, 27, 23, 255));
+            stage.style.backgroundColor = new StyleColor(new Color32(15, 17, 16, 255));
+            stage.style.borderTopWidth = 1;
+            stage.style.borderRightWidth = 1;
+            stage.style.borderBottomWidth = 1;
+            stage.style.borderLeftWidth = 1;
+            stage.style.borderTopColor = new StyleColor(new Color32(55, 47, 34, 255));
+            stage.style.borderRightColor = new StyleColor(new Color32(55, 47, 34, 255));
+            stage.style.borderBottomColor = new StyleColor(new Color32(55, 47, 34, 255));
+            stage.style.borderLeftColor = new StyleColor(new Color32(55, 47, 34, 255));
             stage.style.borderTopLeftRadius = 6;
             stage.style.borderTopRightRadius = 6;
             stage.style.borderBottomLeftRadius = 6;
@@ -477,7 +620,7 @@ namespace EquipmentIdle.UI
             card.style.paddingRight = 8;
             card.style.paddingTop = 6;
             card.style.paddingBottom = 6;
-            card.style.backgroundColor = new StyleColor(new Color32(42, 39, 33, 255));
+            card.style.backgroundColor = new StyleColor(new Color32(25, 24, 21, 255));
             card.style.borderBottomWidth = 3;
             card.style.borderBottomColor = accent;
             card.style.borderTopLeftRadius = 5;
@@ -552,8 +695,10 @@ namespace EquipmentIdle.UI
         private void RefreshHeader()
         {
             string status = _gameState.IsConnected ? L10n.UIStatusConnected : L10n.UIStatusDisconnected;
-            _statusText.text = "状态：" + status;
-            _syncText.text = $"账号：{_gameState.Account}   层数：{_gameState.Floor}   魂点：{_gameState.Souls}";
+            _statusText.text = "在线状态：" + status;
+            _syncText.text = string.IsNullOrEmpty(_gameState.Account) ? "hero" : _gameState.Account;
+            if (_floorText != null) _floorText.text = $"{_gameState.Floor} 层";
+            if (_soulsText != null) _soulsText.text = _gameState.Souls.ToString();
             _powerText.text = string.Format(L10n.UIPowerLabel, _gameState.Power);
             RefreshDungeon();
         }
@@ -579,12 +724,15 @@ namespace EquipmentIdle.UI
             _battleText.text = dungeon.Battle;
             _bossHintText.text = dungeon.BossHint;
             RefreshBattleStage();
-            _goalText.text = EquipmentPresenter.BuildNextGoal(
+            string nextGoal = EquipmentPresenter.BuildNextGoal(
                 _gameState.Floor,
                 _gameState.Power,
                 _gameState.CanReincarn,
                 _gameState.Bag.Count,
                 BaseMaterialCount());
+            _goalText.text = nextGoal;
+            if (_objectiveCardText != null) _objectiveCardText.text = nextGoal.Replace("目标：", "");
+            if (_bossProgressCardText != null) _bossProgressCardText.text = dungeon.BossHint;
             _bossProgressFill.style.backgroundColor = new StyleColor(dungeon.IsBoss ? new Color32(220, 38, 38, 255) : new Color32(217, 119, 6, 255));
         }
 
@@ -627,9 +775,16 @@ namespace EquipmentIdle.UI
         private VisualElement LootFeedRow(EquipmentDTO eq)
         {
             var row = Row();
-            row.style.backgroundColor = new StyleColor(new Color32(42, 38, 31, 255));
-            row.style.borderLeftWidth = 4;
+            int rarity = eq != null ? eq.rarity : 0;
+            row.style.backgroundColor = new StyleColor(RarityRowBackground(rarity));
+            row.style.borderLeftWidth = 5;
             row.style.borderLeftColor = RarityUIColor(eq != null ? eq.rarity : 0);
+            row.style.borderTopWidth = 1;
+            row.style.borderRightWidth = 1;
+            row.style.borderBottomWidth = 1;
+            row.style.borderTopColor = new StyleColor(RarityFrameColor(rarity));
+            row.style.borderRightColor = new StyleColor(RarityFrameColor(rarity));
+            row.style.borderBottomColor = new StyleColor(RarityFrameColor(rarity));
             row.style.paddingLeft = 6;
             row.style.paddingRight = 6;
             row.style.paddingTop = 3;
@@ -654,8 +809,8 @@ namespace EquipmentIdle.UI
             if (_dungeonPanel != null)
             {
                 float pulse = Mathf.Clamp01((_battlePulseUntil - Time.realtimeSinceStartup) / 0.7f);
-                Color baseColor = new Color32(36, 33, 25, 255);
-                Color hitColor = new Color32(92, 64, 35, 255);
+                Color baseColor = PanelBgWarm;
+                Color hitColor = new Color32(94, 47, 25, 255);
                 _dungeonPanel.style.backgroundColor = new StyleColor(Color.Lerp(baseColor, hitColor, pulse));
                 if (_stageSlash != null) _stageSlash.style.opacity = 0.65f + pulse * 0.35f;
             }
@@ -696,9 +851,15 @@ namespace EquipmentIdle.UI
         private VisualElement EquipmentRow(string slot, string label, System.Action select, System.Action primary, System.Action secondary, int rarity)
         {
             var row = Row();
-            row.style.backgroundColor = new StyleColor(new Color32(48, 43, 36, 255));
-            row.style.borderLeftWidth = 4;
+            row.style.backgroundColor = new StyleColor(RarityRowBackground(rarity));
+            row.style.borderLeftWidth = 5;
             row.style.borderLeftColor = RarityUIColor(rarity);
+            row.style.borderTopWidth = 1;
+            row.style.borderRightWidth = 1;
+            row.style.borderBottomWidth = 1;
+            row.style.borderTopColor = new StyleColor(RarityFrameColor(rarity));
+            row.style.borderRightColor = new StyleColor(RarityFrameColor(rarity));
+            row.style.borderBottomColor = new StyleColor(RarityFrameColor(rarity));
             row.style.paddingLeft = 8;
             row.style.paddingRight = 8;
             row.style.paddingTop = 6;
@@ -707,15 +868,19 @@ namespace EquipmentIdle.UI
 
             var slotLabel = Text(slot, 12, true);
             slotLabel.style.width = 58;
+            slotLabel.style.color = new StyleColor(TextMuted);
             row.Add(slotLabel);
 
             var body = ActionButton(label, select ?? (() => { }));
             body.SetEnabled(select != null);
             body.style.flexGrow = 1;
+            body.style.unityTextAlign = TextAnchor.MiddleLeft;
+            body.style.backgroundColor = new StyleColor(new Color32(18, 18, 16, 255));
+            body.style.borderLeftWidth = 0;
             row.Add(body);
 
-            if (primary != null) row.Add(ActionButton(L10n.UIEquip, primary, 54));
-            if (secondary != null) row.Add(ActionButton(primary == null ? L10n.UIUnequip : L10n.UIDecompose, secondary, 72));
+            if (primary != null) row.Add(ActionButton(L10n.UIEquip, primary, 54, ButtonEquip));
+            if (secondary != null) row.Add(ActionButton(primary == null ? L10n.UIUnequip : L10n.UIDecompose, secondary, 72, primary == null ? ButtonDefault : ButtonDanger));
             return row;
         }
 
@@ -751,7 +916,7 @@ namespace EquipmentIdle.UI
             {
                 int index = i;
                 int level = TalentLevel(TalentKeys[index]);
-                var button = ActionButton("升" + TalentNames[index], () => _gameState.TalentUp(TalentKeys[index]), 78);
+                var button = ActionButton("升" + TalentNames[index], () => _gameState.TalentUp(TalentKeys[index]), 78, ButtonAscend);
                 button.SetEnabled(_gameState.Souls > 0 && level < TalentMax[index]);
                 _talentActions.Add(button);
             }
@@ -783,7 +948,7 @@ namespace EquipmentIdle.UI
             foreach (var action in EquipmentPresenter.DetailActions(_selected, isEquipped))
             {
                 var captured = action;
-                _detailActions.Add(ActionButton(captured.Label, () => RunDetailAction(captured.Id), 84));
+                _detailActions.Add(ActionButton(captured.Label, () => RunDetailAction(captured.Id), 84, ButtonForAction(captured.Id)));
             }
         }
 
@@ -961,6 +1126,17 @@ namespace EquipmentIdle.UI
             }
         }
 
+        private string MaterialSummary()
+        {
+            if (_gameState.Materials.Count == 0) return "材料：暂无";
+            string text = "材料：";
+            foreach (var kv in _gameState.Materials)
+            {
+                text += $"{MaterialName(kv.Key)} {kv.Value}  ";
+            }
+            return text;
+        }
+
         private void AddToast(string text, float duration)
         {
             _toasts.Add(new Toast { Text = text, ExpireAt = Time.realtimeSinceStartup + duration });
@@ -984,11 +1160,19 @@ namespace EquipmentIdle.UI
         private static VisualElement Panel(string name)
         {
             var el = new VisualElement { name = name };
-            el.style.backgroundColor = new StyleColor(new Color32(32, 36, 30, 255));
-            el.style.borderTopLeftRadius = 6;
-            el.style.borderTopRightRadius = 6;
-            el.style.borderBottomLeftRadius = 6;
-            el.style.borderBottomRightRadius = 6;
+            el.style.backgroundColor = new StyleColor(PanelBg);
+            el.style.borderTopWidth = 1;
+            el.style.borderRightWidth = 1;
+            el.style.borderBottomWidth = 1;
+            el.style.borderLeftWidth = 1;
+            el.style.borderTopColor = new StyleColor(PanelBorder);
+            el.style.borderRightColor = new StyleColor(PanelBorder);
+            el.style.borderBottomColor = new StyleColor(new Color32(42, 34, 24, 255));
+            el.style.borderLeftColor = new StyleColor(PanelBorder);
+            el.style.borderTopLeftRadius = 4;
+            el.style.borderTopRightRadius = 4;
+            el.style.borderBottomLeftRadius = 4;
+            el.style.borderBottomRightRadius = 4;
             el.style.paddingLeft = 10;
             el.style.paddingRight = 10;
             el.style.paddingTop = 10;
@@ -1017,7 +1201,7 @@ namespace EquipmentIdle.UI
         {
             var label = new Label(value);
             label.style.fontSize = size;
-            label.style.color = new StyleColor(new Color32(232, 226, 214, 255));
+            label.style.color = new StyleColor(TextMain);
             label.style.whiteSpace = WhiteSpace.Normal;
             if (bold) label.style.unityFontStyleAndWeight = FontStyle.Bold;
             return label;
@@ -1026,22 +1210,77 @@ namespace EquipmentIdle.UI
         private static Label SectionTitle(string value)
         {
             var label = Text(value, 18, true);
+            label.style.color = new StyleColor(new Color32(244, 202, 121, 255));
             label.style.marginBottom = 6;
             return label;
         }
 
         private static Button ActionButton(string label, System.Action action, float width = -1)
         {
+            return ActionButton(label, action, width, ButtonDefault);
+        }
+
+        private static Button ActionButton(string label, System.Action action, float width, Color32 color)
+        {
             var button = new Button(action) { text = label };
             button.style.height = 34;
-            button.style.backgroundColor = new StyleColor(new Color32(62, 52, 38, 255));
+            button.style.backgroundColor = new StyleColor(color);
             button.style.color = new StyleColor(new Color32(255, 247, 237, 255));
+            button.style.borderTopWidth = 1;
+            button.style.borderRightWidth = 1;
+            button.style.borderBottomWidth = 1;
+            button.style.borderLeftWidth = 1;
+            button.style.borderTopColor = new StyleColor(new Color32(160, 124, 69, 255));
+            button.style.borderRightColor = new StyleColor(new Color32(70, 48, 31, 255));
+            button.style.borderBottomColor = new StyleColor(new Color32(37, 25, 18, 255));
+            button.style.borderLeftColor = new StyleColor(new Color32(160, 124, 69, 255));
+            button.style.borderTopLeftRadius = 3;
+            button.style.borderTopRightRadius = 3;
+            button.style.borderBottomLeftRadius = 3;
+            button.style.borderBottomRightRadius = 3;
             button.style.marginLeft = 4;
             button.style.marginRight = 4;
             button.style.marginTop = 3;
             button.style.marginBottom = 3;
             if (width > 0) button.style.width = width;
             return button;
+        }
+
+        private static Color32 ButtonForAction(string id)
+        {
+            switch (id)
+            {
+                case "equip": return ButtonEquip;
+                case "upgrade": return ButtonCraft;
+                case "reforge": return ButtonReforge;
+                case "decompose": return ButtonDanger;
+                case "unequip": return ButtonDefault;
+                default: return ButtonDefault;
+            }
+        }
+
+        private static Color32 RarityRowBackground(int r)
+        {
+            switch (r)
+            {
+                case 1: return new Color32(16, 34, 42, 255);
+                case 2: return new Color32(48, 40, 16, 255);
+                case 3: return new Color32(58, 31, 13, 255);
+                case 4: return new Color32(59, 18, 18, 255);
+                default: return new Color32(29, 29, 26, 255);
+            }
+        }
+
+        private static Color32 RarityFrameColor(int r)
+        {
+            switch (r)
+            {
+                case 1: return new Color32(28, 88, 110, 255);
+                case 2: return new Color32(122, 95, 22, 255);
+                case 3: return new Color32(142, 75, 25, 255);
+                case 4: return new Color32(142, 40, 40, 255);
+                default: return new Color32(58, 54, 47, 255);
+            }
         }
 
         private static Color RarityUIColor(int r)
