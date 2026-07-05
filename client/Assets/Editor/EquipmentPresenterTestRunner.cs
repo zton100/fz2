@@ -20,10 +20,15 @@ public static class EquipmentPresenterTestRunner
             DescribesDungeonStateWithServerMonsterCurve();
             RecommendsNextGoalFromProgressState();
             LabelsEquipmentRowsWithUpgradeContext();
+            BuildsStructuredEquipmentComparisonRows();
             LabelsTalentRowsWithUpgradeState();
             HighlightsRareLootDrops();
+            BuildsLootAndBossCeremonyText();
             DescribesBossDistanceAndRewards();
+            BuildsProgressNodesForBossCycle();
+            BuildsCraftAndReincarnationPlans();
             BuildsBattleStageStateForVisualCombat();
+            BuildsCombatBeatStateForHitFeedback();
             NamesDungeonZonesAndMonsters();
             Debug.Log("[EquipmentPresenterTestRunner] OK");
             EditorApplication.Exit(0);
@@ -157,6 +162,20 @@ public static class EquipmentPresenterTestRunner
         AssertContains(EquipmentPresenter.BuildEquipmentLine(current, null, true), "已穿戴", "equipped row should show equipped state");
     }
 
+    private static void BuildsStructuredEquipmentComparisonRows()
+    {
+        var current = Equipment("current", 0, 1, 1, Affix("strength", 1, 5), Affix("armor", 1, 3));
+        var upgrade = Equipment("upgrade", 0, 2, 2, Affix("strength", 2, 30), Affix("crit_rate", 2, 0.08f));
+
+        var rows = EquipmentPresenter.BuildComparisonRows(upgrade, current);
+
+        AssertContainsComparison(rows, "评分", true, "comparison should include score gain");
+        AssertContainsComparison(rows, "力量", true, "comparison should include selected affix gain");
+        AssertContainsComparison(rows, "护甲", false, "comparison should include lost current affix");
+        AssertContains(EquipmentPresenter.BuildSelectedSummary(upgrade), "评分", "selected summary should show score");
+        AssertContains(EquipmentPresenter.BuildCurrentSummary(current), "current", "current summary should show equipped item name");
+    }
+
     private static void LabelsTalentRowsWithUpgradeState()
     {
         AssertContains(EquipmentPresenter.BuildTalentLine("伤害", 0, 10, "每级伤害 +5%", 1), "可升级", "talent with souls should show upgrade available");
@@ -176,6 +195,20 @@ public static class EquipmentPresenterTestRunner
         AssertContains(EquipmentPresenter.BuildLootToast(legendary), "传奇掉落", "legendary loot toast should have its own emphasis");
     }
 
+    private static void BuildsLootAndBossCeremonyText()
+    {
+        var common = Equipment("common", 0, 0, 0, Affix("strength", 1, 5));
+        var rare = Equipment("rare", 0, 2, 0, Affix("strength", 2, 30));
+        var legendary = Equipment("legendary", 0, 3, 0, Affix("strength", 3, 50));
+
+        AssertEqual("", EquipmentPresenter.BuildLootCeremonyText(common, false), "weak common loot should not trigger ceremony");
+        AssertContains(EquipmentPresenter.BuildLootCeremonyText(common, true), "可穿戴提升", "upgrade common loot should trigger ceremony");
+        AssertContains(EquipmentPresenter.BuildLootCeremonyText(rare, false), "稀有掉落", "rare loot should trigger ceremony");
+        AssertContains(EquipmentPresenter.BuildLootCeremonyText(legendary, false), "传奇 掉落", "legendary loot should trigger ceremony");
+        AssertContains(EquipmentPresenter.BuildBossClearBanner(10), "基础材料 +20", "boss clear banner should show reward");
+        AssertEqual("", EquipmentPresenter.BuildBossClearBanner(11), "normal floor should not show boss clear banner");
+    }
+
     private static void DescribesBossDistanceAndRewards()
     {
         var beforeBoss = EquipmentPresenter.BuildDungeonState(4, 100f);
@@ -185,6 +218,36 @@ public static class EquipmentPresenterTestRunner
         var boss = EquipmentPresenter.BuildDungeonState(5, 100f);
         AssertContains(boss.BossHint, "首通奖励：基础材料 +10", "boss hint should show current reward");
         if (boss.BossReward != 10) throw new Exception($"boss reward should match server rule, got {boss.BossReward}");
+    }
+
+    private static void BuildsProgressNodesForBossCycle()
+    {
+        var nodes = EquipmentPresenter.BuildProgressNodes(7);
+        if (nodes.Count != 5) throw new Exception($"progress should show five nodes, got {nodes.Count}");
+        AssertEqual("6", nodes[0].Label, "cycle should start at floor 6");
+        AssertEqual("B10", nodes[4].Label, "cycle should end at boss floor 10");
+        if (!nodes[0].Passed) throw new Exception("previous floor in cycle should be passed");
+        if (!nodes[1].Current) throw new Exception("current floor should be marked");
+        if (!nodes[4].IsBoss) throw new Exception("fifth node should be boss");
+    }
+
+    private static void BuildsCraftAndReincarnationPlans()
+    {
+        var selected = Equipment("selected", 0, 2, 2, Affix("strength", 2, 30), Affix("crit_rate", 2, 0.08f));
+        var craft = EquipmentPresenter.BuildCraftPlan(selected, 12, 3, 45f);
+        AssertContains(craft.UpgradeLine, "基础材料 12/10", "upgrade line should show next level cost");
+        AssertContains(craft.ReforgeLine, "共 2 份", "reforge line should count affixes");
+        AssertContains(craft.ComposeLine, "合成可用", "compose line should show affordability");
+        AssertContains(craft.CleanupLine, "弱装 3 件", "cleanup line should show weak items");
+
+        var reincarnReady = EquipmentPresenter.BuildReincarnationPlan(15, 1, 12, true, "伤害");
+        AssertContains(reincarnReady.StatusLine, "可转生", "ready reincarnation should be called out");
+        AssertContains(reincarnReady.RewardLine, "+3", "reincarnation reward should use floor/5");
+        AssertContains(reincarnReady.ResetLine, "重置层数", "reset consequences should be explicit");
+        AssertContains(reincarnReady.NextTalentLine, "伤害", "next talent recommendation should be shown");
+
+        var locked = EquipmentPresenter.BuildReincarnationPlan(6, 0, 6, false, "");
+        AssertContains(locked.RewardLine, "继续推进 4 层", "locked reincarnation should show remaining floors");
     }
 
     private static void BuildsBattleStageStateForVisualCombat()
@@ -200,6 +263,23 @@ public static class EquipmentPresenterTestRunner
         AssertContains(boss.MonsterName, "墓道巨像", "boss stage should name boss");
         AssertContains(boss.Status, "受阻", "weak boss fight should show blocked status");
         if (!boss.IsBoss) throw new Exception("boss stage should set IsBoss");
+    }
+
+    private static void BuildsCombatBeatStateForHitFeedback()
+    {
+        var idle = EquipmentPresenter.BuildCombatBeatState(2, 40f, 1f, 0.5f);
+        var hit = EquipmentPresenter.BuildCombatBeatState(2, 40f, 0.25f, 0.5f);
+
+        if (!hit.Active) throw new Exception("mid-beat state should be active");
+        AssertContains(hit.DamageText, "-", "hit state should show damage text");
+        if (hit.MonsterHealth >= idle.MonsterHealth)
+            throw new Exception($"hit should visibly reduce monster health during the beat, got hit={hit.MonsterHealth}, idle={idle.MonsterHealth}");
+        if (hit.HeroOffset <= 0f || hit.MonsterOffset <= 0f)
+            throw new Exception($"hit should move both combatants, hero={hit.HeroOffset}, monster={hit.MonsterOffset}");
+        if (idle.Active) throw new Exception("elapsed beat should become inactive");
+
+        var boss = EquipmentPresenter.BuildCombatBeatState(5, 100f, 0.2f, 0.5f);
+        AssertContains(boss.DamageText, "重击", "boss hit should have stronger feedback copy");
     }
 
     private static void NamesDungeonZonesAndMonsters()
@@ -296,6 +376,18 @@ public static class EquipmentPresenterTestRunner
         {
             if (action.Id == id) throw new Exception($"{message}: found {id}");
         }
+    }
+
+    private static void AssertContainsComparison(System.Collections.Generic.IList<EquipmentComparisonRow> rows, string label, bool positive, string message)
+    {
+        foreach (var row in rows)
+        {
+            if (row.Label != label) continue;
+            if (positive && row.Delta <= 0f) throw new Exception($"{message}: {label} delta should be positive, got {row.Delta}");
+            if (!positive && row.Delta >= 0f) throw new Exception($"{message}: {label} delta should be negative, got {row.Delta}");
+            return;
+        }
+        throw new Exception($"{message}: missing {label}");
     }
 }
 #endif

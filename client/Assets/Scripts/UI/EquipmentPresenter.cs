@@ -43,6 +43,66 @@ namespace EquipmentIdle.UI
         public bool IsBoss;
     }
 
+    public struct CombatBeatState
+    {
+        public string DamageText;
+        public float MonsterHealth;
+        public float HeroOffset;
+        public float MonsterOffset;
+        public float ImpactOpacity;
+        public bool Active;
+    }
+
+    public struct ProgressNodeState
+    {
+        public string Label;
+        public bool Passed;
+        public bool Current;
+        public bool IsBoss;
+
+        public ProgressNodeState(string label, bool passed, bool current, bool isBoss)
+        {
+            Label = label;
+            Passed = passed;
+            Current = current;
+            IsBoss = isBoss;
+        }
+    }
+
+    public struct CraftPlanState
+    {
+        public string UpgradeLine;
+        public string ReforgeLine;
+        public string ComposeLine;
+        public string CleanupLine;
+    }
+
+    public struct ReincarnationPlanState
+    {
+        public string StatusLine;
+        public string RewardLine;
+        public string ResetLine;
+        public string NextTalentLine;
+    }
+
+    public struct EquipmentComparisonRow
+    {
+        public string Label;
+        public string SelectedValue;
+        public string CurrentValue;
+        public string DeltaText;
+        public float Delta;
+
+        public EquipmentComparisonRow(string label, string selectedValue, string currentValue, string deltaText, float delta)
+        {
+            Label = label;
+            SelectedValue = selectedValue;
+            CurrentValue = currentValue;
+            DeltaText = deltaText;
+            Delta = delta;
+        }
+    }
+
     public static class EquipmentPresenter
     {
         public static List<EquipmentDTO> SortBagForDisplay(IList<EquipmentDTO> bag, IList<EquipmentDTO> equipped)
@@ -122,6 +182,48 @@ namespace EquipmentIdle.UI
             return text;
         }
 
+        public static string BuildSelectedSummary(EquipmentDTO eq)
+        {
+            if (eq == null) return "选择一件装备查看属性和操作。";
+            return $"{eq.name} +{eq.upgrade}\n"
+                + $"{SlotName(eq.slot)} · {RarityName(eq.rarity)}\n"
+                + $"评分 {Score(eq):F0}\n"
+                + BuildAffixSummary(eq);
+        }
+
+        public static string BuildCurrentSummary(EquipmentDTO current)
+        {
+            if (current == null) return "当前部位未穿戴装备。\n穿戴后会直接补齐新部位。";
+            return $"{current.name} +{current.upgrade}\n"
+                + $"{SlotName(current.slot)} · {RarityName(current.rarity)}\n"
+                + $"评分 {Score(current):F0}\n"
+                + BuildAffixSummary(current);
+        }
+
+        public static List<EquipmentComparisonRow> BuildComparisonRows(EquipmentDTO selected, EquipmentDTO current)
+        {
+            var rows = new List<EquipmentComparisonRow>();
+            if (selected == null) return rows;
+
+            float selectedScore = Score(selected);
+            float currentScore = Score(current);
+            rows.Add(new EquipmentComparisonRow("评分", $"{selectedScore:F0}", current != null ? $"{currentScore:F0}" : "-", FormatSigned(selectedScore - currentScore), selectedScore - currentScore));
+            rows.Add(new EquipmentComparisonRow("强化", $"+{selected.upgrade}", current != null ? $"+{current.upgrade}" : "-", FormatSigned(selected.upgrade - (current != null ? current.upgrade : 0)), selected.upgrade - (current != null ? current.upgrade : 0)));
+            rows.Add(new EquipmentComparisonRow("品质", RarityName(selected.rarity), current != null ? RarityName(current.rarity) : "-", FormatSigned(selected.rarity - (current != null ? current.rarity : -1)), selected.rarity - (current != null ? current.rarity : -1)));
+
+            var keys = new List<string>();
+            var selectedAffixes = AffixTotals(selected, keys);
+            var currentAffixes = AffixTotals(current, keys);
+            foreach (var key in keys)
+            {
+                float selectedValue = selectedAffixes.ContainsKey(key) ? selectedAffixes[key] : 0f;
+                float currentValue = currentAffixes.ContainsKey(key) ? currentAffixes[key] : 0f;
+                float delta = selectedValue - currentValue;
+                rows.Add(new EquipmentComparisonRow(AffixName(key), FormatComparableValue(key, selectedValue), current != null ? FormatComparableValue(key, currentValue) : "-", FormatSignedValue(key, delta), delta));
+            }
+            return rows;
+        }
+
         public static string BuildLootLine(EquipmentDTO eq)
         {
             if (eq == null) return "";
@@ -134,6 +236,38 @@ namespace EquipmentIdle.UI
             if (eq == null) return "";
             string prefix = LootPrefix(eq.rarity);
             return $"{prefix}：{RarityName(eq.rarity)} {eq.name}";
+        }
+
+        public static string BuildLootCeremonyText(EquipmentDTO eq, bool isUpgrade)
+        {
+            if (eq == null) return "";
+            if (eq.rarity >= 3) return $"{RarityName(eq.rarity)} 掉落：{eq.name}";
+            if (eq.rarity >= 2) return $"稀有掉落：{eq.name}";
+            if (isUpgrade) return $"可穿戴提升：{eq.name}";
+            return "";
+        }
+
+        public static string BuildBossClearBanner(int clearedFloor)
+        {
+            if (clearedFloor <= 0 || clearedFloor % 5 != 0) return "";
+            return $"Boss 击破：第 {clearedFloor} 层 · 基础材料 +{BossRewardAtFloor(clearedFloor)}";
+        }
+
+        public static List<ProgressNodeState> BuildProgressNodes(int floor)
+        {
+            if (floor < 1) floor = 1;
+            int start = floor - ((floor - 1) % 5);
+            var nodes = new List<ProgressNodeState>();
+            for (int i = 0; i < 5; i++)
+            {
+                int nodeFloor = start + i;
+                nodes.Add(new ProgressNodeState(
+                    nodeFloor % 5 == 0 ? $"B{nodeFloor}" : nodeFloor.ToString(),
+                    nodeFloor < floor,
+                    nodeFloor == floor,
+                    nodeFloor % 5 == 0));
+            }
+            return nodes;
         }
 
         public static string BuildEquipmentLine(EquipmentDTO eq, EquipmentDTO current, bool isEquipped)
@@ -254,6 +388,34 @@ namespace EquipmentIdle.UI
             };
         }
 
+        public static CombatBeatState BuildCombatBeatState(int floor, float playerPower, float elapsedSeconds, float durationSeconds)
+        {
+            var stage = BuildBattleStageState(floor, playerPower);
+            if (playerPower <= 0f || elapsedSeconds < 0f || durationSeconds <= 0f)
+            {
+                return new CombatBeatState { MonsterHealth = stage.MonsterHealth };
+            }
+
+            float progress = Clamp01(elapsedSeconds / durationSeconds);
+            bool active = progress < 1f;
+            float pulse = active ? (float)Math.Sin(progress * Math.PI) : 0f;
+            float monsterPower = MonsterPowerAtFloor(floor);
+            float ratio = monsterPower <= 0f ? 0f : playerPower / monsterPower;
+            float damagePressure = ratio >= 1f ? 0.46f : 0.18f * Clamp01(ratio);
+            float monsterHealth = Clamp01(stage.MonsterHealth - pulse * damagePressure);
+            int damage = Math.Max(1, (int)Math.Round(playerPower * (stage.IsBoss ? 0.58f : 0.76f)));
+
+            return new CombatBeatState
+            {
+                DamageText = stage.IsBoss ? $"重击 -{damage}" : $"-{damage}",
+                MonsterHealth = monsterHealth,
+                HeroOffset = pulse * 18f,
+                MonsterOffset = pulse * 12f,
+                ImpactOpacity = active ? 1f - progress : 0f,
+                Active = active,
+            };
+        }
+
         public static int BossRewardAtFloor(int floor)
         {
             return floor > 0 && floor % 5 == 0 ? floor * 2 : 0;
@@ -314,6 +476,70 @@ namespace EquipmentIdle.UI
                 state = "需要魂点";
             }
             return $"{name} Lv{level}/{maxLevel} - {description}  {state}";
+        }
+
+        public static CraftPlanState BuildCraftPlan(EquipmentDTO selected, int baseMaterials, int weakCount, float equipBestDelta)
+        {
+            string upgradeLine = "选择背包装备后显示强化消耗。";
+            string reforgeLine = "选择带词缀装备后显示重铸材料。";
+            if (selected != null)
+            {
+                int nextLevel = selected.upgrade + 1;
+                if (selected.upgrade >= 10)
+                {
+                    upgradeLine = $"{selected.name} 已强化到 +10。";
+                }
+                else
+                {
+                    int cost = UpgradeCost(nextLevel);
+                    upgradeLine = $"强化 {selected.name} +{nextLevel}：基础材料 {baseMaterials}/{cost}";
+                }
+
+                int reforgeCost = selected.affixes == null ? 0 : selected.affixes.Length;
+                reforgeLine = reforgeCost > 0
+                    ? $"重铸 {selected.name}：按词缀 Tier 消耗材料，共 {reforgeCost} 份。"
+                    : $"{selected.name} 无词缀，重铸收益低。";
+            }
+
+            string composeLine = baseMaterials >= 10
+                ? $"合成可用：基础材料 {baseMaterials}/10，可补缺失部位。"
+                : $"合成还差 {10 - baseMaterials} 个基础材料。";
+            string cleanupLine = weakCount > 0
+                ? $"可清理弱装 {weakCount} 件，分解换强化材料。"
+                : equipBestDelta > 0f
+                    ? $"一键穿戴预计评分 +{equipBestDelta:F0}。"
+                    : "当前没有明显弱装或可一键提升。";
+
+            return new CraftPlanState
+            {
+                UpgradeLine = upgradeLine,
+                ReforgeLine = reforgeLine,
+                ComposeLine = composeLine,
+                CleanupLine = cleanupLine,
+            };
+        }
+
+        public static ReincarnationPlanState BuildReincarnationPlan(int floor, int souls, int maxFloor, bool canReincarn, string nextTalentName)
+        {
+            int earned = floor >= 10 ? floor / 5 : 0;
+            string status = canReincarn
+                ? $"可转生：当前第 {floor} 层。"
+                : $"转生条件：第 10 层，当前第 {floor} 层。";
+            string reward = canReincarn
+                ? $"本次转生预计获得魂点 +{earned}，当前魂点 {souls}。"
+                : $"继续推进 {Math.Max(0, 10 - floor)} 层后开启首次转生。";
+            string reset = "转生会重置层数、背包、装备和材料，保留历史最高层与天赋。";
+            string nextTalent = string.IsNullOrEmpty(nextTalentName)
+                ? "所有核心天赋已满或暂无推荐。"
+                : $"推荐下一个魂点投入：{nextTalentName}。";
+
+            return new ReincarnationPlanState
+            {
+                StatusLine = status,
+                RewardLine = reward,
+                ResetLine = $"历史最高层：{maxFloor}。{reset}",
+                NextTalentLine = nextTalent,
+            };
         }
 
         public static List<EquipmentDTO> BulkDecomposeCandidates(IList<EquipmentDTO> bag, IList<EquipmentDTO> equipped)
@@ -379,11 +605,76 @@ namespace EquipmentIdle.UI
             return currentBySlot.TryGetValue(slot, out var eq) ? eq : null;
         }
 
+        private static string BuildAffixSummary(EquipmentDTO eq)
+        {
+            if (eq == null || eq.affixes == null || eq.affixes.Length == 0) return "无词缀。";
+            string text = "";
+            foreach (var affix in eq.affixes)
+            {
+                if (affix == null) continue;
+                text += FormatAffix(affix) + "\n";
+            }
+            return text.TrimEnd('\n');
+        }
+
+        private static Dictionary<string, float> AffixTotals(EquipmentDTO eq, List<string> keys)
+        {
+            var totals = new Dictionary<string, float>();
+            if (eq == null || eq.affixes == null) return totals;
+            foreach (var affix in eq.affixes)
+            {
+                if (affix == null || string.IsNullOrEmpty(affix.type)) continue;
+                if (!totals.ContainsKey(affix.type))
+                {
+                    totals[affix.type] = 0f;
+                    if (!keys.Contains(affix.type)) keys.Add(affix.type);
+                }
+                totals[affix.type] += affix.value;
+            }
+            return totals;
+        }
+
+        private static string FormatSigned(float delta)
+        {
+            if (delta > 0f) return $"↑ +{delta:F0}";
+            if (delta < 0f) return $"↓ {delta:F0}";
+            return "持平";
+        }
+
+        private static string FormatSignedValue(string type, float delta)
+        {
+            if (Math.Abs(delta) < 0.0001f) return "持平";
+            string prefix = delta > 0f ? "↑ +" : "↓ ";
+            float value = delta;
+            if (type == "crit_rate" || type == "attack_speed")
+            {
+                return $"{prefix}{value * 100f:F1}%";
+            }
+            return $"{prefix}{value:F0}";
+        }
+
+        private static string FormatComparableValue(string type, float value)
+        {
+            if (type == "crit_rate" || type == "attack_speed")
+            {
+                return $"{value * 100f:F1}%";
+            }
+            return $"{value:F0}";
+        }
+
         private static float Clamp01(float value)
         {
             if (value < 0f) return 0f;
             if (value > 1f) return 1f;
             return value;
+        }
+
+        private static int UpgradeCost(int targetLevel)
+        {
+            int[] costs = { 0, 3, 5, 10, 18, 30, 50, 80, 120, 180, 250 };
+            if (targetLevel < 0) return 0;
+            if (targetLevel >= costs.Length) return costs[costs.Length - 1];
+            return costs[targetLevel];
         }
 
         private static string AffixName(string type)

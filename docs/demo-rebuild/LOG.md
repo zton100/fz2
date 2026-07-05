@@ -108,3 +108,319 @@
 ### 提交信息
 
 - Commit subject: `Start mobile demo UI rebuild`
+
+## 2026-07-02 Demo-2 第一轮
+
+### 本轮目标
+
+- 开始 Demo-2：装备体验成型。
+- 把“穿戴装备”从文字列表改成固定部位装备格。
+- 把背包行压缩成更像装备卡片的可点击列表。
+
+### 本轮计划
+
+- 更新装备区布局。
+- 更新背包项样式。
+- 跑 Unity / Go / 端到端验证。
+- 提交并推送后汇报下一步计划。
+
+### 本轮完成
+
+- 穿戴装备区从文字列表改为固定部位装备格第一版。
+- 每个装备格展示部位、装备名、强化等级、评分；空槽显示等待掉落。
+- 背包装备从普通行改为卡片式信息：
+  - 装备名和强化等级。
+  - 部位、评分、相对当前装备的提升/更弱/持平。
+  - 穿戴和分解按钮保留。
+
+### 本轮验证
+
+- Unity `EquipmentPresenterTestRunner.Run` 通过。
+- Unity `PlayModeRunner.RunMainSmoke` 通过，结果 `MAIN_SMOKE_OK`。
+- Unity 日志异常关键词扫描无命中。
+- `go test ./...` 通过。
+- `go test -race ./...` 通过。
+- `./scripts/verify-flow.sh` 通过。
+- `git diff --check` 通过。
+
+### 本轮遗留
+
+- 装备详情仍是单栏文本，下一轮拆成“当前选择 / 已装备 / 对比结果”。
+- 装备格目前仍是文字化格子，真实图标/美术放到后续美术切片。
+
+## 2026-07-05 Demo-2 第二轮
+
+### 本轮目标
+
+- 继续 Demo-2：把装备详情从单栏文本改成可决策的对比面板。
+- 让玩家选中背包装备后，能同时看到当前选择、已装备、逐条差异。
+
+### 本轮完成
+
+- `EquipmentPresenter` 增加结构化装备对比行：
+  - 评分、强化、品质。
+  - 当前选择和已装备的词缀差异。
+  - 正向变化用绿色上箭头，负向变化用红色下箭头。
+- 装备详情面板拆成三块：
+  - 当前选择。
+  - 已装备。
+  - 对比结果。
+- 新增 presenter 测试覆盖结构化对比：
+  - 评分提升。
+  - 选择装备的词缀提升。
+  - 已装备独有词缀在更换后显示下降。
+
+### 本轮验证
+
+- Unity `EquipmentPresenterTestRunner.Run` 通过。
+- Unity `PlayModeRunner.RunMainSmoke` 通过。
+- `go test ./...` 通过。
+- `go test -race ./...` 通过。
+- `./scripts/verify-flow.sh` 通过。
+- `git diff --check` 通过。
+
+### 本轮遗留
+
+- 锁定/筛选雏形仍未做。
+- 详情布局已能表达对比，但还没有真实装备图标和长文本截断细调。
+
+## 2026-07-05 Demo-2 第三轮：暗黑像素 UI 风格基线
+
+### 本轮目标
+
+- 按用户提供的新参考图重定 UI 风格方向。
+- 优先建立可复用的视觉基线：顶部 HUD、战斗舞台、状态卡、装备卡、详情面板。
+
+### 本轮完成
+
+- 保存新参考图：
+  - `docs/demo-rebuild/references/dark-idle-rpg-ui-target.png`
+- 使用 ImageGen 生成项目内战斗背景资产：
+  - `client/Assets/Art/UIReferences/dark-dungeon-battle-bg.png`
+  - `client/Assets/Resources/UI/dark-dungeon-battle-bg.png`
+- 战斗舞台接入位图背景，改成暗黑地牢场景底图。
+- 顶部 HUD 改成参考图方向的头像 + 分块资源栏。
+- Boss 标题、进度条、战斗状态改成红/金高对比层级。
+- 状态卡、装备详情、装备格、背包卡统一成黑铜面板和橙红品质光效。
+- 按钮改为更厚重的金边暗黑按钮风格。
+
+### 本轮验证
+
+- Unity `EquipmentPresenterTestRunner.Run` 通过。
+- Unity `PlayModeRunner.RunMainSmoke` 通过，日志包含 `MAIN_SMOKE_OK`。
+- `go test ./...` 通过。
+- `./scripts/verify-flow.sh` 通过。
+- `git diff --check` 通过。
+
+### 本轮遗留
+
+- 目前是风格基线，不是完整复刻参考图。
+- 英雄、Boss、装备图标仍主要是文字/面板表达；后续需要继续生成或接入像素角色、Boss、装备图标资产。
+- 还没有做浏览器/截图级视觉回归对比。
+
+## 2026-07-05 Demo-2 第四轮：布局稳定、资产接入、锁定筛选
+
+### 本轮目标
+
+- 修复 Unity Game 视口下整页重叠的问题。
+- 补齐上一轮计划中的角色、Boss、装备图标资产。
+- 完成 Demo-2 剩余的锁定/筛选雏形。
+
+### 本轮完成
+
+- 布局稳定化：
+  - 主 UI 从横屏自适应缩放改成固定 `945px` 竖屏手机画布。
+  - 外层增加垂直滚动容器，横向 Free Aspect 下居中显示，避免挤压重叠。
+  - 顶部 HUD 收窄，详情面板改固定高度。
+- 新增并接入视觉资产：
+  - 英雄战斗像素图：`client/Assets/Resources/UI/hero-combat-sprite.png`
+  - Boss 战斗像素图：`client/Assets/Resources/UI/boss-combat-sprite.png`
+  - 装备图标：武器、头盔、护甲、手套、鞋子、戒指、项链、锻造。
+- UI 接入：
+  - 战斗舞台显示左侧英雄和右侧 Boss。
+  - 穿戴装备格显示对应部位图标。
+  - 背包卡和最近掉落显示装备图标。
+  - 装备详情的当前选择/已装备区域显示装备图标。
+- 交互补齐：
+  - 背包筛选：全部 / 提升 / 稀有 / 分解。
+  - 装备锁定/解锁按钮。
+  - 锁定装备禁用手动分解。
+  - 一键分解弱装会跳过锁定装备。
+
+### 本轮验证
+
+- Unity `EquipmentPresenterTestRunner.Run` 通过。
+- Unity `PlayModeRunner.RunMainSmoke` 通过，日志包含 `MAIN_SMOKE_OK`。
+- `go test ./...` 通过。
+- `./scripts/verify-flow.sh` 通过。
+- `git diff --check` 通过。
+
+### 本轮遗留
+
+- 锁定状态目前是客户端会话内状态，刷新或重登后不会持久化。
+- 仍需人工在 Unity Game 视口检查不同缩放下的观感，尤其是横屏 Free Aspect 和竖屏比例。
+- 下一轮可以把锁定状态持久化到服务端协议/存档。
+
+## 2026-07-05 Demo-2 第五轮：第一屏切页止血
+
+### 本轮目标
+
+- 继续修复 Unity Game 视口里 UI 互相覆盖的问题。
+- 从结构上减少第一屏同时显示的系统数量。
+
+### 本轮完成
+
+- 主界面拆成底部导航页：
+  - 战斗页：战斗舞台、当前目标、Boss 进度、最近掉落、穿戴装备概览。
+  - 背包页：背包筛选、背包列表、当前穿戴镜像、装备详情。
+  - 锻造页：强化、材料、合成入口。
+  - 天赋页：转生状态和天赋升级。
+- 底部导航按钮现在切换实际页面，不再只是 toast 提示。
+- 详情面板从战斗页移出，避免和战斗/状态卡互相挤压。
+- 锻造、合成、转生、天赋文本不再塞进装备详情面板。
+- 战斗舞台继续裁剪英雄/Boss 溢出，避免盖住 HUD。
+
+### 本轮验证
+
+- `go test ./...` 通过。
+- `git diff --check` 通过。
+- 当前 Unity Editor 日志未发现 C# 编译错误。
+
+### 本轮遗留
+
+- Unity Editor 当前打开项目，batchmode smoke 被 Unity 拒绝，需关闭 Editor 后补跑。
+- 底部导航选中态目前不会随切页重绘颜色，只影响视觉反馈，不影响切页功能。
+
+## 2026-07-06 Demo-3 第一轮：战斗反馈成型
+
+### 本轮目标
+
+- 按计划进入 Demo-3。
+- 先做不依赖新协议的战斗体验增强：攻击节奏、命中反馈、怪物血条扰动、Boss/受阻状态强调。
+- 保持展示逻辑可测试，不把所有规则继续堆进 `MainController`。
+
+### 本轮完成
+
+- `EquipmentPresenter` 新增 `CombatBeatState` 和 `BuildCombatBeatState`：
+  - 根据楼层、玩家战力、攻击动画时间计算伤害文本。
+  - 输出怪物血条瞬时推进、英雄/Boss 位移、命中特效透明度。
+- `MainController` 接入自动战斗节奏：
+  - 在线且有战力时按 2 秒节奏自动播放命中。
+  - 推层事件触发一次更明确的命中反馈。
+  - 命中时英雄向前、Boss 后退、中央显示伤害数字。
+  - 怪物血条在命中瞬间短暂下降，再回到当前战斗态估算值。
+- Boss/受阻状态强化：
+  - Boss 关中央标识从 `VS` 改为 `BOSS`。
+  - Boss 提示和受阻状态使用更强红色警示。
+- 工程卫生：
+  - `.gitignore` 增加本地存档、日志、Unity 验证结果忽略，避免提交运行产物。
+- `PLAN.md` 标记 Demo-2 已完成，并把当前优先级切到 Demo-3。
+
+### 本轮验证
+
+- `go test ./...` 通过。
+- `git diff --check` 通过。
+- Unity `EquipmentPresenterTestRunner.Run` 通过，日志包含 `[EquipmentPresenterTestRunner] OK`。
+- Unity `PlayModeRunner.RunMainSmoke` 通过，日志包含 `MAIN_SMOKE_OK`，`client/verify_result.txt` 为 `MAIN_SMOKE_OK`。
+- `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`。
+
+### 本轮遗留
+
+- 胜利/掉落仪式还只是已有 toast 和最近掉落高亮，需要继续加强高稀有掉落表现。
+- Boss 通关反馈目前依赖推层 toast，后续需要做更像“首通奖励”的战斗区反馈。
+- 推层进度仍是 Boss 进度条，后续可以做连续战斗节点或层数轨道。
+- `MainController.cs` 仍偏大，Demo-3 后应开始拆分 Battle/Equipment/Craft/Talent 视图。
+
+### 提交信息
+
+- 待提交。
+
+## 2026-07-06 Demo-3/4/5 收口：完整可试玩验收
+
+### 本轮目标
+
+- 按用户要求继续直到 Demo 重构计划全部完成。
+- 完成 Demo-3 剩余推层进度表达。
+- 完成 Demo-4 工坊和转生体验成型。
+- 完成 Demo-5 试玩验收文档和 README 状态更新。
+- 所有内容完成后再统一提交和推送。
+
+### 本轮完成
+
+- 战斗推进：
+  - Boss 进度卡新增 5 节点推层轨道。
+  - 当前层、已通过层、Boss 节点有不同颜色和状态。
+  - 推层不再只依赖单条进度条，玩家能看到本轮 5 层周期。
+- 工坊体验：
+  - 锻造页从固定“可强化”文案改为动态工坊计划。
+  - 展示当前选择装备的下一强化等级和基础材料消耗。
+  - 展示重铸词缀消耗数量。
+  - 展示合成是否可用、弱装清理数量或一键穿戴预估提升。
+- 转生体验：
+  - 转生页展示当前条件、预计魂点、历史最高层、重置代价。
+  - 增加下一点天赋推荐。
+  - 转生不再只是按钮和原始天赋文本。
+- 导航体验：
+  - 底部导航切页后会刷新选中态颜色。
+- Demo-5 验收：
+  - 新增 `docs/demo-rebuild/PLAYTEST-5MIN.md`。
+  - README 状态更新为“可试玩暗黑装备放置 Demo”。
+  - README 增加 5 分钟试玩验收入口。
+- `PLAN.md` 已将 Demo-3、Demo-4、Demo-5 checklist 全部标记完成。
+
+### 本轮验证
+
+- `go test ./...` 通过。
+- `go test -race ./...` 通过。
+- `git diff --check` 通过。
+- `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`。
+- Unity `EquipmentPresenterTestRunner.Run` 通过，日志包含 `[EquipmentPresenterTestRunner] OK`。
+- Unity `PlayModeRunner.RunMainSmoke` 通过，日志包含 `MAIN_SMOKE_OK`，`client/verify_result.txt` 为 `MAIN_SMOKE_OK`。
+
+### 本轮遗留
+
+- 计划功能已收口。
+- `MainController.cs` 仍然偏大，后续应作为单独维护任务拆分视图类。
+- 锁定状态仍是客户端会话内状态，后续如要正式化应接入协议和存档。
+
+### 提交信息
+
+- 待提交并推送。
+
+## 2026-07-06 Demo-3 第二轮：掉落和 Boss 仪式
+
+### 本轮目标
+
+- 继续推进 Demo-3 剩余体验项。
+- 加强掉落仪式和 Boss 通关反馈，让战斗区承担更明确的“发生了重要事件”的反馈。
+
+### 本轮完成
+
+- `EquipmentPresenter` 新增仪式文案：
+  - `BuildLootCeremonyText`：稀有及以上掉落、可穿戴提升装备会生成舞台横幅文案。
+  - `BuildBossClearBanner`：Boss 层通关后生成首通奖励横幅文案。
+- `MainController` 战斗舞台新增横幅：
+  - 稀有/传奇/神器掉落会在战斗区短暂显示品质横幅。
+  - 普通但可提升的装备会显示“可穿戴提升”横幅。
+  - Boss 击破会显示“Boss 击破 + 首通奖励”横幅。
+  - 横幅使用现有黑铜底、金边、品质色，不新增外部资源。
+- `EquipmentPresenterTestRunner` 增加掉落仪式和 Boss 击破文案测试。
+- `PLAN.md` 将 Demo-3 的掉落仪式、Boss 通关反馈标记为完成。
+
+### 本轮验证
+
+- `go test ./...` 通过。
+- `git diff --check` 通过。
+- Unity `EquipmentPresenterTestRunner.Run` 通过，日志包含 `[EquipmentPresenterTestRunner] OK`。
+- Unity `PlayModeRunner.RunMainSmoke` 通过，日志包含 `MAIN_SMOKE_OK`，`client/verify_result.txt` 为 `MAIN_SMOKE_OK`。
+- `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`。
+
+### 本轮遗留
+
+- 推层进度仍需要做成更明确的连续进度表达。
+- `MainController.cs` 已经很大，下一轮建议先拆 Battle 视图，降低继续迭代风险。
+- 当前未提交，提交前需要确认是否把 Demo-2 资产和 Demo-3 改动合并为一个提交，还是拆成两个提交。
+
+### 提交信息
+
+- 待提交。

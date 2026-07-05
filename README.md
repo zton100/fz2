@@ -23,8 +23,9 @@
 | P1 修复 | JSON 持久化存档、协议解析优化、多开踢旧 | ✅ |
 | P2 打磨 | 离线弹窗、toast 通知、一键穿戴、卡点/Boss 提示 | ✅ |
 | 阶段 A | Boss 奖励体验、掉落稀有度反馈、装备养成评分反馈 | ✅ |
+| 可试玩 Demo | 竖屏暗黑 UI、装备对比、战斗反馈、工坊/转生面板、5 分钟试玩脚本 | ✅ |
 
-当前状态：**可试玩转生闭环 + 阶段 A 体验收口**。完整消息协议见 `docs/protocol.md`。
+当前状态：**可试玩暗黑装备放置 Demo**。完整消息协议见 `docs/protocol.md`，5 分钟试玩验收见 `docs/demo-rebuild/PLAYTEST-5MIN.md`。
 
 ## 本地开发联调
 
@@ -70,6 +71,10 @@ go run ./cmd/verifyclient
 Unity -batchmode -projectPath client -executeMethod PlayModeRunner.Run
 ```
 结果写入 `verify_result.txt`。
+
+### 5 分钟试玩验收
+
+见 `docs/demo-rebuild/PLAYTEST-5MIN.md`。覆盖自动战斗、掉装、对比、穿戴、锻造、Boss 奖励和转生目标。
 
 ## 技术栈说明
 

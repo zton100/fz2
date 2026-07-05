@@ -1,8 +1,13 @@
 # Go
 server/server
 server/server.exe
+server/saves/
 *.exe
 *.exe~
+
+# Local verification output
+*.log
+client/verify_result.txt
 
 # Unity (后续阶段)
 client/[Ll]ibrary/
