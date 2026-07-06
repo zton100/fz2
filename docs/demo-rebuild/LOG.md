@@ -369,6 +369,41 @@
 
 - 待提交。
 
+## 2026-07-06 Demo 后续硬化：锻造控制器拆分
+
+### 本轮目标
+
+- 继续按维护性重构计划拆分 `MainController.cs`。
+- 将锻造页、材料展示、工坊计划和强化/重铸完成反馈集中到独立 partial。
+
+### 本轮完成
+
+- 新增 `MainController.Craft.cs` partial：
+  - 锻造页构建。
+  - 材料摘要刷新和材料命名。
+  - 工坊计划刷新和计划行样式。
+  - 强化/重铸 pending 状态追踪。
+  - 按 UID 查找装备并汇报评分变化。
+- `MainController.cs` 删除对应锻造方法，继续保留天赋页、生命周期、toast 和通用 UI helper。
+- `PLAN.md` 将锻造 partial 拆分标记为完成。
+
+### 本轮验证
+
+- `git diff --check` 通过。
+- `go test ./...` 通过。
+- Unity `EquipmentPresenterTestRunner.Run` 通过，日志包含 `[EquipmentPresenterTestRunner] OK`。
+- Unity `PlayModeRunner.RunMainSmoke` 通过，日志包含 `MAIN_SMOKE_OK`。
+- `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`。
+
+### 本轮遗留
+
+- `MainController.cs` 还剩天赋/转生页和通用 UI helper。
+- 下一轮拆 `MainController.Talent.cs`，再评估主文件是否需要二次整理。
+
+### 提交信息
+
+- 待提交。
+
 ## 2026-07-06 Demo 后续硬化：装备控制器拆分
 
 ### 本轮目标
