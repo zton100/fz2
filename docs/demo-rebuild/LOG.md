@@ -369,6 +369,42 @@
 
 - 待提交。
 
+## 2026-07-06 Demo 后续硬化：天赋控制器拆分
+
+### 本轮目标
+
+- 完成 `MainController` 视图型 partial 拆分的最后一块。
+- 将转生页、天赋按钮、转生计划和推荐天赋逻辑迁出主控制器。
+
+### 本轮完成
+
+- 新增 `MainController.Talent.cs` partial：
+  - 天赋常量。
+  - 转生天赋页构建。
+  - 转生状态和天赋文本刷新。
+  - 转生计划卡刷新。
+  - 天赋升级按钮刷新。
+  - 推荐天赋选择逻辑。
+- `MainController.cs` 删除对应天赋方法，剩余职责进一步收敛到生命周期、刷新调度、离线弹层、toast 和通用 UI helper。
+- `PLAN.md` 将天赋 partial 拆分标记为完成。
+
+### 本轮验证
+
+- `git diff --check` 通过。
+- `go test ./...` 通过。
+- Unity `EquipmentPresenterTestRunner.Run` 通过，日志包含 `[EquipmentPresenterTestRunner] OK`。
+- Unity `PlayModeRunner.RunMainSmoke` 通过，日志包含 `MAIN_SMOKE_OK`。
+- `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`。
+
+### 本轮遗留
+
+- `MainController.cs` 还可继续拆出通用 UI helper partial。
+- 下一轮建议做主文件最终收口：`MainController.UI.cs` 承载 Panel/Row/Text/Button/Icon/颜色 helper，主文件只留 orchestration。
+
+### 提交信息
+
+- 待提交。
+
 ## 2026-07-06 Demo 后续硬化：锻造控制器拆分
 
 ### 本轮目标
