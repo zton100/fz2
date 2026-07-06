@@ -369,6 +369,40 @@
 
 - 待提交。
 
+## 2026-07-06 Demo 后续硬化：PlayMode 主界面 smoke 增强
+
+### 本轮目标
+
+- 增加真实 Main 场景层面的 UI 装配回归测试。
+- 避免 partial 拆分后只靠“启动不崩”判断，补上关键面板和 tab 切换断言。
+
+### 本轮完成
+
+- `PlayModeRunner.RunMainSmoke` 增强为结构化 smoke：
+  - 检查 `UIDocument` 和 root visual tree。
+  - 检查主框架、顶部 HUD、战斗区、背包页、锻造页、天赋页、底部导航、离线弹层节点存在。
+  - 检查底部导航四个按钮存在。
+  - 通过反射调用 `SetActiveTab`，验证战斗 / 背包 / 锻造 / 天赋四个 tab 切换后对应面板可见。
+- smoke 失败时写入 `MAIN_SMOKE_FAIL <reason>`，并用非 0 退出码中断批处理。
+- `PLAN.md` 将 PlayMode 主界面 smoke 增强标记完成。
+
+### 本轮验证
+
+- `git diff --check` 通过。
+- `go test ./...` 通过。
+- Unity `EquipmentPresenterTestRunner.Run` 通过，日志包含 `[EquipmentPresenterTestRunner] OK`。
+- Unity `PlayModeRunner.RunMainSmoke` 通过，日志包含 `MAIN_SMOKE_OK`，`client/verify_result.txt` 为 `MAIN_SMOKE_OK`。
+- `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`。
+
+### 本轮遗留
+
+- PlayMode smoke 已覆盖结构和 tab 切换，还未模拟具体按钮操作如锁定、穿戴、分解、强化。
+- 下一轮可以进入数值平衡打磨，或继续补按钮级交互 smoke。
+
+### 提交信息
+
+- 待提交。
+
 ## 2026-07-06 Demo 后续硬化：客户端决策回归测试
 
 ### 本轮目标
