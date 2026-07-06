@@ -16,25 +16,29 @@ import (
 )
 
 type cycleMetrics struct {
-	TargetFloor    int
-	Ticks          int
-	FinalFloor     int
-	StartPower     float64
-	FinalPower     float64
-	LootCount      int
-	EquippedCount  int
-	PowerGain      float64
-	BossReward     int
-	UpgradeCount   int
-	DecomposeCount int
-	BaseMaterials  int
-	RarityCounts   map[data.Rarity]int
-	ReincarnSouls  int
-	ReincarnErr    error
-	PostReincPower float64
+	TargetFloor         int
+	Ticks               int
+	FinalFloor          int
+	StartPower          float64
+	FinalPower          float64
+	LootCount           int
+	EquippedCount       int
+	PowerGain           float64
+	BossReward          int
+	UpgradeCount        int
+	DecomposeCount      int
+	BaseMaterials       int
+	RarityCounts        map[data.Rarity]int
+	AffixCategoryCounts map[data.AffixCategory]int
+	ReincarnSouls       int
+	ReincarnErr         error
+	PostReincPower      float64
 }
 
-const longTargetFloor = 30
+const (
+	longTargetFloor = 30
+	deepTargetFloor = 50
+)
 
 func main() {
 	rng := rand.New(rand.NewSource(42))
@@ -55,12 +59,7 @@ func main() {
 		fmt.Printf("--- Cycle %d ---\n", cycle)
 		fmt.Printf("Start: floor=1 power=%.1f souls=%d\n", metrics.StartPower, player.Souls)
 		printMetrics(metrics)
-		fmt.Printf("Rarity mix: common=%d magic=%d rare=%d legendary=%d artifact=%d\n",
-			metrics.RarityCounts[data.RarityCommon],
-			metrics.RarityCounts[data.RarityMagic],
-			metrics.RarityCounts[data.RarityRare],
-			metrics.RarityCounts[data.RarityLegendary],
-			metrics.RarityCounts[data.RarityArtifact])
+		printLootMix(metrics)
 
 		if metrics.Ticks < 5 || metrics.Ticks > 25 {
 			fmt.Printf("  FAIL: ticks out of target range 5..25, got %d\n", metrics.Ticks)
@@ -109,12 +108,7 @@ func main() {
 	fmt.Printf("--- Long Run: floor 1 -> %d ---\n", longTargetFloor)
 	fmt.Printf("Start: floor=1 power=%.1f souls=%d\n", longMetrics.StartPower, longPlayer.Souls)
 	printMetrics(longMetrics)
-	fmt.Printf("Rarity mix: common=%d magic=%d rare=%d legendary=%d artifact=%d\n",
-		longMetrics.RarityCounts[data.RarityCommon],
-		longMetrics.RarityCounts[data.RarityMagic],
-		longMetrics.RarityCounts[data.RarityRare],
-		longMetrics.RarityCounts[data.RarityLegendary],
-		longMetrics.RarityCounts[data.RarityArtifact])
+	printLootMix(longMetrics)
 	if longMetrics.FinalFloor < longTargetFloor {
 		fmt.Printf("  FAIL: long run reached floor %d, want >= %d\n", longMetrics.FinalFloor, longTargetFloor)
 		failed = true
@@ -131,6 +125,33 @@ func main() {
 	}
 	fmt.Println()
 
+	deepMetrics := runCycle(longPlayer, longDrop, deepTargetFloor)
+	fmt.Printf("--- Deep Run: floor %d -> %d ---\n", longTargetFloor, deepTargetFloor)
+	fmt.Printf("Start: floor=%d power=%.1f souls=%d\n", longTargetFloor, deepMetrics.StartPower, longPlayer.Souls)
+	printMetrics(deepMetrics)
+	printLootMix(deepMetrics)
+	if deepMetrics.FinalFloor < deepTargetFloor {
+		fmt.Printf("  FAIL: deep run reached floor %d, want >= %d\n", deepMetrics.FinalFloor, deepTargetFloor)
+		failed = true
+	}
+	if deepMetrics.Ticks < 15 || deepMetrics.Ticks > 800 {
+		fmt.Printf("  FAIL: floor %d -> %d ticks out of target range 15..800, got %d\n",
+			longTargetFloor,
+			deepTargetFloor,
+			deepMetrics.Ticks)
+		failed = true
+	} else {
+		fmt.Printf("  PASS: floor %d -> %d tick count in target range\n", longTargetFloor, deepTargetFloor)
+	}
+	if deepMetrics.AffixCategoryCounts[data.AffixSpecial] == 0 {
+		fmt.Printf("  FAIL: floor %d -> %d saw no special affixes after unlock floor %d\n",
+			longTargetFloor,
+			deepTargetFloor,
+			data.FloorUnlockSpecial)
+		failed = true
+	}
+	fmt.Println()
+
 	if err := reincarnation.Reincarnate(longPlayer); err != nil {
 		fmt.Printf("FAIL: long run reincarnation failed: %v\n", err)
 		failed = true
@@ -138,20 +159,15 @@ func main() {
 		soulsAfterReincarn := longPlayer.Souls
 		spentDamage := spendTalent(longPlayer, "damage")
 		starter.GrantLoadout(longPlayer, longGen)
-		secondMetrics := runCycle(longPlayer, longDrop, longTargetFloor)
-		fmt.Printf("--- Second Loop After Reincarnation: floor 1 -> %d ---\n", longTargetFloor)
+		secondMetrics := runCycle(longPlayer, longDrop, deepTargetFloor)
+		fmt.Printf("--- Second Loop After Reincarnation: floor 1 -> %d ---\n", deepTargetFloor)
 		fmt.Printf("Start: floor=1 power=%.1f souls=%d damage_talent=%d spent_damage=%d\n",
 			secondMetrics.StartPower,
 			soulsAfterReincarn,
 			longPlayer.Talents["damage"],
 			spentDamage)
 		printMetrics(secondMetrics)
-		fmt.Printf("Rarity mix: common=%d magic=%d rare=%d legendary=%d artifact=%d\n",
-			secondMetrics.RarityCounts[data.RarityCommon],
-			secondMetrics.RarityCounts[data.RarityMagic],
-			secondMetrics.RarityCounts[data.RarityRare],
-			secondMetrics.RarityCounts[data.RarityLegendary],
-			secondMetrics.RarityCounts[data.RarityArtifact])
+		printLootMix(secondMetrics)
 		if spentDamage == 0 {
 			fmt.Println("  FAIL: second loop did not spend reincarnation souls on damage talent")
 			failed = true
@@ -162,20 +178,21 @@ func main() {
 				longMetrics.StartPower)
 			failed = true
 		}
-		if secondMetrics.FinalFloor < longTargetFloor {
-			fmt.Printf("  FAIL: second loop reached floor %d, want >= %d\n", secondMetrics.FinalFloor, longTargetFloor)
+		if secondMetrics.FinalFloor < deepTargetFloor {
+			fmt.Printf("  FAIL: second loop reached floor %d, want >= %d\n", secondMetrics.FinalFloor, deepTargetFloor)
 			failed = true
 		}
-		if secondMetrics.Ticks > longMetrics.Ticks {
+		firstLoopTicksToDeepTarget := longMetrics.Ticks + deepMetrics.Ticks
+		if secondMetrics.Ticks > firstLoopTicksToDeepTarget {
 			fmt.Printf("  FAIL: second loop ticks %d should not exceed first loop ticks %d after damage talent\n",
 				secondMetrics.Ticks,
-				longMetrics.Ticks)
+				firstLoopTicksToDeepTarget)
 			failed = true
 		} else {
 			fmt.Printf("  PASS: second loop reached floor %d in %d ticks (first loop %d)\n",
-				longTargetFloor,
+				deepTargetFloor,
 				secondMetrics.Ticks,
-				longMetrics.Ticks)
+				firstLoopTicksToDeepTarget)
 		}
 		fmt.Println()
 	}
@@ -217,18 +234,35 @@ func printMetrics(metrics cycleMetrics) {
 		metrics.BaseMaterials)
 }
 
+func printLootMix(metrics cycleMetrics) {
+	fmt.Printf("Rarity mix: common=%d magic=%d rare=%d legendary=%d artifact=%d\n",
+		metrics.RarityCounts[data.RarityCommon],
+		metrics.RarityCounts[data.RarityMagic],
+		metrics.RarityCounts[data.RarityRare],
+		metrics.RarityCounts[data.RarityLegendary],
+		metrics.RarityCounts[data.RarityArtifact])
+	fmt.Printf("Affix mix: basic=%d derived=%d special=%d\n",
+		metrics.AffixCategoryCounts[data.AffixBasic],
+		metrics.AffixCategoryCounts[data.AffixDerived],
+		metrics.AffixCategoryCounts[data.AffixSpecial])
+}
+
 func runCycle(p *model.Player, drop *loot.DropTable, targetFloor int) cycleMetrics {
 	const maxTicks = 10000
 	metrics := cycleMetrics{
-		TargetFloor:  targetFloor,
-		StartPower:   reincarnation.ComputePlayerPower(p),
-		FinalFloor:   p.Floor,
-		RarityCounts: map[data.Rarity]int{},
+		TargetFloor:         targetFloor,
+		StartPower:          reincarnation.ComputePlayerPower(p),
+		FinalFloor:          p.Floor,
+		RarityCounts:        map[data.Rarity]int{},
+		AffixCategoryCounts: map[data.AffixCategory]int{},
 	}
 	runner := dungeon.NewRunner(p, nil, drop)
 	runner.LootCallback = func(eq *model.Equipment) {
 		metrics.LootCount++
 		metrics.RarityCounts[eq.Rarity]++
+		for _, affix := range eq.Affixes {
+			metrics.AffixCategoryCounts[data.AffixCategoryOf(affix.Type)]++
+		}
 	}
 	runner.BossRewardCallback = func(floor int, amount int) {
 		metrics.BossReward += amount
