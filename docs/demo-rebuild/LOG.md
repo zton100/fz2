@@ -369,6 +369,46 @@
 
 - 待提交。
 
+## 2026-07-06 Demo 后续硬化：UI helper 收口
+
+### 本轮目标
+
+- 完成 `MainController.cs` 的最终收口。
+- 将跨视图复用的 UI helper、toast、离线弹层和样式常量迁出主控制器。
+
+### 本轮完成
+
+- 新增 `MainController.UI.cs` partial：
+  - 颜色和按钮样式常量。
+  - toast 状态和刷新逻辑。
+  - 离线收益弹层构建。
+  - `Panel` / `Row` / `Column` / `Text` / `SectionTitle` / `ActionButton` / `IconImage` 等 UI helper。
+  - 装备稀有度颜色、边框、背景和动作按钮颜色映射。
+- `MainController.cs` 删除通用 UI helper 和样式常量，剩余职责收敛为：
+  - Unity 生命周期。
+  - 服务端事件绑定和刷新调度。
+  - 主界面 frame、HUD、tab、底部导航编排。
+  - 少量跨视图状态辅助。
+- 清理拆分后留下的多余空行。
+- `PLAN.md` 将 UI helper partial 拆分标记为完成。
+
+### 本轮验证
+
+- `git diff --check` 通过。
+- `go test ./...` 通过。
+- Unity `EquipmentPresenterTestRunner.Run` 通过，日志包含 `[EquipmentPresenterTestRunner] OK`。
+- Unity `PlayModeRunner.RunMainSmoke` 通过，日志包含 `MAIN_SMOKE_OK`。
+- `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`。
+
+### 本轮遗留
+
+- `MainController` partial 拆分计划已基本完成。
+- 下一轮可以转向功能质量：补客户端交互回归测试、背包/锻造/转生的细粒度 smoke，或开始数值平衡打磨。
+
+### 提交信息
+
+- 待提交。
+
 ## 2026-07-06 Demo 后续硬化：天赋控制器拆分
 
 ### 本轮目标

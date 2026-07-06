@@ -134,3 +134,4 @@
 - [x] `MainController` 拆出装备、背包、详情和装备操作 partial，降低继续迭代冲突风险。
 - [x] `MainController` 拆出锻造页、材料摘要和强化/重铸反馈 partial。
 - [x] `MainController` 拆出转生页、天赋按钮和推荐天赋 partial。
+- [x] `MainController` 拆出通用 UI helper、toast 和样式常量 partial，主文件收敛到编排职责。
