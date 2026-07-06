@@ -369,6 +369,51 @@
 
 - 待提交。
 
+## 2026-07-06 Demo 后续硬化：平衡 smoke 指标化
+
+### 本轮目标
+
+- 开始数值和平衡打磨前，先让平衡验证可重复、可观察、可失败。
+- 避免只凭“能到第 10 层”判断前 10 层体验。
+
+### 本轮完成
+
+- `server/cmd/smokebalance` 增强输出：
+  - 每轮起始战力、当前魂点。
+  - 到第 10 层所需 tick、最终层数、掉落数、自动穿戴次数、最终战力和战力增益。
+  - 掉落稀有度分布：普通、魔法、稀有、传奇、神器。
+  - 转生后魂点、历史最高层、重置后战力。
+- `smokebalance` 增加失败断言：
+  - 到第 10 层 tick 必须在目标区间内。
+  - 到达第 10 层前掉落数不能过低。
+  - 最终战力不能低于起始战力。
+  - 转生魂点必须符合前 10 层预期。
+  - 三轮内至少有掉落装备带来穿戴提升。
+- `scripts/verify-flow.sh` 在启动协议服务器前先运行 `go run ./cmd/smokebalance`。
+- `PLAYTEST-5MIN.md` 更新 `verify-flow.sh` 的新输出预期。
+- `PLAN.md` 将平衡 smoke 指标化标记完成。
+
+### 本轮验证
+
+- `git diff --check` 通过。
+- `go test ./...` 通过。
+- `go run ./cmd/smokebalance` 通过：
+  - 3 轮均 9 tick 到第 10 层。
+  - 第 1 / 第 3 轮有穿戴提升。
+  - 转生魂点分别为 2 / 4。
+- `./scripts/verify-flow.sh` 通过，先输出 `Balance Simulation`，再输出 `VERIFY_OK`。
+- Unity `EquipmentPresenterTestRunner.Run` 通过，日志包含 `[EquipmentPresenterTestRunner] OK`。
+- Unity `PlayModeRunner.RunMainSmoke` 通过，日志包含 `MAIN_SMOKE_OK`。
+
+### 本轮遗留
+
+- 当前只是让平衡验证指标化，还没有调整怪物、掉落、材料、强化或转生曲线。
+- 下一轮可以基于 smoke 输出开始第一轮前 10 层曲线调参。
+
+### 提交信息
+
+- 待提交。
+
 ## 2026-07-06 Demo 后续硬化：PlayMode 主界面 smoke 增强
 
 ### 本轮目标

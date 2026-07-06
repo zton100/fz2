@@ -15,6 +15,7 @@ cleanup() {
 trap cleanup EXIT
 
 cd "$ROOT/server"
+go run ./cmd/smokebalance
 FZ2_ADDR="$FZ2_ADDR" go run ./cmd/server >"$SERVER_LOG" 2>&1 &
 SERVER_PID=$!
 

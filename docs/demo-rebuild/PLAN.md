@@ -137,3 +137,4 @@
 - [x] `MainController` 拆出通用 UI helper、toast 和样式常量 partial，主文件收敛到编排职责。
 - [x] 背包筛选/锁定保护决策迁入 `EquipmentPresenter`，并补 Unity 回归测试。
 - [x] PlayMode 主界面 smoke 增加 UI 结构断言和四个 tab 切换验证。
+- [x] `smokebalance` 输出掉落、穿戴、战力增益、稀有度分布和转生收益，并接入 `verify-flow.sh`。

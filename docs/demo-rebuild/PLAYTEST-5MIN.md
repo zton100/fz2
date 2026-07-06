@@ -112,5 +112,6 @@ Unity -batchmode -projectPath client -executeMethod PlayModeRunner.RunMainSmoke 
 
 - `go test ./...` 通过。
 - `verify-flow.sh` 输出 `VERIFY_OK`。
+- `verify-flow.sh` 会先输出 `Balance Simulation`，确认 3 轮到第 10 层的 tick、掉落、穿戴、稀有度和转生收益指标，再启动协议闭环验证。
 - Presenter 测试日志包含 `[EquipmentPresenterTestRunner] OK`。
 - 主场景 smoke 日志包含 `MAIN_SMOKE_OK`。
