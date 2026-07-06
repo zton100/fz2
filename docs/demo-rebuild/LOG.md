@@ -448,6 +448,39 @@
 
 - 待提交。
 
+## 2026-07-07 Demo 后续硬化：Boss 首通奖励边界
+
+### 本轮目标
+
+- 检查 Boss 首通奖励在 `floor == MaxFloor`、`floor < MaxFloor`、非 Boss 层等边界下的行为。
+- 明确 `MaxFloor` 的语义，避免把“到达最高层”和“已领取最高 Boss 奖励”混淆。
+
+### 本轮完成
+
+- 为 `BossFirstClearReward` 增加表格测试：
+  - 非法层数不发奖。
+  - 非 Boss 层不发奖。
+  - 老 Boss 重刷不发奖。
+  - 当前最高 Boss 层发奖。
+  - `MaxFloor` 滞后于当前 Boss 层时发奖。
+- 增加 Runner 级回归测试：首次击败 5 层 Boss 发奖后，即使手动回到 5 层再次击败，也不会重复获得材料。
+- 为 `BossFirstClearReward` 补充注释，说明 `MaxFloor` 表示最高到达层；因此战斗前 `floor == MaxFloor` 是当前最高层的首次清理尝试。
+
+### 本轮验证
+
+- `go test ./internal/dungeon -run 'BossFirstClear|Reclearing' -v` 通过。
+- `go test ./...` 通过。
+- `go run ./cmd/smokebalance` 通过。
+- `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`。
+
+### 本轮遗留
+
+- 下一步继续做 31 -> 50 层长线 smoke，并验证 16 层后特殊词缀能进入掉落池。
+
+### 提交信息
+
+- 待提交。
+
 ## 2026-07-06 Demo 后续硬化：30 层长线和二周目验证
 
 ### 本轮目标

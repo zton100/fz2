@@ -103,6 +103,51 @@ func TestRunner_BossFirstClearGrantsBaseMaterials(t *testing.T) {
 	}
 }
 
+func TestBossFirstClearReward_Boundaries(t *testing.T) {
+	tests := []struct {
+		name     string
+		floor    int
+		maxFloor int
+		want     int
+	}{
+		{name: "invalid floor", floor: 0, maxFloor: 0, want: 0},
+		{name: "normal floor", floor: 6, maxFloor: 6, want: 0},
+		{name: "old boss reclear below historic max", floor: 5, maxFloor: 6, want: 0},
+		{name: "current highest boss floor grants", floor: 5, maxFloor: 5, want: 15},
+		{name: "stale max below boss floor grants", floor: 10, maxFloor: 8, want: 30},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := BossFirstClearReward(tt.floor, tt.maxFloor)
+			if got != tt.want {
+				t.Fatalf("BossFirstClearReward(%d, %d) = %d, want %d", tt.floor, tt.maxFloor, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRunner_BossFirstClearDoesNotRepeatAfterAdvancing(t *testing.T) {
+	p := makePlayer()
+	p.Floor = 5
+	p.MaxFloor = 5
+	p.Equipped[data.SlotWeapon] = &model.Equipment{
+		BaseStats: map[data.AffixType]float64{data.ATStrength: 1000},
+	}
+	gen := loot.NewGenerator(rand.New(rand.NewSource(1)))
+	r := NewRunner(p, nil, loot.NewDropTable(gen))
+
+	r.Tick()
+	if p.Materials[data.MatBase] != 15 {
+		t.Fatalf("base materials after first clear = %d, want 15", p.Materials[data.MatBase])
+	}
+
+	p.Floor = 5
+	r.Tick()
+	if p.Materials[data.MatBase] != 15 {
+		t.Fatalf("base materials after reclear = %d, want still 15", p.Materials[data.MatBase])
+	}
+}
+
 func TestRunner_ReclearingOldBossDoesNotGrantMaterials(t *testing.T) {
 	p := makePlayer()
 	p.Floor = 5

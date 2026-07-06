@@ -65,6 +65,10 @@ func (r *Runner) Tick() {
 	}
 }
 
+// BossFirstClearReward returns the one-time material reward for clearing a boss
+// at the player's current highest reached floor. MaxFloor tracks the highest
+// reached floor, so floor == maxFloor is still the first clear attempt for that
+// floor; old boss reclears have floor < maxFloor.
 func BossFirstClearReward(floor int, maxFloor int) int {
 	if floor <= 0 || floor%5 != 0 || floor < maxFloor {
 		return 0
