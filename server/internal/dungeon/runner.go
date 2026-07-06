@@ -69,5 +69,5 @@ func BossFirstClearReward(floor int, maxFloor int) int {
 	if floor <= 0 || floor%5 != 0 || floor < maxFloor {
 		return 0
 	}
-	return floor * 2
+	return floor * 3
 }

@@ -443,7 +443,7 @@ namespace EquipmentIdle.UI
 
         public static int BossRewardAtFloor(int floor)
         {
-            return floor > 0 && floor % 5 == 0 ? floor * 2 : 0;
+            return floor > 0 && floor % 5 == 0 ? floor * 3 : 0;
         }
 
         public static float MonsterPowerAtFloor(int floor)
@@ -458,7 +458,7 @@ namespace EquipmentIdle.UI
             {
                 normal = 98f * (float)Math.Pow(1.05f, floor - 20);
             }
-            return floor % 5 == 0 ? normal * 1.8f : normal;
+            return floor % 5 == 0 ? normal * 1.2f : normal;
         }
 
         public static string BuildNextGoal(int floor, float playerPower, bool canReincarn, int bagCount, int baseMaterials)

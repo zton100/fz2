@@ -1,4 +1,4 @@
-﻿package data
+package data
 
 import (
 	"math"
@@ -28,7 +28,7 @@ func MonsterPower(floor int) float64 {
 		normal = baseAt20 * math.Pow(1.05, float64(floor-20))
 	}
 	if floor%5 == 0 {
-		return normal * 1.8
+		return normal * 1.2
 	}
 	return normal
 }

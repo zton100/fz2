@@ -95,11 +95,11 @@ func TestRunner_BossFirstClearGrantsBaseMaterials(t *testing.T) {
 
 	r.Tick()
 
-	if p.Materials[data.MatBase] != 10 {
-		t.Fatalf("base materials = %d, want 10", p.Materials[data.MatBase])
+	if p.Materials[data.MatBase] != 15 {
+		t.Fatalf("base materials = %d, want 15", p.Materials[data.MatBase])
 	}
-	if rewardFloor != 5 || rewardAmount != 10 {
-		t.Fatalf("reward callback floor=%d amount=%d, want floor=5 amount=10", rewardFloor, rewardAmount)
+	if rewardFloor != 5 || rewardAmount != 15 {
+		t.Fatalf("reward callback floor=%d amount=%d, want floor=5 amount=15", rewardFloor, rewardAmount)
 	}
 }
 

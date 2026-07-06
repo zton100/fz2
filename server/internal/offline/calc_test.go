@@ -91,7 +91,7 @@ func TestCalc_BossFirstClearGrantsBaseMaterials(t *testing.T) {
 
 	Calc(p, nil, drop, 2*time.Second, 0, 0, 0)
 
-	if p.Materials[data.MatBase] != 10 {
-		t.Fatalf("base materials = %d, want 10", p.Materials[data.MatBase])
+	if p.Materials[data.MatBase] != 15 {
+		t.Fatalf("base materials = %d, want 15", p.Materials[data.MatBase])
 	}
 }

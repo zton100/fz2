@@ -448,6 +448,36 @@
 
 - 待提交。
 
+## 2026-07-06 Demo 后续硬化：第一轮数值调平
+
+### 本轮目标
+
+- 从观测指标进入第一轮平衡性修正。
+- 保证强化能真实推动战力，并让 1 -> 20 层的自动战斗/掉落/强化循环可被 smoke 覆盖。
+
+### 本轮完成
+
+- 修复服务端装备强化未实际计入 `AllStats` 的问题，基础属性和词缀现在都会按强化等级获得 10%/级倍率。
+- Boss 战力倍率从 1.8 下调到 1.2，降低早期每 5 层尖峰。
+- Boss 首通基础材料奖励从 `floor * 2` 提升到 `floor * 3`，客户端展示、服务端发奖和测试期望同步。
+- `smokebalance` 增加 1 -> 20 长线模拟；卡层时会分解弱装、按收益/成本自动强化已装备装备，并输出分解件数、强化次数和剩余基础材料。
+
+### 本轮验证
+
+- `go test ./...` 通过。
+- `go run ./cmd/smokebalance` 通过；长线 1 -> 20 用 20 tick 到达，分解 11 件、强化 8 次、Boss 奖励 90。
+- `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`。
+- Unity `EquipmentPresenterTestRunner.Run` 通过，日志包含 `[EquipmentPresenterTestRunner] OK`。
+- Unity `PlayModeRunner.RunMainSmoke` 通过，日志包含 `MAIN_SMOKE_OK`。
+
+### 本轮遗留
+
+- 需要继续把长线 smoke 扩展到 30 层和转生后的第二轮成长。
+
+### 提交信息
+
+- 待提交。
+
 ## 2026-07-06 Demo 后续硬化：客户端决策回归测试
 
 ### 本轮目标

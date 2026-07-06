@@ -242,7 +242,7 @@ public static class EquipmentPresenterTestRunner
         AssertContains(EquipmentPresenter.BuildLootCeremonyText(common, true), "可穿戴提升", "upgrade common loot should trigger ceremony");
         AssertContains(EquipmentPresenter.BuildLootCeremonyText(rare, false), "稀有掉落", "rare loot should trigger ceremony");
         AssertContains(EquipmentPresenter.BuildLootCeremonyText(legendary, false), "传奇 掉落", "legendary loot should trigger ceremony");
-        AssertContains(EquipmentPresenter.BuildBossClearBanner(10), "基础材料 +20", "boss clear banner should show reward");
+        AssertContains(EquipmentPresenter.BuildBossClearBanner(10), "基础材料 +30", "boss clear banner should show reward");
         AssertEqual("", EquipmentPresenter.BuildBossClearBanner(11), "normal floor should not show boss clear banner");
     }
 
@@ -250,11 +250,11 @@ public static class EquipmentPresenterTestRunner
     {
         var beforeBoss = EquipmentPresenter.BuildDungeonState(4, 100f);
         AssertContains(beforeBoss.BossHint, "距 Boss 关还差 1 层", "pre-boss hint should show distance");
-        AssertContains(beforeBoss.BossHint, "基础材料 +10", "pre-boss hint should show next reward");
+        AssertContains(beforeBoss.BossHint, "基础材料 +15", "pre-boss hint should show next reward");
 
         var boss = EquipmentPresenter.BuildDungeonState(5, 100f);
-        AssertContains(boss.BossHint, "首通奖励：基础材料 +10", "boss hint should show current reward");
-        if (boss.BossReward != 10) throw new Exception($"boss reward should match server rule, got {boss.BossReward}");
+        AssertContains(boss.BossHint, "首通奖励：基础材料 +15", "boss hint should show current reward");
+        if (boss.BossReward != 15) throw new Exception($"boss reward should match server rule, got {boss.BossReward}");
     }
 
     private static void BuildsProgressNodesForBossCycle()

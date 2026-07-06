@@ -138,3 +138,4 @@
 - [x] 背包筛选/锁定保护决策迁入 `EquipmentPresenter`，并补 Unity 回归测试。
 - [x] PlayMode 主界面 smoke 增加 UI 结构断言和四个 tab 切换验证。
 - [x] `smokebalance` 输出掉落、穿戴、战力增益、稀有度分布和转生收益，并接入 `verify-flow.sh`。
+- [x] 第一轮数值调平：强化实际计入战力，Boss 尖峰和首通奖励同步校准，长线 smoke 覆盖到 20 层。
