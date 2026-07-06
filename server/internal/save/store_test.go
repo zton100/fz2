@@ -1,8 +1,6 @@
-﻿package save
+package save
 
 import "fmt"
-
-
 
 import (
 	"testing"
@@ -91,6 +89,24 @@ func TestStore_SaveAndLoad_EquipBag(t *testing.T) {
 	}
 }
 
+func TestStore_SaveAndLoad_LockedEquipment(t *testing.T) {
+	dir := t.TempDir()
+	s := NewStore(dir)
+
+	p := s.LoadOrCreate("hero")
+	p.Locked["eq_locked"] = true
+
+	if err := s.Save("hero"); err != nil {
+		t.Fatalf("save error: %v", err)
+	}
+
+	s2 := NewStore(dir)
+	p2 := s2.LoadOrCreate("hero")
+	if !p2.Locked["eq_locked"] {
+		t.Fatal("locked equipment state was not persisted")
+	}
+}
+
 func TestStore_SaveAndLoad_Equipped(t *testing.T) {
 	dir := t.TempDir()
 	s := NewStore(dir)
@@ -120,7 +136,6 @@ func TestStore_SaveAndLoad_Equipped(t *testing.T) {
 		t.Errorf("Rarity = %d, want %d", e.Rarity, data.RarityLegendary)
 	}
 }
-
 
 func TestStore_ConcurrentLoadOrCreate(t *testing.T) {
 	dir := t.TempDir()

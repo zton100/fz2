@@ -22,6 +22,7 @@ namespace EquipmentIdle.Net
         public const string TypeCompose = "compose";
         public const string TypeReforge = "reforge";
         public const string TypeUpgrade = "upgrade";
+        public const string TypeLockEquipment = "lock_equipment";
         public const string TypeMaterials = "materials";
         public const string TypeCraftResult = "craft_result";
         public const string TypeReincarn = "reincarn";
@@ -76,6 +77,13 @@ namespace EquipmentIdle.Net
         {
             string dataJson = "{\"uid\":\"" + Escape(uid) + "\"}";
             return "{\"t\":\"" + TypeUpgrade + "\",\"id\":\"" + Escape(id) + "\",\"data\":" + dataJson + "}";
+        }
+
+        /// <summary>编码锁定/解锁请求。</summary>
+        public static string EncodeLockEquipment(string id, string uid, bool locked)
+        {
+            string dataJson = "{\"uid\":\"" + Escape(uid) + "\",\"locked\":" + (locked ? "true" : "false") + "}";
+            return "{\"t\":\"" + TypeLockEquipment + "\",\"id\":\"" + Escape(id) + "\",\"data\":" + dataJson + "}";
         }
 
         /// <summary>编码转生请求。</summary>
@@ -210,6 +218,7 @@ namespace EquipmentIdle.Net
         public int slot;
         public int rarity;
         public int upgrade;
+        public bool locked;
         public AffixData[] affixes;
     }
 
@@ -230,6 +239,7 @@ namespace EquipmentIdle.Net
         public int slot;
         public int rarity;
         public int upgrade;
+        public bool locked;
         public AffixData[] affixes;
     }
 

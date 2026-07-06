@@ -335,6 +335,60 @@
 
 - Commit: `2e7b9aa`
 
+## 2026-07-06 Demo 后续硬化：锁定持久化和局部拆分
+
+### 本轮目标
+
+- 按下一步计划继续完成维护性重构和锁定持久化。
+- 让装备锁定从客户端会话状态升级为服务端权威状态。
+- 先拆出一块高内聚逻辑，降低 `MainController.cs` 继续膨胀的风险。
+
+### 本轮完成
+
+- 服务端协议：
+  - 新增 `lock_equipment` 请求。
+  - `EquipmentDTO` 新增 `locked` 字段。
+  - `bag` 推送携带背包/已穿戴装备的锁定状态。
+- 服务端模型和存档：
+  - `Player` 新增 `Locked map[string]bool`。
+  - 旧 JSON 存档加载后补齐运行时默认 map。
+  - 锁定状态写入 JSON 存档。
+  - 转生会清空锁定 UID，避免旧装备 UID 残留。
+- 服务端行为：
+  - `handleLockEquipment` 持久化锁定/解锁并回推 `bag`。
+  - 分解已锁定装备会失败，服务端不再只依赖客户端保护。
+- 客户端：
+  - `Message` 新增 `lock_equipment` 编码。
+  - `GameState` 新增 `LockEquipment`。
+  - `MainController` 的锁定集合改为由 `bag` 同步驱动，重连后保留。
+  - 锁定按钮改为发送服务端请求。
+- 局部重构：
+  - `MainController` 改成 partial。
+  - 新增 `MainController.Locking.cs` 承载锁定、分解保护、锁定同步逻辑。
+- 文档：
+  - `docs/protocol.md` 更新锁定协议。
+  - `README.md` 增加锁定持久化说明。
+  - `PLAYTEST-5MIN.md` 增加锁定重连验收。
+  - `PLAN.md` 增加 Demo 后续硬化完成项。
+
+### 本轮验证
+
+- `go test ./...` 通过。
+- `go test -race ./...` 通过。
+- `git diff --check` 通过。
+- `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`。
+- Unity `EquipmentPresenterTestRunner.Run` 通过，日志包含 `[EquipmentPresenterTestRunner] OK`。
+- Unity `PlayModeRunner.RunMainSmoke` 通过，日志包含 `MAIN_SMOKE_OK`，`client/verify_result.txt` 为 `MAIN_SMOKE_OK`。
+
+### 本轮遗留
+
+- `MainController.cs` 仍然偏大，后续可继续拆 Battle/Craft/Talent 视图。
+- 推送仍依赖当前 GitHub HTTPS 链路恢复。
+
+### 提交信息
+
+- 待提交。
+
 ## 2026-07-06 Demo-3/4/5 收口：完整可试玩验收
 
 ### 本轮目标

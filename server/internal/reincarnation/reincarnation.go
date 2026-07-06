@@ -41,6 +41,7 @@ func Reincarnate(p *model.Player) error {
 	p.Floor = 1
 	p.EquipBag = []*model.Equipment{}
 	p.Equipped = map[data.Slot]*model.Equipment{}
+	p.Locked = map[string]bool{}
 	p.Materials = map[data.MaterialType]int{}
 	return nil
 }

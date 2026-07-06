@@ -97,12 +97,20 @@
 { "t": "upgrade", "id": "r7", "data": { "uid": "eq_1" } }
 ```
 
+### lock_equipment — 锁定/解锁装备
+
+锁定背包装备，锁定后不会被一键分解或手动分解。服务端持久化锁定状态，并回发 `bag` + `craft_result`。
+
+```json
+{ "t": "lock_equipment", "id": "r8", "data": { "uid": "eq_1", "locked": true } }
+```
+
 ### reincarn — 转生
 
 达到第 10 层后可转生。重置层数/背包/装备/材料，按当前 Floor/5 获得魂点，保留 MaxFloor 和天赋。服务端回发 `sync` + `bag` + `power` + `materials` + `talents` + `craft_result`。
 
 ```json
-{ "t": "reincarn", "id": "r8" }
+{ "t": "reincarn", "id": "r9" }
 ```
 
 ### talent_up — 天赋升级
@@ -112,7 +120,7 @@
 天赋名称：`damage`(max10), `quality`(max3), `drop`(max10), `offline_gain`(max5)。
 
 ```json
-{ "t": "talent_up", "id": "r9", "data": { "name": "damage" } }
+{ "t": "talent_up", "id": "r10", "data": { "name": "damage" } }
 ```
 
 ---
@@ -152,6 +160,7 @@
         "slot": 0,
         "rarity": 2,
         "upgrade": 3,
+        "locked": false,
         "affixes": [
           { "type": "strength", "tier": 2, "value": 12.5 }
         ]
@@ -183,6 +192,7 @@
     "slot": 1,
     "rarity": 0,
     "upgrade": 0,
+    "locked": false,
     "affixes": []
   }
 }

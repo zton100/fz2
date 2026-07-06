@@ -44,6 +44,7 @@ func (s *Store) loadOrCreateLocked(account string) *model.Player {
 		return p
 	}
 	if p := s.loadFromFile(account); p != nil {
+		p.EnsureRuntimeDefaults()
 		s.players[account] = p
 		return p
 	}
@@ -171,5 +172,6 @@ func (s *Store) loadFromFile(account string) *model.Player {
 	if err := json.Unmarshal(data, &p); err != nil {
 		return nil
 	}
+	p.EnsureRuntimeDefaults()
 	return &p
 }

@@ -23,6 +23,7 @@ const (
 	TypeCompose       = "compose"        // 请求：合成
 	TypeReforge       = "reforge"        // 请求：重铸
 	TypeUpgrade       = "upgrade"        // 请求：强化
+	TypeLockEquipment = "lock_equipment" // 请求：锁定/解锁装备
 	TypeMaterials     = "materials"      // 推送：材料库存
 	TypeCraftResult   = "craft_result"   // 推送：养成操作结果
 	TypeOfflineResult = "offline_result" // 推送：离线结算结果
@@ -91,6 +92,7 @@ type EquipmentDTO struct {
 	Slot    int        `json:"slot"`
 	Rarity  int        `json:"rarity"`
 	Upgrade int        `json:"upgrade"`
+	Locked  bool       `json:"locked"`
 	Affixes []AffixDTO `json:"affixes"`
 }
 
@@ -117,6 +119,12 @@ type ReforgeRequest struct {
 // UpgradeRequest 强化请求体。
 type UpgradeRequest struct {
 	UID string `json:"uid"`
+}
+
+// LockEquipmentRequest 锁定/解锁装备请求体。
+type LockEquipmentRequest struct {
+	UID    string `json:"uid"`
+	Locked bool   `json:"locked"`
 }
 
 // MaterialKV 材料键值对。

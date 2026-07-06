@@ -133,6 +133,73 @@ func TestHandleReincarn_GrantsStarterLoadout(t *testing.T) {
 	})
 }
 
+func TestHandleLockEquipment_PersistsAndPushesBag(t *testing.T) {
+	store := save.NewMemoryStore()
+	hub := NewHub(store)
+	sess := &Session{Account: "hero", Send: make(chan []byte, 16)}
+	store.LoadOrCreate("hero")
+	store.WithPlayer("hero", func(p *model.Player) {
+		p.EquipBag = append(p.EquipBag, &model.Equipment{
+			UID:    "eq_lock_me",
+			BaseID: "base_weapon",
+			Name:   "Lock Me",
+			Slot:   data.SlotWeapon,
+		})
+	})
+
+	reqData, _ := json.Marshal(protocol.LockEquipmentRequest{UID: "eq_lock_me", Locked: true})
+	env := protocol.Envelope{T: protocol.TypeLockEquipment, ID: "lock", Data: reqData}
+	raw, _ := json.Marshal(env)
+	hub.handleMessage(sess, raw)
+
+	store.WithPlayer("hero", func(p *model.Player) {
+		if !p.Locked["eq_lock_me"] {
+			t.Fatal("equipment was not locked in player state")
+		}
+	})
+	var pushedBag protocol.BagData
+	if !readEnvelope(sess.Send, protocol.TypeBag, &pushedBag) {
+		t.Fatal("no bag message sent")
+	}
+	if len(pushedBag.Items) != 1 || !pushedBag.Items[0].Locked {
+		t.Fatalf("pushed bag locked state = %+v, want locked item", pushedBag.Items)
+	}
+}
+
+func TestHandleDecompose_LockedEquipmentRejected(t *testing.T) {
+	store := save.NewMemoryStore()
+	hub := NewHub(store)
+	sess := &Session{Account: "hero", Send: make(chan []byte, 16)}
+	store.LoadOrCreate("hero")
+	store.WithPlayer("hero", func(p *model.Player) {
+		p.EquipBag = append(p.EquipBag, &model.Equipment{
+			UID:    "eq_locked",
+			BaseID: "base_weapon",
+			Name:   "Locked Sword",
+			Slot:   data.SlotWeapon,
+		})
+		p.Locked["eq_locked"] = true
+	})
+
+	reqData, _ := json.Marshal(protocol.DecomposeRequest{UID: "eq_locked"})
+	env := protocol.Envelope{T: protocol.TypeDecompose, ID: "decompose", Data: reqData}
+	raw, _ := json.Marshal(env)
+	hub.handleMessage(sess, raw)
+
+	store.WithPlayer("hero", func(p *model.Player) {
+		if len(p.EquipBag) != 1 {
+			t.Fatalf("locked item was decomposed, bag len = %d", len(p.EquipBag))
+		}
+	})
+	var result protocol.CraftResult
+	if !readEnvelope(sess.Send, protocol.TypeCraftResult, &result) {
+		t.Fatal("no craft result sent")
+	}
+	if result.OK {
+		t.Fatal("locked decompose should fail")
+	}
+}
+
 func TestHub_ConcurrentPlayerMutations_DoNotDeadlock(t *testing.T) {
 	store := save.NewMemoryStore()
 	hub := NewHub(store)

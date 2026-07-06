@@ -42,6 +42,8 @@ func (h *Hub) handleMessage(sess *Session, raw []byte) {
 		h.handleReforge(sess, env)
 	case protocol.TypeUpgrade:
 		h.handleUpgrade(sess, env)
+	case protocol.TypeLockEquipment:
+		h.handleLockEquipment(sess, env)
 	case protocol.TypeReincarn:
 		h.handleReincarn(sess, env)
 	case protocol.TypeTalentUp:
@@ -217,12 +219,12 @@ func (h *Hub) pushFloor(sess *Session, newFloor int) {
 func (h *Hub) pushBag(sess *Session, player *model.Player) {
 	items := make([]protocol.EquipmentDTO, len(player.EquipBag))
 	for i, eq := range player.EquipBag {
-		items[i] = toEquipmentDTO(eq)
+		items[i] = toEquipmentDTO(eq, player.Locked)
 	}
 	equipped := make([]protocol.EquipmentDTO, 0, len(player.Equipped))
 	for _, slot := range data.AllSlots() {
 		if eq := player.Equipped[slot]; eq != nil {
-			equipped = append(equipped, toEquipmentDTO(eq))
+			equipped = append(equipped, toEquipmentDTO(eq, player.Locked))
 		}
 	}
 	bd := protocol.BagData{Items: items, Equipped: equipped}
@@ -247,10 +249,11 @@ func (h *Hub) pushPower(sess *Session, player *model.Player) {
 	}
 }
 
-func toEquipmentDTO(eq *model.Equipment) protocol.EquipmentDTO {
+func toEquipmentDTO(eq *model.Equipment, locked map[string]bool) protocol.EquipmentDTO {
 	return protocol.EquipmentDTO{
 		UID: eq.UID, BaseID: eq.BaseID, Name: eq.Name,
 		Slot: int(eq.Slot), Rarity: int(eq.Rarity), Upgrade: eq.Upgrade,
+		Locked:  locked != nil && locked[eq.UID],
 		Affixes: toAffixDTOs(eq.Affixes),
 	}
 }
@@ -287,13 +290,45 @@ func (h *Hub) handleDecompose(sess *Session, env protocol.Envelope) {
 			return
 		}
 		eq := player.EquipBag[idx]
+		if player.Locked != nil && player.Locked[eq.UID] {
+			h.pushCraftResult(sess, false, "装备已锁定，不能分解", eq.UID, eq.Upgrade)
+			return
+		}
 		player.EquipBag = append(player.EquipBag[:idx], player.EquipBag[idx+1:]...)
+		delete(player.Locked, eq.UID)
 		crafting.Decompose(player, eq)
 		h.pushMaterials(sess, player)
 		h.pushBag(sess, player)
 		h.pushCraftResult(sess, true, locale.Current().MsgDecomposed, "", 0)
 	}); err != nil {
 		log.Printf("decompose save error for %s: %v", sess.Account, err)
+	}
+}
+
+func (h *Hub) handleLockEquipment(sess *Session, env protocol.Envelope) {
+	if sess.Account == "" {
+		return
+	}
+	var req protocol.LockEquipmentRequest
+	if err := json.Unmarshal(env.Data, &req); err != nil {
+		return
+	}
+	if err := h.store.WithPlayerSave(sess.Account, func(player *model.Player) {
+		player.EnsureRuntimeDefaults()
+		if findBagIndex(player, req.UID) < 0 {
+			h.pushCraftResult(sess, false, locale.Current().MsgNotInBag, req.UID, 0)
+			return
+		}
+		if req.Locked {
+			player.Locked[req.UID] = true
+			h.pushCraftResult(sess, true, "装备已锁定", req.UID, 0)
+		} else {
+			delete(player.Locked, req.UID)
+			h.pushCraftResult(sess, true, "装备已解锁", req.UID, 0)
+		}
+		h.pushBag(sess, player)
+	}); err != nil {
+		log.Printf("lock equipment save error for %s: %v", sess.Account, err)
 	}
 }
 

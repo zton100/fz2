@@ -7,7 +7,7 @@ using UnityEngine.UIElements;
 
 namespace EquipmentIdle.UI
 {
-    public class MainController : MonoBehaviour
+    public partial class MainController : MonoBehaviour
     {
         private enum BagFilter
         {
@@ -185,6 +185,7 @@ namespace EquipmentIdle.UI
         private void OnBag(List<EquipmentDTO> bag, List<EquipmentDTO> equipped)
         {
             TryReportPendingCraftScoreChange();
+            SyncLockedEquipment(bag, equipped);
             KeepSelectedIfPresent();
             RefreshEquipmentLists();
             RefreshDetail();
@@ -1506,36 +1507,6 @@ namespace EquipmentIdle.UI
             return 0;
         }
 
-        private void ToggleLock(EquipmentDTO eq)
-        {
-            if (eq == null) return;
-            if (_lockedEquipment.Contains(eq.uid))
-            {
-                _lockedEquipment.Remove(eq.uid);
-                AddToast($"已解锁：{eq.name}", ToastDuration);
-            }
-            else
-            {
-                _lockedEquipment.Add(eq.uid);
-                AddToast($"已锁定：{eq.name}", ToastDuration);
-            }
-            RefreshEquipmentLists();
-            RefreshDetail();
-            RefreshCraftPlan();
-        }
-
-        private void DecomposeFromUI(EquipmentDTO eq)
-        {
-            if (eq == null) return;
-            if (_lockedEquipment.Contains(eq.uid))
-            {
-                AddToast($"已锁定，不能分解：{eq.name}", ToastDuration);
-                return;
-            }
-            AddToast($"已发送分解：{eq.name}", ToastDuration);
-            _gameState.Decompose(eq.uid);
-        }
-
         private VisualElement EquipmentRow(string slot, string label, System.Action select, System.Action primary, System.Action secondary, int rarity)
         {
             var row = Row();
@@ -1956,21 +1927,6 @@ namespace EquipmentIdle.UI
             }
             if (count > 0) AddToast(string.Format(L10n.UIDecomposeWeakDone, count), ToastDuration);
             else AddToast("没有可分解的未锁定弱装。", ToastDuration);
-        }
-
-        private void PruneLockedEquipment()
-        {
-            if (_lockedEquipment.Count == 0) return;
-            var existing = new HashSet<string>();
-            foreach (var eq in _gameState.Bag)
-            {
-                if (eq != null) existing.Add(eq.uid);
-            }
-            foreach (var eq in _gameState.Equipped)
-            {
-                if (eq != null) existing.Add(eq.uid);
-            }
-            _lockedEquipment.RemoveWhere(uid => !existing.Contains(uid));
         }
 
         private EquipmentDTO EquippedAtSlot(int slot)
