@@ -130,3 +130,4 @@
 - [x] 服务端禁止分解已锁定装备。
 - [x] 客户端锁定状态由 `bag` 同步驱动，重连后保留。
 - [x] `MainController` 先拆出锁定相关 partial，降低后续继续膨胀的风险。
+- [x] `MainController` 拆出战斗视图和战斗反馈 partial，降低主控制器体积。

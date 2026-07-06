@@ -335,6 +335,40 @@
 
 - Commit: `2e7b9aa`
 
+## 2026-07-06 Demo 后续硬化：战斗控制器拆分
+
+### 本轮目标
+
+- 加快维护性重构进度，优先处理 `MainController.cs` 继续膨胀的问题。
+- 将战斗视图构建、推层进度、掉落反馈、舞台动效从主控制器拆出，降低后续继续开发装备/工坊/天赋时的冲突风险。
+
+### 本轮完成
+
+- 新增 `MainController.Battle.cs` partial：
+  - 战斗面板和移动端状态卡构建。
+  - 战斗舞台、角色卡、血条、Boss 横幅。
+  - 地牢状态刷新、5 层进度节点刷新。
+  - 最近掉落列表和掉落行渲染。
+  - 自动战斗节奏、伤害数字、Boss/掉落横幅反馈。
+- `MainController.cs` 删除对应战斗方法，继续保留装备、背包、锻造、天赋、离线和通用 UI 辅助逻辑。
+- `PLAN.md` 将战斗 partial 拆分标记为完成。
+
+### 本轮验证
+
+- `git diff --check` 通过。
+- `go test ./...` 通过。
+- Unity `EquipmentPresenterTestRunner.Run` 通过，日志包含 `[EquipmentPresenterTestRunner] OK`。
+- Unity `PlayModeRunner.RunMainSmoke` 通过，日志包含 `MAIN_SMOKE_OK`。
+
+### 本轮遗留
+
+- `MainController.cs` 仍可继续拆出 Equipment/Craft/Talent partial。
+- 后续应补更细的客户端侧纯逻辑测试，减少每次都依赖 Unity 批处理的成本。
+
+### 提交信息
+
+- 待提交。
+
 ## 2026-07-06 Demo 后续硬化：锁定持久化和局部拆分
 
 ### 本轮目标
