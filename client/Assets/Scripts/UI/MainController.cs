@@ -9,14 +9,6 @@ namespace EquipmentIdle.UI
 {
     public partial class MainController : MonoBehaviour
     {
-        private enum BagFilter
-        {
-            All,
-            Upgrades,
-            Rare,
-            Decompose,
-        }
-
         private enum MainTab
         {
             Battle,
@@ -88,7 +80,7 @@ namespace EquipmentIdle.UI
         private Texture2D[] _slotIcons;
         private EquipmentDTO _selected;
         private MainTab _activeTab = MainTab.Battle;
-        private BagFilter _bagFilter = BagFilter.All;
+        private EquipmentBagFilter _bagFilter = EquipmentBagFilter.All;
         private float _prevPower;
         private bool _prevCanReincarn;
         private float _battlePulseUntil;

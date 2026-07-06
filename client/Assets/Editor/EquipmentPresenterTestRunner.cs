@@ -14,9 +14,11 @@ public static class EquipmentPresenterTestRunner
             SortsUpgradesBeforeWeakItems();
             FormatsAffixesForPlayers();
             SummarizesEquipmentWithSlotComparison();
+            FiltersBagItemsByUserModeAndLockState();
             ProtectsLowRarityUpgradesFromBulkDecompose();
             EstimatesEquipBestDeltaAcrossSlots();
             OffersDetailActionsByEquipmentLocation();
+            EncodesLockEquipmentRequests();
             DescribesDungeonStateWithServerMonsterCurve();
             RecommendsNextGoalFromProgressState();
             LabelsEquipmentRowsWithUpgradeContext();
@@ -71,6 +73,29 @@ public static class EquipmentPresenterTestRunner
         AssertContains(summary, "力量 +30", "detail should use readable affix names");
     }
 
+    private static void FiltersBagItemsByUserModeAndLockState()
+    {
+        var current = Equipment("current", 0, 1, 0, Affix("strength", 1, 5));
+        var weakCommon = Equipment("weak-common", 0, 0, 0, Affix("max_hp", 1, 3));
+        var usefulMagic = Equipment("useful-magic", 0, 1, 0, Affix("strength", 2, 30));
+        var rare = Equipment("rare", 0, 2, 0, Affix("strength", 1, 1));
+
+        if (!EquipmentPresenter.ShouldShowInBag(weakCommon, current, EquipmentBagFilter.All, false))
+            throw new Exception("all filter should show ordinary bag items");
+        if (!EquipmentPresenter.ShouldShowInBag(usefulMagic, current, EquipmentBagFilter.Upgrades, false))
+            throw new Exception("upgrade filter should show positive upgrades");
+        if (EquipmentPresenter.ShouldShowInBag(weakCommon, current, EquipmentBagFilter.Upgrades, false))
+            throw new Exception("upgrade filter should hide weaker items");
+        if (!EquipmentPresenter.ShouldShowInBag(rare, current, EquipmentBagFilter.Rare, false))
+            throw new Exception("rare filter should show rarity 2+ items");
+        if (!EquipmentPresenter.ShouldShowInBag(weakCommon, current, EquipmentBagFilter.Decompose, false))
+            throw new Exception("decompose filter should show unlocked weak common items");
+        if (EquipmentPresenter.ShouldShowInBag(weakCommon, current, EquipmentBagFilter.Decompose, true))
+            throw new Exception("decompose filter should hide locked items");
+        if (EquipmentPresenter.ShouldShowInBag(usefulMagic, current, EquipmentBagFilter.Decompose, false))
+            throw new Exception("decompose filter should hide useful upgrades");
+    }
+
     private static void ProtectsLowRarityUpgradesFromBulkDecompose()
     {
         var current = Equipment("current", 0, 1, 0, Affix("strength", 1, 5));
@@ -118,6 +143,18 @@ public static class EquipmentPresenterTestRunner
 
         var emptyActions = EquipmentPresenter.DetailActions(null, false);
         if (emptyActions.Count != 0) throw new Exception("empty detail should not offer actions");
+    }
+
+    private static void EncodesLockEquipmentRequests()
+    {
+        string encoded = Message.EncodeLockEquipment("r1", "eq\"locked", true);
+        AssertContains(encoded, "\"t\":\"lock_equipment\"", "lock request should use lock_equipment type");
+        AssertContains(encoded, "\"uid\":\"eq\\\"locked\"", "lock request should escape equipment uid");
+        AssertContains(encoded, "\"locked\":true", "lock request should carry locked=true");
+
+        var parsed = Message.Parse(encoded);
+        AssertEqual(Message.TypeLockEquipment, parsed.t, "parsed lock request type");
+        AssertContains(parsed.dataJson, "\"locked\":true", "parsed lock request data should preserve locked flag");
     }
 
     private static void DescribesDungeonStateWithServerMonsterCurve()
@@ -240,6 +277,11 @@ public static class EquipmentPresenterTestRunner
         AssertContains(craft.ComposeLine, "合成可用", "compose line should show affordability");
         AssertContains(craft.CleanupLine, "弱装 3 件", "cleanup line should show weak items");
 
+        var maxed = Equipment("maxed", 0, 2, 10, Affix("strength", 2, 30));
+        var maxedCraft = EquipmentPresenter.BuildCraftPlan(maxed, 9, 0, 0f);
+        AssertContains(maxedCraft.UpgradeLine, "已强化到 +10", "max upgrade should not suggest another level");
+        AssertContains(maxedCraft.ComposeLine, "还差 1 个基础材料", "compose line should show exact missing materials");
+
         var reincarnReady = EquipmentPresenter.BuildReincarnationPlan(15, 1, 12, true, "伤害");
         AssertContains(reincarnReady.StatusLine, "可转生", "ready reincarnation should be called out");
         AssertContains(reincarnReady.RewardLine, "+3", "reincarnation reward should use floor/5");
@@ -248,6 +290,7 @@ public static class EquipmentPresenterTestRunner
 
         var locked = EquipmentPresenter.BuildReincarnationPlan(6, 0, 6, false, "");
         AssertContains(locked.RewardLine, "继续推进 4 层", "locked reincarnation should show remaining floors");
+        AssertContains(locked.NextTalentLine, "暂无推荐", "empty talent recommendation should be explicit");
     }
 
     private static void BuildsBattleStageStateForVisualCombat()

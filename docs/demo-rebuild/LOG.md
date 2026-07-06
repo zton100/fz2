@@ -369,6 +369,46 @@
 
 - 待提交。
 
+## 2026-07-06 Demo 后续硬化：客户端决策回归测试
+
+### 本轮目标
+
+- 从结构拆分转向质量补强。
+- 先覆盖 UI 最容易回归的决策点：背包筛选、锁定保护、锁定协议编码、工坊/转生边界文案。
+
+### 本轮完成
+
+- `EquipmentPresenter` 新增 `EquipmentBagFilter` 和 `ShouldShowInBag`：
+  - `All` 显示普通背包项。
+  - `Upgrades` 只显示正向提升。
+  - `Rare` 显示稀有及以上。
+  - `Decompose` 只显示未锁定、低稀有、非提升装备。
+- `MainController.Equipment.cs` 的背包筛选改为调用 presenter 决策，避免 UI 私有逻辑无法测试。
+- `EquipmentPresenterTestRunner` 增加回归覆盖：
+  - 背包四种筛选模式。
+  - 锁定装备不会出现在分解筛选。
+  - `lock_equipment` 请求编码和解析。
+  - +10 装备不再提示继续强化。
+  - 合成材料不足显示精确缺口。
+  - 无推荐天赋时给出明确文案。
+
+### 本轮验证
+
+- `git diff --check` 通过。
+- `go test ./...` 通过。
+- Unity `EquipmentPresenterTestRunner.Run` 通过，日志包含 `[EquipmentPresenterTestRunner] OK`。
+- Unity `PlayModeRunner.RunMainSmoke` 通过，日志包含 `MAIN_SMOKE_OK`。
+- `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`。
+
+### 本轮遗留
+
+- 还可以继续补 PlayMode 级细粒度 smoke，模拟点击底部导航和关键按钮。
+- 数值平衡尚未开始系统化调参。
+
+### 提交信息
+
+- 待提交。
+
 ## 2026-07-06 Demo 后续硬化：UI helper 收口
 
 ### 本轮目标

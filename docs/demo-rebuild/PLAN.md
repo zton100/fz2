@@ -135,3 +135,4 @@
 - [x] `MainController` 拆出锻造页、材料摘要和强化/重铸反馈 partial。
 - [x] `MainController` 拆出转生页、天赋按钮和推荐天赋 partial。
 - [x] `MainController` 拆出通用 UI helper、toast 和样式常量 partial，主文件收敛到编排职责。
+- [x] 背包筛选/锁定保护决策迁入 `EquipmentPresenter`，并补 Unity 回归测试。

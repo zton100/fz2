@@ -60,13 +60,13 @@ namespace EquipmentIdle.UI
         {
             if (_bagFilterActions == null) return;
             _bagFilterActions.Clear();
-            _bagFilterActions.Add(FilterButton("全部", BagFilter.All));
-            _bagFilterActions.Add(FilterButton("提升", BagFilter.Upgrades));
-            _bagFilterActions.Add(FilterButton("稀有", BagFilter.Rare));
-            _bagFilterActions.Add(FilterButton("分解", BagFilter.Decompose));
+            _bagFilterActions.Add(FilterButton("全部", EquipmentBagFilter.All));
+            _bagFilterActions.Add(FilterButton("提升", EquipmentBagFilter.Upgrades));
+            _bagFilterActions.Add(FilterButton("稀有", EquipmentBagFilter.Rare));
+            _bagFilterActions.Add(FilterButton("分解", EquipmentBagFilter.Decompose));
         }
 
-        private Button FilterButton(string label, BagFilter filter)
+        private Button FilterButton(string label, EquipmentBagFilter filter)
         {
             var button = ActionButton(label, () =>
             {
@@ -171,20 +171,7 @@ namespace EquipmentIdle.UI
 
         private bool ShouldShowInBag(EquipmentDTO eq)
         {
-            if (eq == null) return false;
-            EquipmentDTO current = EquippedAtSlot(eq.slot);
-            float delta = EquipmentPresenter.Score(eq) - EquipmentPresenter.Score(current);
-            switch (_bagFilter)
-            {
-                case BagFilter.Upgrades:
-                    return delta > 0f;
-                case BagFilter.Rare:
-                    return eq.rarity >= 2;
-                case BagFilter.Decompose:
-                    return !_lockedEquipment.Contains(eq.uid) && eq.rarity <= 1 && delta <= 0f;
-                default:
-                    return true;
-            }
+            return EquipmentPresenter.ShouldShowInBag(eq, EquippedAtSlot(eq.slot), _bagFilter, eq != null && _lockedEquipment.Contains(eq.uid));
         }
 
         private VisualElement EquipmentSlotTile(string slot, EquipmentDTO eq, System.Action secondary, System.Action select)

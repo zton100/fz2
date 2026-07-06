@@ -17,6 +17,14 @@ namespace EquipmentIdle.UI
         }
     }
 
+    public enum EquipmentBagFilter
+    {
+        All,
+        Upgrades,
+        Rare,
+        Decompose,
+    }
+
     public struct DungeonState
     {
         public string Title;
@@ -129,6 +137,23 @@ namespace EquipmentIdle.UI
                 return Score(b).CompareTo(Score(a));
             });
             return list;
+        }
+
+        public static bool ShouldShowInBag(EquipmentDTO eq, EquipmentDTO current, EquipmentBagFilter filter, bool locked)
+        {
+            if (eq == null) return false;
+            float delta = Score(eq) - Score(current);
+            switch (filter)
+            {
+                case EquipmentBagFilter.Upgrades:
+                    return delta > 0f;
+                case EquipmentBagFilter.Rare:
+                    return eq.rarity >= 2;
+                case EquipmentBagFilter.Decompose:
+                    return !locked && eq.rarity <= 1 && delta <= 0f;
+                default:
+                    return true;
+            }
         }
 
         public static float Score(EquipmentDTO eq)
