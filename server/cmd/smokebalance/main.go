@@ -34,6 +34,8 @@ type cycleMetrics struct {
 	PostReincPower float64
 }
 
+const longTargetFloor = 30
+
 func main() {
 	rng := rand.New(rand.NewSource(42))
 	gen := loot.NewGenerator(rng)
@@ -103,8 +105,8 @@ func main() {
 	longDrop := loot.NewDropTable(longGen)
 	longPlayer := model.NewPlayer("long-sim")
 	starter.GrantLoadout(longPlayer, longGen)
-	longMetrics := runCycle(longPlayer, longDrop, 20)
-	fmt.Println("--- Long Run: floor 1 -> 20 ---")
+	longMetrics := runCycle(longPlayer, longDrop, longTargetFloor)
+	fmt.Printf("--- Long Run: floor 1 -> %d ---\n", longTargetFloor)
 	fmt.Printf("Start: floor=1 power=%.1f souls=%d\n", longMetrics.StartPower, longPlayer.Souls)
 	printMetrics(longMetrics)
 	fmt.Printf("Rarity mix: common=%d magic=%d rare=%d legendary=%d artifact=%d\n",
@@ -113,21 +115,70 @@ func main() {
 		longMetrics.RarityCounts[data.RarityRare],
 		longMetrics.RarityCounts[data.RarityLegendary],
 		longMetrics.RarityCounts[data.RarityArtifact])
-	if longMetrics.FinalFloor < 20 {
-		fmt.Printf("  FAIL: long run reached floor %d, want >= 20\n", longMetrics.FinalFloor)
+	if longMetrics.FinalFloor < longTargetFloor {
+		fmt.Printf("  FAIL: long run reached floor %d, want >= %d\n", longMetrics.FinalFloor, longTargetFloor)
 		failed = true
 	}
-	if longMetrics.Ticks < 15 || longMetrics.Ticks > 250 {
-		fmt.Printf("  FAIL: floor 20 ticks out of target range 15..250, got %d\n", longMetrics.Ticks)
+	if longMetrics.Ticks < 25 || longMetrics.Ticks > 400 {
+		fmt.Printf("  FAIL: floor %d ticks out of target range 25..400, got %d\n", longTargetFloor, longMetrics.Ticks)
 		failed = true
 	} else {
-		fmt.Println("  PASS: floor 20 tick count in target range")
+		fmt.Printf("  PASS: floor %d tick count in target range\n", longTargetFloor)
 	}
-	if longMetrics.BossReward < 60 {
-		fmt.Printf("  FAIL: long run boss reward %d, want >= 60\n", longMetrics.BossReward)
+	if longMetrics.BossReward < 180 {
+		fmt.Printf("  FAIL: long run boss reward %d, want >= 180\n", longMetrics.BossReward)
 		failed = true
 	}
 	fmt.Println()
+
+	if err := reincarnation.Reincarnate(longPlayer); err != nil {
+		fmt.Printf("FAIL: long run reincarnation failed: %v\n", err)
+		failed = true
+	} else {
+		soulsAfterReincarn := longPlayer.Souls
+		spentDamage := spendTalent(longPlayer, "damage")
+		starter.GrantLoadout(longPlayer, longGen)
+		secondMetrics := runCycle(longPlayer, longDrop, longTargetFloor)
+		fmt.Printf("--- Second Loop After Reincarnation: floor 1 -> %d ---\n", longTargetFloor)
+		fmt.Printf("Start: floor=1 power=%.1f souls=%d damage_talent=%d spent_damage=%d\n",
+			secondMetrics.StartPower,
+			soulsAfterReincarn,
+			longPlayer.Talents["damage"],
+			spentDamage)
+		printMetrics(secondMetrics)
+		fmt.Printf("Rarity mix: common=%d magic=%d rare=%d legendary=%d artifact=%d\n",
+			secondMetrics.RarityCounts[data.RarityCommon],
+			secondMetrics.RarityCounts[data.RarityMagic],
+			secondMetrics.RarityCounts[data.RarityRare],
+			secondMetrics.RarityCounts[data.RarityLegendary],
+			secondMetrics.RarityCounts[data.RarityArtifact])
+		if spentDamage == 0 {
+			fmt.Println("  FAIL: second loop did not spend reincarnation souls on damage talent")
+			failed = true
+		}
+		if secondMetrics.StartPower <= longMetrics.StartPower {
+			fmt.Printf("  FAIL: second loop start power %.1f should exceed first loop start power %.1f\n",
+				secondMetrics.StartPower,
+				longMetrics.StartPower)
+			failed = true
+		}
+		if secondMetrics.FinalFloor < longTargetFloor {
+			fmt.Printf("  FAIL: second loop reached floor %d, want >= %d\n", secondMetrics.FinalFloor, longTargetFloor)
+			failed = true
+		}
+		if secondMetrics.Ticks > longMetrics.Ticks {
+			fmt.Printf("  FAIL: second loop ticks %d should not exceed first loop ticks %d after damage talent\n",
+				secondMetrics.Ticks,
+				longMetrics.Ticks)
+			failed = true
+		} else {
+			fmt.Printf("  PASS: second loop reached floor %d in %d ticks (first loop %d)\n",
+				longTargetFloor,
+				secondMetrics.Ticks,
+				longMetrics.Ticks)
+		}
+		fmt.Println()
+	}
 
 	if totalEquipped == 0 {
 		fmt.Println("FAIL: no dropped item improved equipped power across all cycles")
@@ -138,6 +189,16 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Println("=== Simulation Complete ===")
+}
+
+func spendTalent(p *model.Player, name string) int {
+	spent := 0
+	for {
+		if err := reincarnation.UpgradeTalent(p, name); err != nil {
+			return spent
+		}
+		spent++
+	}
 }
 
 func printMetrics(metrics cycleMetrics) {
