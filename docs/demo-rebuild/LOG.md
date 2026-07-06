@@ -369,6 +369,40 @@
 
 - 待提交。
 
+## 2026-07-06 Demo 后续硬化：装备控制器拆分
+
+### 本轮目标
+
+- 继续加快维护性重构进度。
+- 将装备总览、背包、装备详情、对比结果和装备操作从 `MainController.cs` 拆出，降低后续开发锻造/天赋时的文件冲突和回归风险。
+
+### 本轮完成
+
+- 新增 `MainController.Equipment.cs` partial：
+  - 穿戴装备总览和背包页构建。
+  - 背包筛选按钮、装备格、背包装备卡。
+  - 装备详情三栏、逐条对比结果、详情操作按钮。
+  - 选择装备、保持选中装备、最佳穿戴、一键分解弱装、按槽位查找已装备。
+- `MainController.cs` 删除对应装备方法，继续保留锻造、天赋、材料、toast、通用 UI helper 和生命周期逻辑。
+- `PLAN.md` 将装备 partial 拆分标记为完成。
+
+### 本轮验证
+
+- `git diff --check` 通过。
+- `go test ./...` 通过。
+- Unity `EquipmentPresenterTestRunner.Run` 通过，日志包含 `[EquipmentPresenterTestRunner] OK`。
+- Unity `PlayModeRunner.RunMainSmoke` 通过，日志包含 `MAIN_SMOKE_OK`。
+- `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`。
+
+### 本轮遗留
+
+- `MainController.cs` 仍可继续拆出 Craft 和 Talent partial。
+- 锻造完成反馈相关方法仍在主文件，下一轮拆 Craft 时一并收口。
+
+### 提交信息
+
+- 待提交。
+
 ## 2026-07-06 Demo 后续硬化：锁定持久化和局部拆分
 
 ### 本轮目标

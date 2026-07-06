@@ -131,3 +131,4 @@
 - [x] 客户端锁定状态由 `bag` 同步驱动，重连后保留。
 - [x] `MainController` 先拆出锁定相关 partial，降低后续继续膨胀的风险。
 - [x] `MainController` 拆出战斗视图和战斗反馈 partial，降低主控制器体积。
+- [x] `MainController` 拆出装备、背包、详情和装备操作 partial，降低继续迭代冲突风险。
