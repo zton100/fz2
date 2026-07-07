@@ -619,6 +619,43 @@
 
 - Commit subject: `Preview upgrade inheritance impact`
 
+## 2026-07-07 Demo 后续硬化：继承路径端到端 smoke
+
+### 本轮目标
+
+- 把“掉落新装 -> 继承强化 -> 自动穿戴 -> 分解旧装”从人工预期变成可重复验证。
+- 让 `verify-flow.sh` 不只验证登录、战斗、转生，也验证装备替换闭环。
+
+### 本轮完成
+
+- `cmd/verifyclient` 增加协议级状态机：
+  - 等待自动战斗掉落进入背包。
+  - 选择与已穿戴装备同部位的掉落装备作为继承目标。
+  - 卸下旧装、强化旧装、穿回旧装。
+  - 发送 `transfer_upgrade`，让掉落新装继承强化并自动穿戴。
+  - 分解回到背包的旧装。
+  - 完成后再发送转生请求，继续原有转生闭环验证。
+- `verify-flow.sh` 因为调用 `cmd/verifyclient`，现在自动覆盖这条装备替换路径。
+- 增加 `verifyclient` 单元测试，确认继承目标只会选择同部位背包掉落。
+- `PLAYTEST-5MIN.md` 更新验收说明，明确 `VERIFY_OK` 已包含继承强化和旧装分解链路。
+
+### 本轮验证
+
+- `go test ./cmd/verifyclient ./internal/ws ./internal/upgrade` 通过。
+- `./scripts/verify-flow.sh` 通过，输出：
+  - `transfer_done=true`
+  - `transfer_phase=done`
+  - `VERIFY_OK: login, starter loadout, battle loot, transfer upgrade, decompose old gear, floor 10, and reincarnation flow passed`
+
+### 本轮遗留
+
+- 当前端到端链路验证的是服务端协议行为；Unity PlayMode 仍未模拟实际点击“继承强化”按钮。
+- 后续可以继续补按钮级 PlayMode 交互 smoke，或转入离线收益展示和上限规则。
+
+### 提交信息
+
+- Commit subject: `Verify upgrade inheritance flow`
+
 ## 2026-07-07 Demo 后续硬化：平衡 smoke 阈值配置化
 
 ### 本轮目标
