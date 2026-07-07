@@ -5,14 +5,12 @@ import (
 	"math/rand"
 	"os"
 
-	"equipment-idle-server/internal/crafting"
 	"equipment-idle-server/internal/data"
 	"equipment-idle-server/internal/dungeon"
 	"equipment-idle-server/internal/loot"
 	"equipment-idle-server/internal/model"
 	"equipment-idle-server/internal/reincarnation"
 	"equipment-idle-server/internal/starter"
-	"equipment-idle-server/internal/upgrade"
 )
 
 type cycleMetrics struct {
@@ -41,6 +39,7 @@ const (
 )
 
 func main() {
+	cfg := defaultBalanceConfig()
 	rng := rand.New(rand.NewSource(42))
 	gen := loot.NewGenerator(rng)
 	drop := loot.NewDropTable(gen)
@@ -54,30 +53,19 @@ func main() {
 	failed := false
 	totalEquipped := 0
 	for cycle := 1; cycle <= 3; cycle++ {
-		metrics := runCycle(player, drop, 10)
+		metrics := runCycle(player, drop, cfg.EarlyTargetFloor)
 		totalEquipped += metrics.EquippedCount
 		fmt.Printf("--- Cycle %d ---\n", cycle)
 		fmt.Printf("Start: floor=1 power=%.1f souls=%d\n", metrics.StartPower, player.Souls)
 		printMetrics(metrics)
 		printLootMix(metrics)
 
-		if metrics.Ticks < 5 || metrics.Ticks > 25 {
-			fmt.Printf("  FAIL: ticks out of target range 5..25, got %d\n", metrics.Ticks)
+		cycleFailures := checkEarlyCycle(metrics, cfg)
+		if len(cycleFailures) > 0 {
+			printFailures(cycleFailures)
 			failed = true
 		} else {
 			fmt.Println("  PASS: tick count in target range")
-		}
-		if metrics.FinalFloor < 10 {
-			fmt.Printf("  FAIL: final floor %d, want >= 10\n", metrics.FinalFloor)
-			failed = true
-		}
-		if metrics.LootCount < 8 {
-			fmt.Printf("  FAIL: loot count %d, want >= 8 before first reincarnation gate\n", metrics.LootCount)
-			failed = true
-		}
-		if metrics.FinalPower < metrics.StartPower {
-			fmt.Printf("  FAIL: final power %.1f below start power %.1f\n", metrics.FinalPower, metrics.StartPower)
-			failed = true
 		}
 
 		if cycle < 3 {
@@ -91,8 +79,8 @@ func main() {
 			metrics.PostReincPower = reincarnation.ComputePlayerPower(player)
 			fmt.Printf("Reincarnated: souls=%d max_floor=%d reset_power=%.1f\n",
 				metrics.ReincarnSouls, player.MaxFloor, metrics.PostReincPower)
-			if player.Souls != cycle*2 {
-				fmt.Printf("  FAIL: souls after reincarnation = %d, want %d\n", player.Souls, cycle*2)
+			if soulFailures := checkReincarnationSouls(player.Souls, cycle, cfg); len(soulFailures) > 0 {
+				printFailures(soulFailures)
 				failed = true
 			}
 		}
@@ -104,51 +92,31 @@ func main() {
 	longDrop := loot.NewDropTable(longGen)
 	longPlayer := model.NewPlayer("long-sim")
 	starter.GrantLoadout(longPlayer, longGen)
-	longMetrics := runCycle(longPlayer, longDrop, longTargetFloor)
-	fmt.Printf("--- Long Run: floor 1 -> %d ---\n", longTargetFloor)
+	longMetrics := runCycle(longPlayer, longDrop, cfg.LongTargetFloor)
+	fmt.Printf("--- Long Run: floor 1 -> %d ---\n", cfg.LongTargetFloor)
 	fmt.Printf("Start: floor=1 power=%.1f souls=%d\n", longMetrics.StartPower, longPlayer.Souls)
 	printMetrics(longMetrics)
 	printLootMix(longMetrics)
-	if longMetrics.FinalFloor < longTargetFloor {
-		fmt.Printf("  FAIL: long run reached floor %d, want >= %d\n", longMetrics.FinalFloor, longTargetFloor)
-		failed = true
-	}
-	if longMetrics.Ticks < 25 || longMetrics.Ticks > 400 {
-		fmt.Printf("  FAIL: floor %d ticks out of target range 25..400, got %d\n", longTargetFloor, longMetrics.Ticks)
+	longFailures := checkLongRun(longMetrics, cfg)
+	if len(longFailures) > 0 {
+		printFailures(longFailures)
 		failed = true
 	} else {
-		fmt.Printf("  PASS: floor %d tick count in target range\n", longTargetFloor)
-	}
-	if longMetrics.BossReward < 180 {
-		fmt.Printf("  FAIL: long run boss reward %d, want >= 180\n", longMetrics.BossReward)
-		failed = true
+		fmt.Printf("  PASS: floor %d tick count in target range\n", cfg.LongTargetFloor)
 	}
 	fmt.Println()
 
-	deepMetrics := runCycle(longPlayer, longDrop, deepTargetFloor)
-	fmt.Printf("--- Deep Run: floor %d -> %d ---\n", longTargetFloor, deepTargetFloor)
-	fmt.Printf("Start: floor=%d power=%.1f souls=%d\n", longTargetFloor, deepMetrics.StartPower, longPlayer.Souls)
+	deepMetrics := runCycle(longPlayer, longDrop, cfg.DeepTargetFloor)
+	fmt.Printf("--- Deep Run: floor %d -> %d ---\n", cfg.DeepStartFloor, cfg.DeepTargetFloor)
+	fmt.Printf("Start: floor=%d power=%.1f souls=%d\n", cfg.DeepStartFloor, deepMetrics.StartPower, longPlayer.Souls)
 	printMetrics(deepMetrics)
 	printLootMix(deepMetrics)
-	if deepMetrics.FinalFloor < deepTargetFloor {
-		fmt.Printf("  FAIL: deep run reached floor %d, want >= %d\n", deepMetrics.FinalFloor, deepTargetFloor)
-		failed = true
-	}
-	if deepMetrics.Ticks < 15 || deepMetrics.Ticks > 800 {
-		fmt.Printf("  FAIL: floor %d -> %d ticks out of target range 15..800, got %d\n",
-			longTargetFloor,
-			deepTargetFloor,
-			deepMetrics.Ticks)
+	deepFailures := checkDeepRun(deepMetrics, cfg)
+	if len(deepFailures) > 0 {
+		printFailures(deepFailures)
 		failed = true
 	} else {
-		fmt.Printf("  PASS: floor %d -> %d tick count in target range\n", longTargetFloor, deepTargetFloor)
-	}
-	if deepMetrics.AffixCategoryCounts[data.AffixSpecial] == 0 {
-		fmt.Printf("  FAIL: floor %d -> %d saw no special affixes after unlock floor %d\n",
-			longTargetFloor,
-			deepTargetFloor,
-			data.FloorUnlockSpecial)
-		failed = true
+		fmt.Printf("  PASS: floor %d -> %d tick count in target range\n", cfg.DeepStartFloor, cfg.DeepTargetFloor)
 	}
 	fmt.Println()
 
@@ -159,8 +127,8 @@ func main() {
 		soulsAfterReincarn := longPlayer.Souls
 		spentDamage := spendTalent(longPlayer, "damage")
 		starter.GrantLoadout(longPlayer, longGen)
-		secondMetrics := runCycle(longPlayer, longDrop, deepTargetFloor)
-		fmt.Printf("--- Second Loop After Reincarnation: floor 1 -> %d ---\n", deepTargetFloor)
+		secondMetrics := runCycle(longPlayer, longDrop, cfg.SecondLoopTargetFloor)
+		fmt.Printf("--- Second Loop After Reincarnation: floor 1 -> %d ---\n", cfg.SecondLoopTargetFloor)
 		fmt.Printf("Start: floor=1 power=%.1f souls=%d damage_talent=%d spent_damage=%d\n",
 			secondMetrics.StartPower,
 			soulsAfterReincarn,
@@ -168,29 +136,14 @@ func main() {
 			spentDamage)
 		printMetrics(secondMetrics)
 		printLootMix(secondMetrics)
-		if spentDamage == 0 {
-			fmt.Println("  FAIL: second loop did not spend reincarnation souls on damage talent")
-			failed = true
-		}
-		if secondMetrics.StartPower <= longMetrics.StartPower {
-			fmt.Printf("  FAIL: second loop start power %.1f should exceed first loop start power %.1f\n",
-				secondMetrics.StartPower,
-				longMetrics.StartPower)
-			failed = true
-		}
-		if secondMetrics.FinalFloor < deepTargetFloor {
-			fmt.Printf("  FAIL: second loop reached floor %d, want >= %d\n", secondMetrics.FinalFloor, deepTargetFloor)
-			failed = true
-		}
 		firstLoopTicksToDeepTarget := longMetrics.Ticks + deepMetrics.Ticks
-		if secondMetrics.Ticks > firstLoopTicksToDeepTarget {
-			fmt.Printf("  FAIL: second loop ticks %d should not exceed first loop ticks %d after damage talent\n",
-				secondMetrics.Ticks,
-				firstLoopTicksToDeepTarget)
+		secondLoopFailures := checkSecondLoop(secondMetrics, cfg, longMetrics.StartPower, firstLoopTicksToDeepTarget, spentDamage)
+		if len(secondLoopFailures) > 0 {
+			printFailures(secondLoopFailures)
 			failed = true
 		} else {
 			fmt.Printf("  PASS: second loop reached floor %d in %d ticks (first loop %d)\n",
-				deepTargetFloor,
+				cfg.SecondLoopTargetFloor,
 				secondMetrics.Ticks,
 				firstLoopTicksToDeepTarget)
 		}
@@ -292,102 +245,4 @@ func runCycle(p *model.Player, drop *loot.DropTable, targetFloor int) cycleMetri
 	metrics.FinalPower = reincarnation.ComputePlayerPower(p)
 	metrics.BaseMaterials = p.Materials[data.MatBase]
 	return metrics
-}
-
-func autoEquipBest(p *model.Player) (equipped int, powerGain float64) {
-	if len(p.EquipBag) == 0 {
-		return 0, 0
-	}
-	kept := p.EquipBag[:0]
-	for _, eq := range p.EquipBag {
-		if gain := powerGainIfEquipped(p, eq); gain > 0 {
-			p.Equipped[eq.Slot] = eq
-			equipped++
-			powerGain += gain
-			continue
-		}
-		kept = append(kept, eq)
-	}
-	p.EquipBag = kept
-	return equipped, powerGain
-}
-
-func autoDecomposeWeakBag(p *model.Player) int {
-	kept := p.EquipBag[:0]
-	decomposed := 0
-	for _, eq := range p.EquipBag {
-		if eq == nil || powerGainIfEquipped(p, eq) > 0 {
-			kept = append(kept, eq)
-			continue
-		}
-		if _, err := crafting.Decompose(p, eq); err == nil {
-			decomposed++
-		}
-	}
-	p.EquipBag = kept
-	return decomposed
-}
-
-func autoUpgradeEquipped(p *model.Player, rng *rand.Rand) int {
-	upgrades := 0
-	for attempts := 0; attempts < 32; attempts++ {
-		eq := bestAffordableUpgrade(p)
-		if eq == nil {
-			return upgrades
-		}
-		result, err := upgrade.Upgrade(p, rng, eq)
-		if err != nil {
-			return upgrades
-		}
-		if result.Success {
-			upgrades++
-		}
-	}
-	return upgrades
-}
-
-func bestAffordableUpgrade(p *model.Player) *model.Equipment {
-	var best *model.Equipment
-	bestEfficiency := 0.0
-	for _, eq := range p.Equipped {
-		if eq == nil || eq.Upgrade >= upgrade.MaxUpgrade {
-			continue
-		}
-		targetLevel := eq.Upgrade + 1
-		cost := data.UpgradeCostTable[targetLevel]
-		if !p.HasMaterial(data.MatBase, cost) {
-			continue
-		}
-		gain := powerGainIfUpgraded(p, eq)
-		if gain <= 0 {
-			continue
-		}
-		efficiency := gain / float64(cost)
-		if best == nil || efficiency > bestEfficiency {
-			best = eq
-			bestEfficiency = efficiency
-		}
-	}
-	return best
-}
-
-func powerGainIfUpgraded(p *model.Player, eq *model.Equipment) float64 {
-	currentPower := reincarnation.ComputePlayerPower(p)
-	eq.Upgrade++
-	nextPower := reincarnation.ComputePlayerPower(p)
-	eq.Upgrade--
-	return nextPower - currentPower
-}
-
-func powerGainIfEquipped(p *model.Player, eq *model.Equipment) float64 {
-	currentPower := reincarnation.ComputePlayerPower(p)
-	old := p.Equipped[eq.Slot]
-	p.Equipped[eq.Slot] = eq
-	nextPower := reincarnation.ComputePlayerPower(p)
-	if old == nil {
-		delete(p.Equipped, eq.Slot)
-	} else {
-		p.Equipped[eq.Slot] = old
-	}
-	return nextPower - currentPower
 }

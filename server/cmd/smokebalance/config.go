@@ -1,0 +1,40 @@
+package main
+
+type tickRange struct {
+	Min int
+	Max int
+}
+
+type balanceConfig struct {
+	EarlyTargetFloor              int
+	EarlyTicks                    tickRange
+	EarlyMinLoot                  int
+	ReincarnationSoulsPerCycle    int
+	LongTargetFloor               int
+	LongTicks                     tickRange
+	LongMinBossReward             int
+	DeepStartFloor                int
+	DeepTargetFloor               int
+	DeepTicks                     tickRange
+	RequireDeepSpecialAffix       bool
+	SecondLoopTargetFloor         int
+	RequireSecondLoopDamageTalent bool
+}
+
+func defaultBalanceConfig() balanceConfig {
+	return balanceConfig{
+		EarlyTargetFloor:              10,
+		EarlyTicks:                    tickRange{Min: 5, Max: 25},
+		EarlyMinLoot:                  8,
+		ReincarnationSoulsPerCycle:    2,
+		LongTargetFloor:               30,
+		LongTicks:                     tickRange{Min: 25, Max: 400},
+		LongMinBossReward:             180,
+		DeepStartFloor:                30,
+		DeepTargetFloor:               50,
+		DeepTicks:                     tickRange{Min: 15, Max: 800},
+		RequireDeepSpecialAffix:       true,
+		SecondLoopTargetFloor:         50,
+		RequireSecondLoopDamageTalent: true,
+	}
+}

@@ -2,6 +2,7 @@
 server/server
 server/server.exe
 server/saves/
+.gocache/
 *.exe
 *.exe~
 
