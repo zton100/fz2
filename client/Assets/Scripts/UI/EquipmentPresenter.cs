@@ -247,6 +247,29 @@ namespace EquipmentIdle.UI
                 float delta = selectedValue - currentValue;
                 rows.Add(new EquipmentComparisonRow(AffixName(key), FormatComparableValue(key, selectedValue), current != null ? FormatComparableValue(key, currentValue) : "-", FormatSignedValue(key, delta), delta));
             }
+            rows.AddRange(BuildTransferPreviewRows(current, selected));
+            return rows;
+        }
+
+        public static List<EquipmentComparisonRow> BuildTransferPreviewRows(EquipmentDTO source, EquipmentDTO target)
+        {
+            var rows = new List<EquipmentComparisonRow>();
+            if (!CanInheritUpgrade(source, target)) return rows;
+
+            float beforeTargetScore = Score(target);
+            float inheritedTargetScore = ProjectedScoreWithUpgrade(target, source.upgrade);
+            rows.Add(new EquipmentComparisonRow(
+                "继承后评分",
+                $"{inheritedTargetScore:F0}",
+                $"{beforeTargetScore:F0}",
+                FormatSigned(inheritedTargetScore - beforeTargetScore),
+                inheritedTargetScore - beforeTargetScore));
+            rows.Add(new EquipmentComparisonRow(
+                "旧装回退",
+                $"+{target.upgrade}",
+                $"+{source.upgrade}",
+                FormatSigned(target.upgrade - source.upgrade),
+                target.upgrade - source.upgrade));
             return rows;
         }
 
@@ -581,7 +604,9 @@ namespace EquipmentIdle.UI
             {
                 return $"{target.name} 暂无更高强化可继承。";
             }
-            return $"继承强化：{source.name} +{source.upgrade} -> {target.name}，旧装回到 +{target.upgrade}。";
+            float beforeTargetScore = Score(target);
+            float inheritedTargetScore = ProjectedScoreWithUpgrade(target, source.upgrade);
+            return $"继承强化：{source.name} +{source.upgrade} -> {target.name} +{source.upgrade}，评分 {beforeTargetScore:F0}->{inheritedTargetScore:F0}（+{inheritedTargetScore - beforeTargetScore:F0}），旧装回到 +{target.upgrade}。";
         }
 
         public static ReincarnationPlanState BuildReincarnationPlan(int floor, int souls, int maxFloor, bool canReincarn, string nextTalentName)
@@ -725,6 +750,16 @@ namespace EquipmentIdle.UI
                 return $"{value * 100f:F1}%";
             }
             return $"{value:F0}";
+        }
+
+        private static float ProjectedScoreWithUpgrade(EquipmentDTO eq, int upgrade)
+        {
+            if (eq == null) return 0f;
+            int originalUpgrade = eq.upgrade;
+            eq.upgrade = upgrade;
+            float score = Score(eq);
+            eq.upgrade = originalUpgrade;
+            return score;
         }
 
         private static float Clamp01(float value)

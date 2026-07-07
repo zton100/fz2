@@ -158,6 +158,10 @@ public static class EquipmentPresenterTestRunner
         if (!EquipmentPresenter.CanInheritUpgrade(current, target))
             throw new Exception("same-slot higher source should be inheritable");
         AssertContains(EquipmentPresenter.BuildTransferLine(current, target), "继承强化", "transfer line should explain inheritance");
+        AssertContains(EquipmentPresenter.BuildTransferLine(current, target), "评分", "transfer line should preview score change");
+        if (target.upgrade != 1) throw new Exception($"transfer preview should not mutate target upgrade, got {target.upgrade}");
+        AssertContainsComparison(EquipmentPresenter.BuildTransferPreviewRows(current, target), "继承后评分", true, "transfer preview should include target score gain");
+        AssertContainsComparison(EquipmentPresenter.BuildTransferPreviewRows(current, target), "旧装回退", false, "transfer preview should include source rollback");
 
         var noTransfer = EquipmentPresenter.DetailActions(otherSlot, false, current);
         AssertMissingAction(noTransfer, "transfer_upgrade", "different-slot target should not offer inheritance");

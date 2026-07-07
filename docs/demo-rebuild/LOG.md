@@ -578,7 +578,46 @@
 
 ### 提交信息
 
-- 待提交。
+- Commit subject: `Add upgrade inheritance transfer`
+
+## 2026-07-07 Demo 后续硬化：强化继承预览反馈
+
+### 本轮目标
+
+- 强化上一轮继承操作的可理解性。
+- 让玩家在点击“继承强化”前就能看到新装评分变化和旧装回退等级。
+
+### 本轮完成
+
+- 锻造页继承提示从普通说明升级为预览：
+  - 显示旧装 +N 继承到新装 +N。
+  - 显示目标装备继承前后评分变化。
+  - 显示旧装会回到目标原强化等级。
+- 装备详情对比栏新增继承预览行：
+  - `继承后评分` 展示目标装备继承后的评分增量。
+  - `旧装回退` 展示来源装备强化等级回退。
+- `EquipmentPresenter` 增加纯逻辑预览函数，避免 UI 层临时拼装继承文案。
+- Unity presenter 测试增加：
+  - 继承提示包含评分预览。
+  - 继承预览不会改写目标装备当前强化等级。
+  - 对比行包含目标评分提升和旧装回退。
+
+### 本轮验证
+
+- `go test ./...` 通过。
+- `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`。
+- `git diff --check` 通过。
+- Unity `EquipmentPresenterTestRunner.Run` 通过，日志包含 `[EquipmentPresenterTestRunner] OK`。
+- Unity `PlayModeRunner.RunMainSmoke` 通过，日志包含 `MAIN_SMOKE_OK`，`client/verify_result.txt` 为 `MAIN_SMOKE_OK`。
+
+### 本轮遗留
+
+- 还缺一条真实试玩路径级验证：掉落新装 -> 继承强化 -> 自动穿戴 -> 分解旧装。
+- 继承操作后可以继续加更明显的战斗区/装备区成功横幅，但当前 toast 和评分变化已经能闭环基础反馈。
+
+### 提交信息
+
+- Commit subject: `Preview upgrade inheritance impact`
 
 ## 2026-07-07 Demo 后续硬化：平衡 smoke 阈值配置化
 
