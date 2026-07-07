@@ -335,6 +335,72 @@
 
 - Commit: `2e7b9aa`
 
+## 2026-07-07 Demo 后续硬化：转生后循环命名收口
+
+### 本轮目标
+
+- 回应“挂机放置联网游戏不应沿用单机新周目语义”的问题。
+- 将平衡 smoke 中的转生后推进验证命名统一为“转生后循环”，避免误读成单机新周目。
+
+### 本轮完成
+
+- `balanceConfig` 中的转生后目标和 damage 天赋要求改为 `PostReincarnation` 命名。
+- 旧检查函数重命名为 `checkPostReincarnationLoop`，失败信息同步改为 `post-reincarnation loop`。
+- `smokebalance` 命令行输出统一改为 `Post-Reincarnation Loop`。
+- 测试和文档中的旧表述统一收口为“转生后循环/post-reincarnation loop”。
+
+### 本轮验证
+
+- `env GOCACHE=/Users/zton/Documents/fz2/.gocache go test ./cmd/smokebalance` 通过。
+- `env GOCACHE=/Users/zton/Documents/fz2/.gocache go run ./cmd/smokebalance` 通过，输出 `Post-Reincarnation Loop` 和 `=== Simulation Complete ===`。
+- `env GOCACHE=/Users/zton/Documents/fz2/.gocache go test ./...` 通过。
+- `env GOCACHE=/Users/zton/Documents/fz2/.gocache ./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`。
+- `git diff --check` 通过。
+
+### 本轮遗留
+
+- 下一步继续进入 120 -> 160 层观察段或 Boss 尖峰调平，进一步判断高层挂机节奏。
+
+### 提交信息
+
+- 待提交。
+
+## 2026-07-07 Demo 后续硬化：平衡 smoke 阈值配置化
+
+### 本轮目标
+
+- 继续推进数值和平衡 smoke 的维护性硬化。
+- 保留 50 层后 Artifact 曲线验证，并把 smoke 目标和断言阈值集中配置，降低后续调参时的代码改动面。
+
+### 本轮完成
+
+- 新增 `server/cmd/smokebalance/config.go`：
+  - 集中配置早期 10 层、30 层、50 层、80 层、120 层目标。
+  - 集中配置各阶段 tick 区间、Boss 奖励下限、Artifact 掉落下限、转生后循环 damage 天赋规则。
+- `checks.go` 的规则函数改为显式接收 `balanceConfig`，不再散落硬编码阈值。
+- `main.go` 统一使用 `defaultBalanceConfig()` 驱动模拟目标和失败判定。
+- `checks_test.go` 补充配置覆盖测试，确认 tick 区间、魂点倍率、特殊词缀规则可通过配置调整。
+- 当前 smoke 保留并验证：
+  - 50 -> 80 层至少出现 Artifact。
+  - 80 -> 120 层至少出现 Artifact。
+  - 转生后循环 damage 天赋后可推进到 120 层且不慢于首轮累计 tick。
+
+### 本轮验证
+
+- `env GOCACHE=/Users/zton/Documents/fz2/.gocache go test ./cmd/smokebalance` 通过。
+- `env GOCACHE=/Users/zton/Documents/fz2/.gocache go test ./...` 通过。
+- `env GOCACHE=/Users/zton/Documents/fz2/.gocache go run ./cmd/smokebalance` 通过，输出 `=== Simulation Complete ===`。
+- `env GOCACHE=/Users/zton/Documents/fz2/.gocache ./scripts/verify-flow.sh` 首次在沙箱内启动本地服务失败：`bind: operation not permitted`。
+- 提权后重跑 `env GOCACHE=/Users/zton/Documents/fz2/.gocache ./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`。
+
+### 本轮遗留
+
+- 下一步可把 80 层后 Artifact 掉落下限从“至少出现”升级为多 seed 分布检查，减少单 seed 偶然性。
+
+### 提交信息
+
+- 待提交。
+
 ## 2026-07-06 Demo 后续硬化：战斗控制器拆分
 
 ### 本轮目标
@@ -461,7 +527,7 @@
 - 长线模拟拆成两段：
   - 1 -> 30：观察早中期到达 30 层的基础节奏。
   - 30 -> 50：单独观察 31 -> 50 段推进、Boss 奖励和特殊词缀掉落。
-- 二周目转生后目标从 30 层扩展到 50 层，并继续对比 damage 天赋后的总 tick 是否不高于首轮。
+- 转生后循环目标从 30 层扩展到 50 层，并继续对比 damage 天赋后的总 tick 是否不高于首轮。
 - 对 30 -> 50 段增加断言：特殊词缀计数必须大于 0。
 
 ### 本轮验证
@@ -469,7 +535,7 @@
 - `go run ./cmd/smokebalance` 通过：
   - 1 -> 30 用 30 tick，特殊词缀 7 条。
   - 30 -> 50 用 20 tick，特殊词缀 6 条。
-  - 转生后二周目 1 -> 50 用 49 tick，特殊词缀 17 条。
+  - 转生后循环 1 -> 50 用 49 tick，特殊词缀 17 条。
 - `go test ./...` 通过。
 - `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`，并包含新的 50 层平衡 smoke。
 - `git diff --check` 通过。
@@ -532,7 +598,7 @@
 - 客户端 `EquipmentPresenter.MonsterPowerAtFloor` 同步同一套三段曲线，保证 UI 预估和服务端一致。
 - 服务端怪物曲线测试增加 80 层后二次加速断言。
 - Unity `EquipmentPresenterTestRunner` 增加 80 层后二次加速断言。
-- 二周目长线 smoke 不再只投入 damage；会继续把剩余魂点投入 quality 和 drop，更接近玩家转生后的真实养成路径。
+- 转生后循环长线 smoke 不再只投入 damage；会继续把剩余魂点投入 quality 和 drop，更接近玩家转生后的真实养成路径。
 
 ### 本轮验证
 
@@ -540,7 +606,7 @@
 - `go run ./cmd/smokebalance` 通过：
   - 80 -> 120 用 41 tick 到达。
   - 80 -> 120 掉落 Artifact 3 件。
-  - 转生后二周目投入 damage=10、quality=3、drop=10 后，1 -> 120 用 120 tick 到达。
+  - 转生后循环投入 damage=10、quality=3、drop=10 后，1 -> 120 用 120 tick 到达。
 - Unity `EquipmentPresenterTestRunner.Run` 通过，日志包含 `[EquipmentPresenterTestRunner] OK`。
 - `go test ./...` 通过。
 - `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`。
@@ -566,7 +632,7 @@
 
 - `smokebalance` 新增 80 -> 120 endgame run：
   - 单独输出 80 -> 120 的 tick、掉落、穿戴、强化/分解、材料、Boss 奖励和词缀分布。
-  - 二周目转生后目标同步提升到 120 层。
+  - 转生后循环目标同步提升到 120 层。
 - `balanceConfig` 新增高层配置：
   - `EndgameStartFloor`
   - `EndgameTargetFloor`
@@ -581,7 +647,7 @@
 - `go run ./cmd/smokebalance` 通过：
   - 80 -> 120 用 41 tick 到达。
   - 80 -> 120 掉落 Artifact 3 件。
-  - 转生后二周目 1 -> 120 用 121 tick 到达。
+  - 转生后循环 1 -> 120 用 121 tick 到达。
 - `go test ./...` 通过。
 - `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`，并包含新的 120 层长线平衡 smoke。
 - `git diff --check` 通过。
@@ -605,7 +671,7 @@
 
 - `smokebalance` 新增 50 -> 80 late run：
   - 单独输出 50 -> 80 的 tick、掉落、穿戴、战力增益、Boss 奖励和词缀分布。
-  - 二周目转生后目标同步提升到 80 层，继续对比 damage 天赋后的总 tick。
+  - 转生后循环目标同步提升到 80 层，继续对比 damage 天赋后的总 tick。
 - `balanceConfig` 新增长线后段配置：
   - `LateStartFloor`
   - `LateTargetFloor`
@@ -620,7 +686,7 @@
 - `go run ./cmd/smokebalance` 通过：
   - 50 -> 80 用 30 tick 到达。
   - 50 -> 80 掉落 Artifact 1 件。
-  - 转生后二周目 1 -> 80 用 79 tick 到达。
+  - 转生后循环 1 -> 80 用 79 tick 到达。
 - `go test ./...` 通过。
 - `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`，并包含新的 80 层长线平衡 smoke。
 - `git diff --check` 通过。
@@ -647,7 +713,7 @@
   - 转生魂点规则。
   - 1 -> 30 长线规则。
   - 30 -> 50 深层规则。
-  - 二周目 damage 天赋收益规则。
+  - 转生后循环 damage 天赋收益规则。
 - `main.go` 保留模拟和输出编排，把失败判定统一委托给 check 函数。
 - 新增 `checks_test.go` 表格测试，覆盖每组规则的通过路径和关键失败边界。
 - `.gitignore` 增加 `.gocache/`，便于在沙箱环境中把 Go build cache 放到仓库内运行验证。
@@ -656,7 +722,7 @@
 
 - `go test ./cmd/smokebalance` 通过。
 - `go test ./...` 通过。
-- `go run ./cmd/smokebalance` 通过，50 层和二周目指标保持通过。
+- `go run ./cmd/smokebalance` 通过，50 层和转生后循环指标保持通过。
 - `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`。
 
 ### 本轮遗留
@@ -693,7 +759,7 @@
 
 - `go test ./cmd/smokebalance` 通过。
 - `go test ./...` 通过。
-- `go run ./cmd/smokebalance` 通过，50 层和二周目指标保持通过。
+- `go run ./cmd/smokebalance` 通过，50 层和转生后循环指标保持通过。
 - `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`。
 
 ### 本轮遗留
@@ -704,28 +770,28 @@
 
 - 待提交。
 
-## 2026-07-06 Demo 后续硬化：30 层长线和二周目验证
+## 2026-07-06 Demo 后续硬化：30 层长线和转生后循环验证
 
 ### 本轮目标
 
 - 把长线平衡 smoke 从 20 层推进到 30 层。
-- 验证转生后点天赋能真实改善二周目推进，而不只是 UI 展示。
+- 验证转生后点天赋能真实改善转生后循环推进，而不只是 UI 展示。
 
 ### 本轮完成
 
 - `smokebalance` 长线目标改为 30 层，Boss 奖励下限同步提升到 180。
-- 增加转生后二周目验证：
+- 增加转生后循环验证：
   - 首轮 30 层后执行转生。
   - 自动把魂点投入 `damage` 天赋。
   - 重新发放 starter loadout。
   - 再跑 1 -> 30，并断言起始战力高于首轮、到达 30 层、tick 数不高于首轮。
-- 输出二周目 damage 天赋等级、消耗魂点、掉落品质分布、强化/分解指标。
+- 输出转生后循环 damage 天赋等级、消耗魂点、掉落品质分布、强化/分解指标。
 
 ### 本轮验证
 
-- `go run ./cmd/smokebalance` 通过；首轮 30 tick 到 30 层，二周目 29 tick 到 30 层。
+- `go run ./cmd/smokebalance` 通过；首轮 30 tick 到 30 层，转生后循环 29 tick 到 30 层。
 - `go test ./...` 通过。
-- `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`，并包含新的 30 层长线和二周目平衡 smoke。
+- `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`，并包含新的 30 层长线和转生后循环平衡 smoke。
 - `git diff --check` 通过。
 
 ### 本轮遗留

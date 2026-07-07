@@ -274,15 +274,15 @@ func TestCheckEndgameRun(t *testing.T) {
 	}
 }
 
-func TestCheckSecondLoop(t *testing.T) {
+func TestCheckPostReincarnationLoop(t *testing.T) {
 	cfg := defaultBalanceConfig()
 	valid := cycleMetrics{
 		StartPower: 110,
-		FinalFloor: cfg.SecondLoopTargetFloor,
+		FinalFloor: cfg.PostReincarnationTargetFloor,
 		Ticks:      49,
 	}
-	if failures := checkSecondLoop(valid, cfg, 100, 50, 1); len(failures) != 0 {
-		t.Fatalf("valid second loop got failures: %v", failures)
+	if failures := checkPostReincarnationLoop(valid, cfg, 100, 50, 1); len(failures) != 0 {
+		t.Fatalf("valid post-reincarnation loop got failures: %v", failures)
 	}
 
 	tests := []struct {
@@ -303,34 +303,63 @@ func TestCheckSecondLoop(t *testing.T) {
 		},
 		{
 			name:        "start power not improved",
-			metrics:     cycleMetrics{StartPower: 100, FinalFloor: cfg.SecondLoopTargetFloor, Ticks: 49},
+			metrics:     cycleMetrics{StartPower: 100, FinalFloor: cfg.PostReincarnationTargetFloor, Ticks: 49},
 			firstPower:  100,
 			firstTicks:  50,
 			spentDamage: 1,
-			want:        "should exceed first loop start power",
+			want:        "should exceed first run start power",
 		},
 		{
 			name:        "target not reached",
-			metrics:     cycleMetrics{StartPower: 110, FinalFloor: cfg.SecondLoopTargetFloor - 1, Ticks: 49},
+			metrics:     cycleMetrics{StartPower: 110, FinalFloor: cfg.PostReincarnationTargetFloor - 1, Ticks: 49},
 			firstPower:  100,
 			firstTicks:  50,
 			spentDamage: 1,
-			want:        "second loop reached floor",
+			want:        "post-reincarnation loop reached floor",
 		},
 		{
 			name:        "slower than first loop",
-			metrics:     cycleMetrics{StartPower: 110, FinalFloor: cfg.SecondLoopTargetFloor, Ticks: 51},
+			metrics:     cycleMetrics{StartPower: 110, FinalFloor: cfg.PostReincarnationTargetFloor, Ticks: 51},
 			firstPower:  100,
 			firstTicks:  50,
 			spentDamage: 1,
-			want:        "should not exceed first loop ticks",
+			want:        "should not exceed first run ticks",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assertFailureContains(t, checkSecondLoop(tt.metrics, cfg, tt.firstPower, tt.firstTicks, tt.spentDamage), tt.want)
+			assertFailureContains(t, checkPostReincarnationLoop(tt.metrics, cfg, tt.firstPower, tt.firstTicks, tt.spentDamage), tt.want)
 		})
+	}
+}
+
+func TestBalanceConfigOverridesDefaults(t *testing.T) {
+	cfg := defaultBalanceConfig()
+	cfg.EarlyTicks = tickRange{Min: 10, Max: 11}
+	cfg.ReincarnationSoulsPerCycle = 3
+	cfg.RequireDeepSpecialAffix = false
+
+	earlyMetrics := cycleMetrics{
+		Ticks:      9,
+		FinalFloor: cfg.EarlyTargetFloor,
+		LootCount:  cfg.EarlyMinLoot,
+		StartPower: 100,
+		FinalPower: 120,
+	}
+	assertFailureContains(t, checkEarlyCycle(earlyMetrics, cfg), "10..11")
+
+	if failures := checkReincarnationSouls(6, 2, cfg); len(failures) != 0 {
+		t.Fatalf("custom souls-per-cycle got failures: %v", failures)
+	}
+
+	deepMetrics := cycleMetrics{
+		FinalFloor:          cfg.DeepTargetFloor,
+		Ticks:               cfg.DeepTicks.Min,
+		AffixCategoryCounts: map[data.AffixCategory]int{},
+	}
+	if failures := checkDeepRun(deepMetrics, cfg); len(failures) != 0 {
+		t.Fatalf("disabled special-affix rule got failures: %v", failures)
 	}
 }
 

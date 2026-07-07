@@ -155,34 +155,34 @@ func main() {
 		fmt.Printf("FAIL: long run reincarnation failed: %v\n", err)
 		failed = true
 	} else {
-		soulsAfterReincarn := longPlayer.Souls
+		soulsAfterReincarnation := longPlayer.Souls
 		spentDamage := spendTalent(longPlayer, "damage")
 		spentQuality := spendTalent(longPlayer, "quality")
 		spentDrop := spendTalent(longPlayer, "drop")
 		starter.GrantLoadout(longPlayer, longGen)
-		secondMetrics := runCycle(longPlayer, longDrop, cfg.SecondLoopTargetFloor)
-		fmt.Printf("--- Second Loop After Reincarnation: floor 1 -> %d ---\n", cfg.SecondLoopTargetFloor)
+		postReincarnationMetrics := runCycle(longPlayer, longDrop, cfg.PostReincarnationTargetFloor)
+		fmt.Printf("--- Post-Reincarnation Loop: floor 1 -> %d ---\n", cfg.PostReincarnationTargetFloor)
 		fmt.Printf("Start: floor=1 power=%.1f souls=%d damage_talent=%d quality_talent=%d drop_talent=%d spent_damage=%d spent_quality=%d spent_drop=%d\n",
-			secondMetrics.StartPower,
-			soulsAfterReincarn,
+			postReincarnationMetrics.StartPower,
+			soulsAfterReincarnation,
 			longPlayer.Talents["damage"],
 			longPlayer.Talents["quality"],
 			longPlayer.Talents["drop"],
 			spentDamage,
 			spentQuality,
 			spentDrop)
-		printMetrics(secondMetrics)
-		printLootMix(secondMetrics)
-		firstLoopTicksToSecondTarget := longMetrics.Ticks + deepMetrics.Ticks + lateMetrics.Ticks + endgameMetrics.Ticks
-		secondLoopFailures := checkSecondLoop(secondMetrics, cfg, longMetrics.StartPower, firstLoopTicksToSecondTarget, spentDamage)
-		if len(secondLoopFailures) > 0 {
-			printFailures(secondLoopFailures)
+		printMetrics(postReincarnationMetrics)
+		printLootMix(postReincarnationMetrics)
+		firstRunTicksToPostReincarnationTarget := longMetrics.Ticks + deepMetrics.Ticks + lateMetrics.Ticks + endgameMetrics.Ticks
+		postReincarnationFailures := checkPostReincarnationLoop(postReincarnationMetrics, cfg, longMetrics.StartPower, firstRunTicksToPostReincarnationTarget, spentDamage)
+		if len(postReincarnationFailures) > 0 {
+			printFailures(postReincarnationFailures)
 			failed = true
 		} else {
-			fmt.Printf("  PASS: second loop reached floor %d in %d ticks (first loop %d)\n",
-				cfg.SecondLoopTargetFloor,
-				secondMetrics.Ticks,
-				firstLoopTicksToSecondTarget)
+			fmt.Printf("  PASS: post-reincarnation loop reached floor %d in %d ticks (first run %d)\n",
+				cfg.PostReincarnationTargetFloor,
+				postReincarnationMetrics.Ticks,
+				firstRunTicksToPostReincarnationTarget)
 		}
 		fmt.Println()
 	}

@@ -120,23 +120,23 @@ func checkEndgameRun(metrics cycleMetrics, cfg balanceConfig) []string {
 	return failures
 }
 
-func checkSecondLoop(metrics cycleMetrics, cfg balanceConfig, firstLoopStartPower float64, firstLoopTicksToDeepTarget int, spentDamage int) []string {
+func checkPostReincarnationLoop(metrics cycleMetrics, cfg balanceConfig, firstRunStartPower float64, firstRunTicksToTarget int, spentDamage int) []string {
 	var failures []string
-	if cfg.RequireSecondLoopDamageTalent && spentDamage == 0 {
-		failures = append(failures, "second loop did not spend reincarnation souls on damage talent")
+	if cfg.RequirePostReincarnationDamageTalent && spentDamage == 0 {
+		failures = append(failures, "post-reincarnation loop did not spend reincarnation souls on damage talent")
 	}
-	if metrics.StartPower <= firstLoopStartPower {
-		failures = append(failures, fmt.Sprintf("second loop start power %.1f should exceed first loop start power %.1f",
+	if metrics.StartPower <= firstRunStartPower {
+		failures = append(failures, fmt.Sprintf("post-reincarnation loop start power %.1f should exceed first run start power %.1f",
 			metrics.StartPower,
-			firstLoopStartPower))
+			firstRunStartPower))
 	}
-	if metrics.FinalFloor < cfg.SecondLoopTargetFloor {
-		failures = append(failures, fmt.Sprintf("second loop reached floor %d, want >= %d", metrics.FinalFloor, cfg.SecondLoopTargetFloor))
+	if metrics.FinalFloor < cfg.PostReincarnationTargetFloor {
+		failures = append(failures, fmt.Sprintf("post-reincarnation loop reached floor %d, want >= %d", metrics.FinalFloor, cfg.PostReincarnationTargetFloor))
 	}
-	if metrics.Ticks > firstLoopTicksToDeepTarget {
-		failures = append(failures, fmt.Sprintf("second loop ticks %d should not exceed first loop ticks %d after damage talent",
+	if metrics.Ticks > firstRunTicksToTarget {
+		failures = append(failures, fmt.Sprintf("post-reincarnation loop ticks %d should not exceed first run ticks %d after damage talent",
 			metrics.Ticks,
-			firstLoopTicksToDeepTarget))
+			firstRunTicksToTarget))
 	}
 	return failures
 }
