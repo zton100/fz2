@@ -17,6 +17,10 @@ type balanceConfig struct {
 	DeepTargetFloor               int
 	DeepTicks                     tickRange
 	RequireDeepSpecialAffix       bool
+	LateStartFloor                int
+	LateTargetFloor               int
+	LateTicks                     tickRange
+	LateMinArtifactDrops          int
 	SecondLoopTargetFloor         int
 	RequireSecondLoopDamageTalent bool
 }
@@ -34,7 +38,11 @@ func defaultBalanceConfig() balanceConfig {
 		DeepTargetFloor:               50,
 		DeepTicks:                     tickRange{Min: 15, Max: 800},
 		RequireDeepSpecialAffix:       true,
-		SecondLoopTargetFloor:         50,
+		LateStartFloor:                50,
+		LateTargetFloor:               80,
+		LateTicks:                     tickRange{Min: 25, Max: 1500},
+		LateMinArtifactDrops:          1,
+		SecondLoopTargetFloor:         80,
 		RequireSecondLoopDamageTalent: true,
 	}
 }

@@ -516,6 +516,45 @@
 
 - 待提交。
 
+## 2026-07-07 Demo 后续硬化：80 层长线和 Artifact 验证
+
+### 本轮目标
+
+- 继续观察 50 层后的高层推进节奏和 Boss 尖峰。
+- 将 Artifact 稀有度从“统计输出”提升为长线 smoke 的明确验证指标。
+
+### 本轮完成
+
+- `smokebalance` 新增 50 -> 80 late run：
+  - 单独输出 50 -> 80 的 tick、掉落、穿戴、战力增益、Boss 奖励和词缀分布。
+  - 二周目转生后目标同步提升到 80 层，继续对比 damage 天赋后的总 tick。
+- `balanceConfig` 新增长线后段配置：
+  - `LateStartFloor`
+  - `LateTargetFloor`
+  - `LateTicks`
+  - `LateMinArtifactDrops`
+- `checkLateRun` 新增 Artifact 下限断言，当前要求 50 -> 80 至少掉落 1 件 Artifact。
+- 移除 `main.go` 中已被配置替代的旧楼层常量，避免阈值出现两套来源。
+
+### 本轮验证
+
+- `go test ./cmd/smokebalance` 通过。
+- `go run ./cmd/smokebalance` 通过：
+  - 50 -> 80 用 30 tick 到达。
+  - 50 -> 80 掉落 Artifact 1 件。
+  - 转生后二周目 1 -> 80 用 79 tick 到达。
+- `go test ./...` 通过。
+- `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`，并包含新的 80 层长线平衡 smoke。
+- `git diff --check` 通过。
+
+### 本轮遗留
+
+- 如果 80 层后继续扩层，应开始观察 Artifact 数量是否过低，以及 Boss 曲线是否仍然太平滑。
+
+### 提交信息
+
+- 待提交。
+
 ## 2026-07-07 Demo 后续硬化：平衡 smoke 断言拆分
 
 ### 本轮目标

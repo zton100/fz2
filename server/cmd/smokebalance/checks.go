@@ -74,6 +74,29 @@ func checkDeepRun(metrics cycleMetrics, cfg balanceConfig) []string {
 	return failures
 }
 
+func checkLateRun(metrics cycleMetrics, cfg balanceConfig) []string {
+	var failures []string
+	if metrics.FinalFloor < cfg.LateTargetFloor {
+		failures = append(failures, fmt.Sprintf("late run reached floor %d, want >= %d", metrics.FinalFloor, cfg.LateTargetFloor))
+	}
+	if metrics.Ticks < cfg.LateTicks.Min || metrics.Ticks > cfg.LateTicks.Max {
+		failures = append(failures, fmt.Sprintf("floor %d -> %d ticks out of target range %d..%d, got %d",
+			cfg.LateStartFloor,
+			cfg.LateTargetFloor,
+			cfg.LateTicks.Min,
+			cfg.LateTicks.Max,
+			metrics.Ticks))
+	}
+	if metrics.RarityCounts[data.RarityArtifact] < cfg.LateMinArtifactDrops {
+		failures = append(failures, fmt.Sprintf("floor %d -> %d artifact drops %d, want >= %d",
+			cfg.LateStartFloor,
+			cfg.LateTargetFloor,
+			metrics.RarityCounts[data.RarityArtifact],
+			cfg.LateMinArtifactDrops))
+	}
+	return failures
+}
+
 func checkSecondLoop(metrics cycleMetrics, cfg balanceConfig, firstLoopStartPower float64, firstLoopTicksToDeepTarget int, spentDamage int) []string {
 	var failures []string
 	if cfg.RequireSecondLoopDamageTalent && spentDamage == 0 {

@@ -168,6 +168,58 @@ func TestCheckDeepRun(t *testing.T) {
 	}
 }
 
+func TestCheckLateRun(t *testing.T) {
+	cfg := defaultBalanceConfig()
+	valid := cycleMetrics{
+		FinalFloor: cfg.LateTargetFloor,
+		Ticks:      40,
+		RarityCounts: map[data.Rarity]int{
+			data.RarityArtifact: cfg.LateMinArtifactDrops,
+		},
+	}
+	if failures := checkLateRun(valid, cfg); len(failures) != 0 {
+		t.Fatalf("valid late run got failures: %v", failures)
+	}
+
+	tests := []struct {
+		name string
+		edit func(*cycleMetrics)
+		want string
+	}{
+		{
+			name: "target not reached",
+			edit: func(metrics *cycleMetrics) { metrics.FinalFloor = cfg.LateTargetFloor - 1 },
+			want: "late run reached floor",
+		},
+		{
+			name: "too fast",
+			edit: func(metrics *cycleMetrics) { metrics.Ticks = cfg.LateTicks.Min - 1 },
+			want: "ticks out of target range",
+		},
+		{
+			name: "too slow",
+			edit: func(metrics *cycleMetrics) { metrics.Ticks = cfg.LateTicks.Max + 1 },
+			want: "ticks out of target range",
+		},
+		{
+			name: "artifact drop missing",
+			edit: func(metrics *cycleMetrics) { metrics.RarityCounts[data.RarityArtifact] = cfg.LateMinArtifactDrops - 1 },
+			want: "artifact drops",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			metrics := valid
+			metrics.RarityCounts = map[data.Rarity]int{
+				data.RarityArtifact: valid.RarityCounts[data.RarityArtifact],
+			}
+			tt.edit(&metrics)
+			assertFailureContains(t, checkLateRun(metrics, cfg), tt.want)
+		})
+	}
+}
+
 func TestCheckSecondLoop(t *testing.T) {
 	cfg := defaultBalanceConfig()
 	valid := cycleMetrics{

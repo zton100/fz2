@@ -33,11 +33,6 @@ type cycleMetrics struct {
 	PostReincPower      float64
 }
 
-const (
-	longTargetFloor = 30
-	deepTargetFloor = 50
-)
-
 func main() {
 	cfg := defaultBalanceConfig()
 	rng := rand.New(rand.NewSource(42))
@@ -120,6 +115,24 @@ func main() {
 	}
 	fmt.Println()
 
+	lateMetrics := runCycle(longPlayer, longDrop, cfg.LateTargetFloor)
+	fmt.Printf("--- Late Run: floor %d -> %d ---\n", cfg.LateStartFloor, cfg.LateTargetFloor)
+	fmt.Printf("Start: floor=%d power=%.1f souls=%d\n", cfg.LateStartFloor, lateMetrics.StartPower, longPlayer.Souls)
+	printMetrics(lateMetrics)
+	printLootMix(lateMetrics)
+	lateFailures := checkLateRun(lateMetrics, cfg)
+	if len(lateFailures) > 0 {
+		printFailures(lateFailures)
+		failed = true
+	} else {
+		fmt.Printf("  PASS: floor %d -> %d tick count in target range\n", cfg.LateStartFloor, cfg.LateTargetFloor)
+	}
+	fmt.Printf("  PASS: floor %d -> %d artifact drops=%d\n",
+		cfg.LateStartFloor,
+		cfg.LateTargetFloor,
+		lateMetrics.RarityCounts[data.RarityArtifact])
+	fmt.Println()
+
 	if err := reincarnation.Reincarnate(longPlayer); err != nil {
 		fmt.Printf("FAIL: long run reincarnation failed: %v\n", err)
 		failed = true
@@ -136,8 +149,8 @@ func main() {
 			spentDamage)
 		printMetrics(secondMetrics)
 		printLootMix(secondMetrics)
-		firstLoopTicksToDeepTarget := longMetrics.Ticks + deepMetrics.Ticks
-		secondLoopFailures := checkSecondLoop(secondMetrics, cfg, longMetrics.StartPower, firstLoopTicksToDeepTarget, spentDamage)
+		firstLoopTicksToSecondTarget := longMetrics.Ticks + deepMetrics.Ticks + lateMetrics.Ticks
+		secondLoopFailures := checkSecondLoop(secondMetrics, cfg, longMetrics.StartPower, firstLoopTicksToSecondTarget, spentDamage)
 		if len(secondLoopFailures) > 0 {
 			printFailures(secondLoopFailures)
 			failed = true
@@ -145,7 +158,7 @@ func main() {
 			fmt.Printf("  PASS: second loop reached floor %d in %d ticks (first loop %d)\n",
 				cfg.SecondLoopTargetFloor,
 				secondMetrics.Ticks,
-				firstLoopTicksToDeepTarget)
+				firstLoopTicksToSecondTarget)
 		}
 		fmt.Println()
 	}
