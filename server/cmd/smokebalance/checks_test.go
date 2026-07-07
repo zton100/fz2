@@ -220,6 +220,60 @@ func TestCheckLateRun(t *testing.T) {
 	}
 }
 
+func TestCheckEndgameRun(t *testing.T) {
+	cfg := defaultBalanceConfig()
+	valid := cycleMetrics{
+		FinalFloor: cfg.EndgameTargetFloor,
+		Ticks:      60,
+		RarityCounts: map[data.Rarity]int{
+			data.RarityArtifact: cfg.EndgameMinArtifactDrops,
+		},
+	}
+	if failures := checkEndgameRun(valid, cfg); len(failures) != 0 {
+		t.Fatalf("valid endgame run got failures: %v", failures)
+	}
+
+	tests := []struct {
+		name string
+		edit func(*cycleMetrics)
+		want string
+	}{
+		{
+			name: "target not reached",
+			edit: func(metrics *cycleMetrics) { metrics.FinalFloor = cfg.EndgameTargetFloor - 1 },
+			want: "endgame run reached floor",
+		},
+		{
+			name: "too fast",
+			edit: func(metrics *cycleMetrics) { metrics.Ticks = cfg.EndgameTicks.Min - 1 },
+			want: "ticks out of target range",
+		},
+		{
+			name: "too slow",
+			edit: func(metrics *cycleMetrics) { metrics.Ticks = cfg.EndgameTicks.Max + 1 },
+			want: "ticks out of target range",
+		},
+		{
+			name: "artifact drop missing",
+			edit: func(metrics *cycleMetrics) {
+				metrics.RarityCounts[data.RarityArtifact] = cfg.EndgameMinArtifactDrops - 1
+			},
+			want: "artifact drops",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			metrics := valid
+			metrics.RarityCounts = map[data.Rarity]int{
+				data.RarityArtifact: valid.RarityCounts[data.RarityArtifact],
+			}
+			tt.edit(&metrics)
+			assertFailureContains(t, checkEndgameRun(metrics, cfg), tt.want)
+		})
+	}
+}
+
 func TestCheckSecondLoop(t *testing.T) {
 	cfg := defaultBalanceConfig()
 	valid := cycleMetrics{

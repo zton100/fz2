@@ -516,6 +516,45 @@
 
 - 待提交。
 
+## 2026-07-07 Demo 后续硬化：120 层长线和高层 Artifact 验证
+
+### 本轮目标
+
+- 将长线平衡 smoke 从 80 层继续扩展到 120 层。
+- 观察 80 层后的 Boss 曲线是否仍然过平，并给 Artifact 掉落设置更明确的高层下限。
+
+### 本轮完成
+
+- `smokebalance` 新增 80 -> 120 endgame run：
+  - 单独输出 80 -> 120 的 tick、掉落、穿戴、强化/分解、材料、Boss 奖励和词缀分布。
+  - 二周目转生后目标同步提升到 120 层。
+- `balanceConfig` 新增高层配置：
+  - `EndgameStartFloor`
+  - `EndgameTargetFloor`
+  - `EndgameTicks`
+  - `EndgameMinArtifactDrops`
+- `checkEndgameRun` 增加目标层、tick 区间和 Artifact 下限断言。
+- 当前 80 -> 120 要求至少掉落 2 件 Artifact。
+
+### 本轮验证
+
+- `go test ./cmd/smokebalance` 通过。
+- `go run ./cmd/smokebalance` 通过：
+  - 80 -> 120 用 41 tick 到达。
+  - 80 -> 120 掉落 Artifact 3 件。
+  - 转生后二周目 1 -> 120 用 121 tick 到达。
+- `go test ./...` 通过。
+- `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`，并包含新的 120 层长线平衡 smoke。
+- `git diff --check` 通过。
+
+### 本轮遗留
+
+- 80 -> 120 仍接近每层 1 tick 推进，高层 Boss 曲线偏平滑；下一步应考虑调高 80 层后的指数增长或 Boss 倍率。
+
+### 提交信息
+
+- 待提交。
+
 ## 2026-07-07 Demo 后续硬化：80 层长线和 Artifact 验证
 
 ### 本轮目标

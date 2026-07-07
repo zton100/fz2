@@ -97,6 +97,29 @@ func checkLateRun(metrics cycleMetrics, cfg balanceConfig) []string {
 	return failures
 }
 
+func checkEndgameRun(metrics cycleMetrics, cfg balanceConfig) []string {
+	var failures []string
+	if metrics.FinalFloor < cfg.EndgameTargetFloor {
+		failures = append(failures, fmt.Sprintf("endgame run reached floor %d, want >= %d", metrics.FinalFloor, cfg.EndgameTargetFloor))
+	}
+	if metrics.Ticks < cfg.EndgameTicks.Min || metrics.Ticks > cfg.EndgameTicks.Max {
+		failures = append(failures, fmt.Sprintf("floor %d -> %d ticks out of target range %d..%d, got %d",
+			cfg.EndgameStartFloor,
+			cfg.EndgameTargetFloor,
+			cfg.EndgameTicks.Min,
+			cfg.EndgameTicks.Max,
+			metrics.Ticks))
+	}
+	if metrics.RarityCounts[data.RarityArtifact] < cfg.EndgameMinArtifactDrops {
+		failures = append(failures, fmt.Sprintf("floor %d -> %d artifact drops %d, want >= %d",
+			cfg.EndgameStartFloor,
+			cfg.EndgameTargetFloor,
+			metrics.RarityCounts[data.RarityArtifact],
+			cfg.EndgameMinArtifactDrops))
+	}
+	return failures
+}
+
 func checkSecondLoop(metrics cycleMetrics, cfg balanceConfig, firstLoopStartPower float64, firstLoopTicksToDeepTarget int, spentDamage int) []string {
 	var failures []string
 	if cfg.RequireSecondLoopDamageTalent && spentDamage == 0 {

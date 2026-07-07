@@ -21,6 +21,10 @@ type balanceConfig struct {
 	LateTargetFloor               int
 	LateTicks                     tickRange
 	LateMinArtifactDrops          int
+	EndgameStartFloor             int
+	EndgameTargetFloor            int
+	EndgameTicks                  tickRange
+	EndgameMinArtifactDrops       int
 	SecondLoopTargetFloor         int
 	RequireSecondLoopDamageTalent bool
 }
@@ -42,7 +46,11 @@ func defaultBalanceConfig() balanceConfig {
 		LateTargetFloor:               80,
 		LateTicks:                     tickRange{Min: 25, Max: 1500},
 		LateMinArtifactDrops:          1,
-		SecondLoopTargetFloor:         80,
+		EndgameStartFloor:             80,
+		EndgameTargetFloor:            120,
+		EndgameTicks:                  tickRange{Min: 35, Max: 3000},
+		EndgameMinArtifactDrops:       2,
+		SecondLoopTargetFloor:         120,
 		RequireSecondLoopDamageTalent: true,
 	}
 }
