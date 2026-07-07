@@ -72,10 +72,12 @@ namespace EquipmentIdle.UI
             }
             var plan = EquipmentPresenter.BuildCraftPlan(
                 _selected,
+                _selected != null ? EquippedAtSlot(_selected.slot) : null,
                 BaseMaterialCount(),
                 weakCount,
                 EquipmentPresenter.EquipBestDelta(_gameState.Bag, _gameState.Equipped));
 
+            _craftPlanContent.Add(PlanLine(plan.TransferLine, ButtonEquip));
             _craftPlanContent.Add(PlanLine(plan.UpgradeLine, ButtonCraft));
             _craftPlanContent.Add(PlanLine(plan.ReforgeLine, ButtonReforge));
             _craftPlanContent.Add(PlanLine(plan.ComposeLine, BaseMaterialCount() >= 10 ? ButtonEquip : ButtonDefault));

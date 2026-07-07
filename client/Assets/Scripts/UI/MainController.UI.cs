@@ -162,6 +162,7 @@ namespace EquipmentIdle.UI
             switch (id)
             {
                 case "equip": return ButtonEquip;
+                case "transfer_upgrade": return ButtonEquip;
                 case "upgrade": return ButtonCraft;
                 case "reforge": return ButtonReforge;
                 case "decompose": return ButtonDanger;

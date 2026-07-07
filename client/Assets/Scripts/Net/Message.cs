@@ -22,6 +22,7 @@ namespace EquipmentIdle.Net
         public const string TypeCompose = "compose";
         public const string TypeReforge = "reforge";
         public const string TypeUpgrade = "upgrade";
+        public const string TypeTransferUpgrade = "transfer_upgrade";
         public const string TypeLockEquipment = "lock_equipment";
         public const string TypeMaterials = "materials";
         public const string TypeCraftResult = "craft_result";
@@ -77,6 +78,13 @@ namespace EquipmentIdle.Net
         {
             string dataJson = "{\"uid\":\"" + Escape(uid) + "\"}";
             return "{\"t\":\"" + TypeUpgrade + "\",\"id\":\"" + Escape(id) + "\",\"data\":" + dataJson + "}";
+        }
+
+        /// <summary>编码强化继承请求。</summary>
+        public static string EncodeTransferUpgrade(string id, string sourceUid, string targetUid)
+        {
+            string dataJson = "{\"source_uid\":\"" + Escape(sourceUid) + "\",\"target_uid\":\"" + Escape(targetUid) + "\"}";
+            return "{\"t\":\"" + TypeTransferUpgrade + "\",\"id\":\"" + Escape(id) + "\",\"data\":" + dataJson + "}";
         }
 
         /// <summary>编码锁定/解锁请求。</summary>

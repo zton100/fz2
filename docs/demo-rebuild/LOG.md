@@ -363,7 +363,7 @@
 
 ### 提交信息
 
-- 待提交。
+- Commit subject: `Add upgrade inheritance transfer`
 
 ## 2026-07-07 Demo 后续硬化：160 层 frontier 平衡观察
 
@@ -529,6 +529,56 @@
 ### 提交信息
 
 - Commit subject: `Refund upgrade materials on decompose`
+
+## 2026-07-07 Demo 后续硬化：强化继承和替换
+
+### 本轮目标
+
+- 完成上一轮遗留的主动“强化继承/转移”。
+- 让高层新装备在基础更好但初始强化较低时，能够继承旧装强化并立即替换，解决 frontier 替换门槛。
+
+### 本轮完成
+
+- 服务端新增 `transfer_upgrade` 协议：
+  - 来源装备和目标装备必须同部位。
+  - 来源强化等级必须高于目标。
+  - 目标必须在背包里。
+  - 目标获得来源强化等级，来源回到目标原强化等级，不复制强化投入。
+  - 若来源是当前穿戴装备，继承后服务端直接穿戴目标装备，并把旧装退回背包。
+  - 锁定装备不能参与继承。
+- 客户端接入：
+  - `Message` 和 `GameState` 新增 `transfer_upgrade` 请求。
+  - 装备详情在可继承时显示“继承强化”按钮。
+  - 锻造页新增继承提示行，说明旧装 +N 到新装、旧装回到目标原强化等级。
+- 平衡 smoke 接入：
+  - 自动策略会将已穿戴旧装强化转移给“继承后可提升”的背包装备并穿戴。
+  - `smokebalance` 输出 `transfers` 指标。
+  - frontier 检查新增最少继承次数断言，防止高层继承替换能力回退。
+- 补充测试：
+  - 强化继承领域规则。
+  - WS 继承并穿戴目标、锁定装备拒绝。
+  - 客户端请求编码、详情动作、锻造提示。
+  - `smokebalance` 自动继承替换和 frontier 断言。
+
+### 本轮验证
+
+- `go run ./cmd/smokebalance` 通过：
+  - 120 -> 160：`equipped=1`，`transfers=1`。
+  - 相比上一轮 `equipped=0`，强化继承已能把 matched 候选转化为实际替换。
+- `go test ./...` 通过。
+- `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`。
+- `git diff --check` 通过。
+- Unity `EquipmentPresenterTestRunner.Run` 通过，日志包含 `[EquipmentPresenterTestRunner] OK`。
+- Unity `PlayModeRunner.RunMainSmoke` 通过，日志包含 `MAIN_SMOKE_OK`，`client/verify_result.txt` 为 `MAIN_SMOKE_OK`。
+
+### 本轮遗留
+
+- 继承目前是免费等级交换，适合 demo 验证替换门槛；后续若要更重度商业化数值，可增加少量材料手续费或按强化等级收取金币。
+- 当前自动策略只在 smoke 中验证，正式联网挂机的服务端自动托管策略还没有产品化。
+
+### 提交信息
+
+- 待提交。
 
 ## 2026-07-07 Demo 后续硬化：平衡 smoke 阈值配置化
 

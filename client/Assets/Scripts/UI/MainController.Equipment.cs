@@ -429,11 +429,16 @@ namespace EquipmentIdle.UI
                 string lockLabel = _lockedEquipment.Contains(_selected.uid) ? "解锁" : "锁定";
                 _detailActions.Add(ActionButton(lockLabel, () => ToggleLock(_selected), 84, ButtonDefault));
             }
-            foreach (var action in EquipmentPresenter.DetailActions(_selected, isEquipped))
+            EquipmentDTO current = _selected != null ? EquippedAtSlot(_selected.slot) : null;
+            foreach (var action in EquipmentPresenter.DetailActions(_selected, isEquipped, current))
             {
                 var captured = action;
                 var button = ActionButton(captured.Label, () => RunDetailAction(captured.Id), 84, ButtonForAction(captured.Id));
                 if (captured.Id == "decompose" && _selected != null && _lockedEquipment.Contains(_selected.uid))
+                {
+                    button.SetEnabled(false);
+                }
+                if (captured.Id == "transfer_upgrade" && _selected != null && (current == null || _lockedEquipment.Contains(_selected.uid) || _lockedEquipment.Contains(current.uid)))
                 {
                     button.SetEnabled(false);
                 }
@@ -456,6 +461,17 @@ namespace EquipmentIdle.UI
                     TrackPendingCraft("强化", _selected);
                     AddToast($"已发送强化：{_selected.name}", ToastDuration);
                     _gameState.Upgrade(_selected.uid);
+                    break;
+                case "transfer_upgrade":
+                    EquipmentDTO source = EquippedAtSlot(_selected.slot);
+                    if (source == null)
+                    {
+                        AddToast("当前部位无旧装可继承。", ToastDuration);
+                        return;
+                    }
+                    TrackPendingCraft("继承", _selected);
+                    AddToast($"已发送继承：{source.name} -> {_selected.name}", ToastDuration);
+                    _gameState.TransferUpgrade(source.uid, _selected.uid);
                     break;
                 case "reforge":
                     TrackPendingCraft("重铸", _selected);

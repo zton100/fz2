@@ -30,6 +30,7 @@ type balanceConfig struct {
 	FrontierTicks                        tickRange
 	FrontierMinArtifactDrops             int
 	FrontierMinMatchedUpgradeDrops       int
+	FrontierMinTransfers                 int
 	PostReincarnationTargetFloor         int
 	RequirePostReincarnationDamageTalent bool
 	ArtifactDistributionSeeds            []int64
@@ -68,6 +69,7 @@ func defaultBalanceConfig() balanceConfig {
 		FrontierTicks:                        tickRange{Min: 35, Max: 5000},
 		FrontierMinArtifactDrops:             2,
 		FrontierMinMatchedUpgradeDrops:       1,
+		FrontierMinTransfers:                 1,
 		PostReincarnationTargetFloor:         160,
 		RequirePostReincarnationDamageTalent: true,
 		ArtifactDistributionSeeds:            []int64{84, 126, 168, 210, 252},

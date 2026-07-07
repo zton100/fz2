@@ -147,6 +147,13 @@ func checkFrontierRun(metrics cycleMetrics, cfg balanceConfig) []string {
 			metrics.MatchedUpgradeDrops,
 			cfg.FrontierMinMatchedUpgradeDrops))
 	}
+	if metrics.TransferCount < cfg.FrontierMinTransfers {
+		failures = append(failures, fmt.Sprintf("floor %d -> %d upgrade transfers %d, want >= %d",
+			cfg.FrontierStartFloor,
+			cfg.FrontierTargetFloor,
+			metrics.TransferCount,
+			cfg.FrontierMinTransfers))
+	}
 	return failures
 }
 

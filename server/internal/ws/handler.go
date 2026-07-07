@@ -42,6 +42,8 @@ func (h *Hub) handleMessage(sess *Session, raw []byte) {
 		h.handleReforge(sess, env)
 	case protocol.TypeUpgrade:
 		h.handleUpgrade(sess, env)
+	case protocol.TypeTransferUpg:
+		h.handleTransferUpgrade(sess, env)
 	case protocol.TypeLockEquipment:
 		h.handleLockEquipment(sess, env)
 	case protocol.TypeReincarn:
@@ -275,6 +277,20 @@ func findBagIndex(p *model.Player, uid string) int {
 	return -1
 }
 
+func findEquipment(p *model.Player, uid string) (*model.Equipment, bool) {
+	for _, eq := range p.EquipBag {
+		if eq != nil && eq.UID == uid {
+			return eq, false
+		}
+	}
+	for _, eq := range p.Equipped {
+		if eq != nil && eq.UID == uid {
+			return eq, true
+		}
+	}
+	return nil, false
+}
+
 func (h *Hub) handleDecompose(sess *Session, env protocol.Envelope) {
 	if sess.Account == "" {
 		return
@@ -308,6 +324,51 @@ func (h *Hub) handleDecompose(sess *Session, env protocol.Envelope) {
 		h.pushCraftResult(sess, true, msg, "", 0)
 	}); err != nil {
 		log.Printf("decompose save error for %s: %v", sess.Account, err)
+	}
+}
+
+func (h *Hub) handleTransferUpgrade(sess *Session, env protocol.Envelope) {
+	if sess.Account == "" {
+		return
+	}
+	var req protocol.TransferUpgradeRequest
+	if err := json.Unmarshal(env.Data, &req); err != nil {
+		return
+	}
+	if err := h.store.WithPlayerSave(sess.Account, func(player *model.Player) {
+		player.EnsureRuntimeDefaults()
+		targetIdx := findBagIndex(player, req.TargetUID)
+		if targetIdx < 0 {
+			h.pushCraftResult(sess, false, locale.Current().MsgNotInBag, req.TargetUID, 0)
+			return
+		}
+		source, sourceEquipped := findEquipment(player, req.SourceUID)
+		target := player.EquipBag[targetIdx]
+		if source == nil {
+			h.pushCraftResult(sess, false, "来源装备不存在", req.SourceUID, 0)
+			return
+		}
+		if player.Locked[source.UID] || player.Locked[target.UID] {
+			h.pushCraftResult(sess, false, "锁定装备不能继承强化", target.UID, target.Upgrade)
+			return
+		}
+		beforeTargetUpgrade := target.Upgrade
+		if err := upgrade.TransferUpgrade(source, target); err != nil {
+			h.pushCraftResult(sess, false, err.Error(), target.UID, target.Upgrade)
+			return
+		}
+		if sourceEquipped {
+			if err := inventory.Equip(player, target.UID); err != nil {
+				h.pushCraftResult(sess, false, err.Error(), target.UID, target.Upgrade)
+				return
+			}
+		}
+		h.pushBag(sess, player)
+		h.pushPower(sess, player)
+		msg := fmt.Sprintf("继承强化成功：%s +%d，旧装回到 +%d", target.Name, target.Upgrade, beforeTargetUpgrade)
+		h.pushCraftResult(sess, true, msg, target.UID, target.Upgrade)
+	}); err != nil {
+		log.Printf("transfer upgrade save error for %s: %v", sess.Account, err)
 	}
 }
 

@@ -28,6 +28,7 @@ type cycleMetrics struct {
 	BestMatchedGain       float64
 	BossReward            int
 	UpgradeCount          int
+	TransferCount         int
 	DecomposeCount        int
 	UpgradeRefund         int
 	BaseMaterials         int
@@ -335,8 +336,9 @@ func printMetrics(metrics cycleMetrics) {
 		metrics.MatchedUpgradeDrops,
 		metrics.BestImmediateGain,
 		metrics.BestMatchedGain)
-	fmt.Printf("Crafting: upgrades=%d decomposed=%d upgrade_refund=%d base_materials=%d\n",
+	fmt.Printf("Crafting: upgrades=%d transfers=%d decomposed=%d upgrade_refund=%d base_materials=%d\n",
 		metrics.UpgradeCount,
+		metrics.TransferCount,
 		metrics.DecomposeCount,
 		metrics.UpgradeRefund,
 		metrics.BaseMaterials)
@@ -393,6 +395,9 @@ func runCycle(p *model.Player, drop *loot.DropTable, targetFloor int) cycleMetri
 	for ticks := 0; ticks < maxTicks; ticks++ {
 		beforeFloor := p.Floor
 		runner.Tick()
+		transfers, transferGain := autoTransferUpgradeReplacements(p)
+		metrics.TransferCount += transfers
+		metrics.PowerGain += transferGain
 		equipped, gain := autoEquipBest(p)
 		metrics.EquippedCount += equipped
 		metrics.PowerGain += gain

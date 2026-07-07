@@ -280,6 +280,7 @@ func TestCheckFrontierRun(t *testing.T) {
 		FinalFloor:          cfg.FrontierTargetFloor,
 		Ticks:               80,
 		MatchedUpgradeDrops: cfg.FrontierMinMatchedUpgradeDrops,
+		TransferCount:       cfg.FrontierMinTransfers,
 		RarityCounts: map[data.Rarity]int{
 			data.RarityArtifact: cfg.FrontierMinArtifactDrops,
 		},
@@ -321,6 +322,13 @@ func TestCheckFrontierRun(t *testing.T) {
 				metrics.MatchedUpgradeDrops = cfg.FrontierMinMatchedUpgradeDrops - 1
 			},
 			want: "matched-upgrade drops",
+		},
+		{
+			name: "upgrade transfer missing",
+			edit: func(metrics *cycleMetrics) {
+				metrics.TransferCount = cfg.FrontierMinTransfers - 1
+			},
+			want: "upgrade transfers",
 		},
 	}
 

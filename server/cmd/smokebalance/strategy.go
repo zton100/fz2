@@ -31,6 +31,33 @@ func autoEquipBest(p *model.Player) (equipped int, powerGain float64) {
 	return equipped, powerGain
 }
 
+func autoTransferUpgradeReplacements(p *model.Player) (transfers int, powerGain float64) {
+	for i := 0; i < len(p.EquipBag); i++ {
+		target := p.EquipBag[i]
+		if target == nil {
+			continue
+		}
+		source := p.Equipped[target.Slot]
+		if source == nil || source.Upgrade <= target.Upgrade {
+			continue
+		}
+		if powerGainIfEquipped(p, target) > 0 || powerGainIfEquippedAtMatchedUpgrade(p, target) <= 0 {
+			continue
+		}
+		beforePower := reincarnation.ComputePlayerPower(p)
+		if err := upgrade.TransferUpgrade(source, target); err != nil {
+			continue
+		}
+		p.EquipBag = append(p.EquipBag[:i], p.EquipBag[i+1:]...)
+		p.Equipped[target.Slot] = target
+		p.EquipBag = append(p.EquipBag, source)
+		transfers++
+		powerGain += reincarnation.ComputePlayerPower(p) - beforePower
+		i--
+	}
+	return transfers, powerGain
+}
+
 type decomposeResult struct {
 	Count         int
 	UpgradeRefund int

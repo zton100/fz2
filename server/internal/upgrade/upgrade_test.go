@@ -1,4 +1,4 @@
-﻿package upgrade
+package upgrade
 
 import (
 	"math/rand"
@@ -96,5 +96,34 @@ func TestUpgrade_ExpectedCostReasonable(t *testing.T) {
 	}
 	if totalAttempts < 1500 || totalAttempts > 3000 {
 		t.Errorf("expected total attempts to +10 = %.0f, want 1500-3000", totalAttempts)
+	}
+}
+
+func TestTransferUpgrade_SameSlotSwapsLevels(t *testing.T) {
+	source := &model.Equipment{UID: "old", Slot: data.SlotWeapon, Upgrade: 6}
+	target := &model.Equipment{UID: "new", Slot: data.SlotWeapon, Upgrade: 1}
+
+	if err := TransferUpgrade(source, target); err != nil {
+		t.Fatalf("transfer upgrade error: %v", err)
+	}
+	if source.Upgrade != 1 {
+		t.Fatalf("source upgrade = %d, want 1", source.Upgrade)
+	}
+	if target.Upgrade != 6 {
+		t.Fatalf("target upgrade = %d, want 6", target.Upgrade)
+	}
+}
+
+func TestTransferUpgrade_RejectsInvalidPairs(t *testing.T) {
+	source := &model.Equipment{UID: "old", Slot: data.SlotWeapon, Upgrade: 2}
+	target := &model.Equipment{UID: "new", Slot: data.SlotHelmet, Upgrade: 0}
+	if err := TransferUpgrade(source, target); err == nil {
+		t.Fatal("cross-slot transfer should fail")
+	}
+
+	target.Slot = data.SlotWeapon
+	target.Upgrade = 3
+	if err := TransferUpgrade(source, target); err == nil {
+		t.Fatal("lower source upgrade should fail")
 	}
 }

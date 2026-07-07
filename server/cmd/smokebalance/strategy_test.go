@@ -72,6 +72,33 @@ func TestAutoDecomposeWeakBagReportsUpgradeRefund(t *testing.T) {
 	}
 }
 
+func TestAutoTransferUpgradeReplacementsEquipsMatchedUpgrade(t *testing.T) {
+	player := model.NewPlayer("strategy")
+	current := strategyEquipment("current", data.SlotWeapon, data.RarityCommon, 50)
+	current.Upgrade = 5
+	candidate := strategyEquipment("candidate", data.SlotWeapon, data.RarityCommon, 55)
+	player.Equipped[data.SlotWeapon] = current
+	player.EquipBag = []*model.Equipment{candidate}
+
+	transfers, gain := autoTransferUpgradeReplacements(player)
+
+	if transfers != 1 {
+		t.Fatalf("transfers = %d, want 1", transfers)
+	}
+	if gain <= 0 {
+		t.Fatalf("transfer gain = %.1f, want positive", gain)
+	}
+	if player.Equipped[data.SlotWeapon] != candidate {
+		t.Fatalf("equipped weapon = %v, want candidate", player.Equipped[data.SlotWeapon])
+	}
+	if candidate.Upgrade != 5 {
+		t.Fatalf("candidate upgrade = %d, want inherited +5", candidate.Upgrade)
+	}
+	if len(player.EquipBag) != 1 || player.EquipBag[0] != current || current.Upgrade != 0 {
+		t.Fatalf("bag/current after transfer = %+v current +%d, want old current in bag at +0", player.EquipBag, current.Upgrade)
+	}
+}
+
 func TestBestAffordableUpgradeChoosesHighestPowerPerMaterial(t *testing.T) {
 	player := model.NewPlayer("strategy")
 	lowGain := strategyEquipment("low", data.SlotWeapon, data.RarityCommon, 10)

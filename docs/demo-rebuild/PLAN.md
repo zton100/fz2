@@ -152,3 +152,4 @@
 - [x] Artifact 高层掉落从单 seed 下限升级为 5 seed 分布 smoke，覆盖总量和有掉落 seed 数。
 - [x] `smokebalance` 增加 frontier 装备替换诊断，确认高层新装主要受强化等级门槛影响。
 - [x] 分解强化装备返还部分强化材料，并在工坊提示和 `smokebalance` 指标中体现。
+- [x] 强化继承/转移接入服务端协议、客户端锻造操作和 frontier smoke 自动策略。

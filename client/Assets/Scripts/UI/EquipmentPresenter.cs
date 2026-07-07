@@ -79,6 +79,7 @@ namespace EquipmentIdle.UI
 
     public struct CraftPlanState
     {
+        public string TransferLine;
         public string UpgradeLine;
         public string ReforgeLine;
         public string ComposeLine;
@@ -326,7 +327,7 @@ namespace EquipmentIdle.UI
             return text + "  持平";
         }
 
-        public static List<EquipmentAction> DetailActions(EquipmentDTO eq, bool isEquipped)
+        public static List<EquipmentAction> DetailActions(EquipmentDTO eq, bool isEquipped, EquipmentDTO current)
         {
             var actions = new List<EquipmentAction>();
             if (eq == null) return actions;
@@ -338,6 +339,10 @@ namespace EquipmentIdle.UI
             }
 
             actions.Add(new EquipmentAction("equip", L10n.UIEquip));
+            if (CanInheritUpgrade(current, eq))
+            {
+                actions.Add(new EquipmentAction("transfer_upgrade", "继承强化"));
+            }
             actions.Add(new EquipmentAction("upgrade", L10n.UIUpgrade));
             actions.Add(new EquipmentAction("reforge", L10n.UIReforge));
             actions.Add(new EquipmentAction("decompose", L10n.UIDecompose));
@@ -514,12 +519,14 @@ namespace EquipmentIdle.UI
             return $"{name} Lv{level}/{maxLevel} - {description}  {state}";
         }
 
-        public static CraftPlanState BuildCraftPlan(EquipmentDTO selected, int baseMaterials, int weakCount, float equipBestDelta)
+        public static CraftPlanState BuildCraftPlan(EquipmentDTO selected, EquipmentDTO current, int baseMaterials, int weakCount, float equipBestDelta)
         {
+            string transferLine = "选择同部位新装备后可继承旧装强化。";
             string upgradeLine = "选择背包装备后显示强化消耗。";
             string reforgeLine = "选择带词缀装备后显示重铸材料。";
             if (selected != null)
             {
+                transferLine = BuildTransferLine(current, selected);
                 int nextLevel = selected.upgrade + 1;
                 if (selected.upgrade >= 10)
                 {
@@ -548,11 +555,33 @@ namespace EquipmentIdle.UI
 
             return new CraftPlanState
             {
+                TransferLine = transferLine,
                 UpgradeLine = upgradeLine,
                 ReforgeLine = reforgeLine,
                 ComposeLine = composeLine,
                 CleanupLine = cleanupLine,
             };
+        }
+
+        public static bool CanInheritUpgrade(EquipmentDTO source, EquipmentDTO target)
+        {
+            return source != null
+                && target != null
+                && source.uid != target.uid
+                && source.slot == target.slot
+                && source.upgrade > target.upgrade;
+        }
+
+        public static string BuildTransferLine(EquipmentDTO source, EquipmentDTO target)
+        {
+            if (target == null) return "选择同部位新装备后可继承旧装强化。";
+            if (source == null) return $"{target.name} 当前部位无旧装可继承。";
+            if (source.slot != target.slot) return "只能继承同部位装备强化。";
+            if (!CanInheritUpgrade(source, target))
+            {
+                return $"{target.name} 暂无更高强化可继承。";
+            }
+            return $"继承强化：{source.name} +{source.upgrade} -> {target.name}，旧装回到 +{target.upgrade}。";
         }
 
         public static ReincarnationPlanState BuildReincarnationPlan(int floor, int souls, int maxFloor, bool canReincarn, string nextTalentName)

@@ -97,12 +97,20 @@
 { "t": "upgrade", "id": "r7", "data": { "uid": "eq_1" } }
 ```
 
+### transfer_upgrade — 强化继承
+
+将同部位来源装备的强化等级转移给背包里的目标装备，来源装备回到目标原强化等级。若来源是当前穿戴装备，服务端会在继承后直接穿戴目标装备，并把旧装退回背包。锁定装备不能参与继承。服务端回发 `bag` + `power` + `craft_result`。
+
+```json
+{ "t": "transfer_upgrade", "id": "r8", "data": { "source_uid": "old_eq", "target_uid": "new_eq" } }
+```
+
 ### lock_equipment — 锁定/解锁装备
 
 锁定背包装备，锁定后不会被一键分解或手动分解。服务端持久化锁定状态，并回发 `bag` + `craft_result`。
 
 ```json
-{ "t": "lock_equipment", "id": "r8", "data": { "uid": "eq_1", "locked": true } }
+{ "t": "lock_equipment", "id": "r9", "data": { "uid": "eq_1", "locked": true } }
 ```
 
 ### reincarn — 转生
@@ -110,7 +118,7 @@
 达到第 10 层后可转生。重置层数/背包/装备/材料，按当前 Floor/5 获得魂点，保留 MaxFloor 和天赋。服务端回发 `sync` + `bag` + `power` + `materials` + `talents` + `craft_result`。
 
 ```json
-{ "t": "reincarn", "id": "r9" }
+{ "t": "reincarn", "id": "r10" }
 ```
 
 ### talent_up — 天赋升级
@@ -297,6 +305,7 @@
 | `compose` | C→S | 合成请求 |
 | `reforge` | C→S | 重铸请求 |
 | `upgrade` | C→S | 强化请求 |
+| `transfer_upgrade` | C→S | 强化继承请求 |
 | `materials` | S→C | 材料库存推送 |
 | `craft_result` | S→C | 养成操作结果 |
 | `offline_result` | S→C | 离线结算结果 |

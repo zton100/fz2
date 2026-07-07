@@ -84,6 +84,11 @@ namespace EquipmentIdle.State
             _ws.SendText(Message.EncodeUpgrade("r" + (_reqSeq++), uid));
         }
 
+        public void TransferUpgrade(string sourceUid, string targetUid)
+        {
+            _ws.SendText(Message.EncodeTransferUpgrade("r" + (_reqSeq++), sourceUid, targetUid));
+        }
+
         public void LockEquipment(string uid, bool locked)
         {
             _ws.SendText(Message.EncodeLockEquipment("r" + (_reqSeq++), uid, locked));

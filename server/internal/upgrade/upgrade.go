@@ -37,3 +37,25 @@ func Upgrade(p *model.Player, rng *rand.Rand, eq *model.Equipment) (UpgradeResul
 	}
 	return UpgradeResult{Success: false, NewLvl: eq.Upgrade}, nil
 }
+
+// TransferUpgrade moves upgrade investment between two same-slot items.
+// The target receives the source level and the source falls back to the
+// target's previous level, so total upgrade levels are not duplicated.
+func TransferUpgrade(source, target *model.Equipment) error {
+	if source == nil || target == nil {
+		return errors.New("装备不存在")
+	}
+	if source == target || source.UID == target.UID {
+		return errors.New("不能继承到同一件装备")
+	}
+	if source.Slot != target.Slot {
+		return errors.New("只能继承同部位装备强化")
+	}
+	if source.Upgrade <= target.Upgrade {
+		return errors.New("来源强化等级不高于目标")
+	}
+	sourceUpgrade := source.Upgrade
+	source.Upgrade = target.Upgrade
+	target.Upgrade = sourceUpgrade
+	return nil
+}

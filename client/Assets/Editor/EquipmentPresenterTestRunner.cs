@@ -18,7 +18,9 @@ public static class EquipmentPresenterTestRunner
             ProtectsLowRarityUpgradesFromBulkDecompose();
             EstimatesEquipBestDeltaAcrossSlots();
             OffersDetailActionsByEquipmentLocation();
+            OffersUpgradeInheritanceForSameSlotNewGear();
             EncodesLockEquipmentRequests();
+            EncodesTransferUpgradeRequests();
             DescribesDungeonStateWithServerMonsterCurve();
             RecommendsNextGoalFromProgressState();
             LabelsEquipmentRowsWithUpgradeContext();
@@ -130,19 +132,35 @@ public static class EquipmentPresenterTestRunner
     {
         var selected = Equipment("selected", 0, 1, 0, Affix("strength", 1, 5));
 
-        var bagActions = EquipmentPresenter.DetailActions(selected, false);
+        var bagActions = EquipmentPresenter.DetailActions(selected, false, null);
         AssertContainsAction(bagActions, "equip", "bag item should offer equip");
         AssertContainsAction(bagActions, "upgrade", "bag item should offer upgrade");
         AssertContainsAction(bagActions, "reforge", "bag item should offer reforge");
         AssertContainsAction(bagActions, "decompose", "bag item should offer decompose");
         AssertMissingAction(bagActions, "unequip", "bag item should not offer unequip");
 
-        var equippedActions = EquipmentPresenter.DetailActions(selected, true);
+        var equippedActions = EquipmentPresenter.DetailActions(selected, true, null);
         AssertContainsAction(equippedActions, "unequip", "equipped item should offer unequip");
         AssertMissingAction(equippedActions, "equip", "equipped item should not offer equip");
 
-        var emptyActions = EquipmentPresenter.DetailActions(null, false);
+        var emptyActions = EquipmentPresenter.DetailActions(null, false, null);
         if (emptyActions.Count != 0) throw new Exception("empty detail should not offer actions");
+    }
+
+    private static void OffersUpgradeInheritanceForSameSlotNewGear()
+    {
+        var current = Equipment("current", 0, 1, 6, Affix("strength", 1, 5));
+        var target = Equipment("target", 0, 2, 1, Affix("strength", 2, 30));
+        var otherSlot = Equipment("other", 1, 2, 1, Affix("armor", 2, 30));
+
+        var actions = EquipmentPresenter.DetailActions(target, false, current);
+        AssertContainsAction(actions, "transfer_upgrade", "same-slot lower-upgrade target should offer inheritance");
+        if (!EquipmentPresenter.CanInheritUpgrade(current, target))
+            throw new Exception("same-slot higher source should be inheritable");
+        AssertContains(EquipmentPresenter.BuildTransferLine(current, target), "继承强化", "transfer line should explain inheritance");
+
+        var noTransfer = EquipmentPresenter.DetailActions(otherSlot, false, current);
+        AssertMissingAction(noTransfer, "transfer_upgrade", "different-slot target should not offer inheritance");
     }
 
     private static void EncodesLockEquipmentRequests()
@@ -155,6 +173,18 @@ public static class EquipmentPresenterTestRunner
         var parsed = Message.Parse(encoded);
         AssertEqual(Message.TypeLockEquipment, parsed.t, "parsed lock request type");
         AssertContains(parsed.dataJson, "\"locked\":true", "parsed lock request data should preserve locked flag");
+    }
+
+    private static void EncodesTransferUpgradeRequests()
+    {
+        string encoded = Message.EncodeTransferUpgrade("r2", "old\"weapon", "new_weapon");
+        AssertContains(encoded, "\"t\":\"transfer_upgrade\"", "transfer request should use transfer_upgrade type");
+        AssertContains(encoded, "\"source_uid\":\"old\\\"weapon\"", "transfer request should escape source uid");
+        AssertContains(encoded, "\"target_uid\":\"new_weapon\"", "transfer request should include target uid");
+
+        var parsed = Message.Parse(encoded);
+        AssertEqual(Message.TypeTransferUpgrade, parsed.t, "parsed transfer request type");
+        AssertContains(parsed.dataJson, "\"source_uid\"", "parsed transfer request data should preserve source uid");
     }
 
     private static void DescribesDungeonStateWithServerMonsterCurve()
@@ -281,14 +311,16 @@ public static class EquipmentPresenterTestRunner
     private static void BuildsCraftAndReincarnationPlans()
     {
         var selected = Equipment("selected", 0, 2, 2, Affix("strength", 2, 30), Affix("crit_rate", 2, 0.08f));
-        var craft = EquipmentPresenter.BuildCraftPlan(selected, 12, 3, 45f);
+        var current = Equipment("current", 0, 2, 6, Affix("strength", 2, 10));
+        var craft = EquipmentPresenter.BuildCraftPlan(selected, current, 12, 3, 45f);
+        AssertContains(craft.TransferLine, "继承强化", "craft plan should show inheritance when current upgrade is higher");
         AssertContains(craft.UpgradeLine, "基础材料 12/10", "upgrade line should show next level cost");
         AssertContains(craft.ReforgeLine, "共 2 份", "reforge line should count affixes");
         AssertContains(craft.ComposeLine, "合成可用", "compose line should show affordability");
         AssertContains(craft.CleanupLine, "弱装 3 件", "cleanup line should show weak items");
 
         var maxed = Equipment("maxed", 0, 2, 10, Affix("strength", 2, 30));
-        var maxedCraft = EquipmentPresenter.BuildCraftPlan(maxed, 9, 0, 0f);
+        var maxedCraft = EquipmentPresenter.BuildCraftPlan(maxed, null, 9, 0, 0f);
         AssertContains(maxedCraft.UpgradeLine, "已强化到 +10", "max upgrade should not suggest another level");
         AssertContains(maxedCraft.ComposeLine, "还差 1 个基础材料", "compose line should show exact missing materials");
 

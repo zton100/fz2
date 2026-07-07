@@ -11,25 +11,26 @@ type Envelope struct {
 
 // 消息类型常量
 const (
-	TypeLogin         = "login"          // 请求：登录
-	TypeSync          = "sync"           // 推送：全量同步
-	TypeLoot          = "loot"           // 推送：掉落装备
-	TypeFloor         = "floor"          // 推送：层数推进
-	TypeEquip         = "equip"          // 请求：穿戴
-	TypeUnequip       = "unequip"        // 请求：卸下
-	TypeBag           = "bag"            // 推送：背包全量
-	TypePower         = "power"          // 推送：当前战力
-	TypeDecompose     = "decompose"      // 请求：分解
-	TypeCompose       = "compose"        // 请求：合成
-	TypeReforge       = "reforge"        // 请求：重铸
-	TypeUpgrade       = "upgrade"        // 请求：强化
-	TypeLockEquipment = "lock_equipment" // 请求：锁定/解锁装备
-	TypeMaterials     = "materials"      // 推送：材料库存
-	TypeCraftResult   = "craft_result"   // 推送：养成操作结果
-	TypeOfflineResult = "offline_result" // 推送：离线结算结果
-	TypeReincarn      = "reincarn"       // 请求：转生
-	TypeTalentUp      = "talent_up"      // 请求：天赋升级
-	TypeTalents       = "talents"        // 推送：天赋状态
+	TypeLogin         = "login"            // 请求：登录
+	TypeSync          = "sync"             // 推送：全量同步
+	TypeLoot          = "loot"             // 推送：掉落装备
+	TypeFloor         = "floor"            // 推送：层数推进
+	TypeEquip         = "equip"            // 请求：穿戴
+	TypeUnequip       = "unequip"          // 请求：卸下
+	TypeBag           = "bag"              // 推送：背包全量
+	TypePower         = "power"            // 推送：当前战力
+	TypeDecompose     = "decompose"        // 请求：分解
+	TypeCompose       = "compose"          // 请求：合成
+	TypeReforge       = "reforge"          // 请求：重铸
+	TypeUpgrade       = "upgrade"          // 请求：强化
+	TypeTransferUpg   = "transfer_upgrade" // 请求：强化继承/转移
+	TypeLockEquipment = "lock_equipment"   // 请求：锁定/解锁装备
+	TypeMaterials     = "materials"        // 推送：材料库存
+	TypeCraftResult   = "craft_result"     // 推送：养成操作结果
+	TypeOfflineResult = "offline_result"   // 推送：离线结算结果
+	TypeReincarn      = "reincarn"         // 请求：转生
+	TypeTalentUp      = "talent_up"        // 请求：天赋升级
+	TypeTalents       = "talents"          // 推送：天赋状态
 )
 
 // LoginRequest 登录请求体。
@@ -119,6 +120,12 @@ type ReforgeRequest struct {
 // UpgradeRequest 强化请求体。
 type UpgradeRequest struct {
 	UID string `json:"uid"`
+}
+
+// TransferUpgradeRequest 强化继承请求体。
+type TransferUpgradeRequest struct {
+	SourceUID string `json:"source_uid"`
+	TargetUID string `json:"target_uid"`
 }
 
 // LockEquipmentRequest 锁定/解锁装备请求体。

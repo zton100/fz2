@@ -242,6 +242,98 @@ func TestHandleDecompose_UpgradedEquipmentReportsRefund(t *testing.T) {
 	}
 }
 
+func TestHandleTransferUpgrade_InheritsFromEquippedAndEquipsTarget(t *testing.T) {
+	store := save.NewMemoryStore()
+	hub := NewHub(store)
+	sess := &Session{Account: "hero", Send: make(chan []byte, 16)}
+	store.LoadOrCreate("hero")
+	store.WithPlayer("hero", func(p *model.Player) {
+		p.Equipped[data.SlotWeapon] = &model.Equipment{
+			UID:       "old_weapon",
+			BaseID:    "old_base",
+			Name:      "Old Sword",
+			Slot:      data.SlotWeapon,
+			Upgrade:   6,
+			BaseStats: map[data.AffixType]float64{data.ATStrength: 20},
+		}
+		p.EquipBag = append(p.EquipBag, &model.Equipment{
+			UID:       "new_weapon",
+			BaseID:    "new_base",
+			Name:      "New Sword",
+			Slot:      data.SlotWeapon,
+			Upgrade:   1,
+			BaseStats: map[data.AffixType]float64{data.ATStrength: 30},
+		})
+	})
+
+	reqData, _ := json.Marshal(protocol.TransferUpgradeRequest{SourceUID: "old_weapon", TargetUID: "new_weapon"})
+	env := protocol.Envelope{T: protocol.TypeTransferUpg, ID: "transfer", Data: reqData}
+	raw, _ := json.Marshal(env)
+	hub.handleMessage(sess, raw)
+
+	store.WithPlayer("hero", func(p *model.Player) {
+		equipped := p.Equipped[data.SlotWeapon]
+		if equipped == nil || equipped.UID != "new_weapon" {
+			t.Fatalf("equipped weapon = %+v, want new weapon", equipped)
+		}
+		if equipped.Upgrade != 6 {
+			t.Fatalf("new weapon upgrade = %d, want inherited +6", equipped.Upgrade)
+		}
+		if len(p.EquipBag) != 1 || p.EquipBag[0].UID != "old_weapon" {
+			t.Fatalf("bag = %+v, want old weapon returned", p.EquipBag)
+		}
+		if p.EquipBag[0].Upgrade != 1 {
+			t.Fatalf("old weapon upgrade = %d, want target previous +1", p.EquipBag[0].Upgrade)
+		}
+	})
+
+	var result protocol.CraftResult
+	if !readEnvelope(sess.Send, protocol.TypeCraftResult, &result) {
+		t.Fatal("no craft result sent")
+	}
+	if !result.OK {
+		t.Fatalf("transfer should succeed: %+v", result)
+	}
+	if result.UID != "new_weapon" || result.Upgrade != 6 {
+		t.Fatalf("craft result = %+v, want target uid and inherited upgrade", result)
+	}
+	if !strings.Contains(result.Msg, "继承强化成功") {
+		t.Fatalf("craft result msg = %q, want transfer hint", result.Msg)
+	}
+}
+
+func TestHandleTransferUpgrade_LockedEquipmentRejected(t *testing.T) {
+	store := save.NewMemoryStore()
+	hub := NewHub(store)
+	sess := &Session{Account: "hero", Send: make(chan []byte, 16)}
+	store.LoadOrCreate("hero")
+	store.WithPlayer("hero", func(p *model.Player) {
+		p.EquipBag = append(p.EquipBag,
+			&model.Equipment{UID: "source", Slot: data.SlotWeapon, Upgrade: 3},
+			&model.Equipment{UID: "target", Slot: data.SlotWeapon, Upgrade: 0},
+		)
+		p.Locked["source"] = true
+	})
+
+	reqData, _ := json.Marshal(protocol.TransferUpgradeRequest{SourceUID: "source", TargetUID: "target"})
+	env := protocol.Envelope{T: protocol.TypeTransferUpg, ID: "transfer", Data: reqData}
+	raw, _ := json.Marshal(env)
+	hub.handleMessage(sess, raw)
+
+	store.WithPlayer("hero", func(p *model.Player) {
+		if p.EquipBag[0].Upgrade != 3 || p.EquipBag[1].Upgrade != 0 {
+			t.Fatalf("locked transfer changed upgrades: %+v", p.EquipBag)
+		}
+	})
+	var result protocol.CraftResult
+	if !readEnvelope(sess.Send, protocol.TypeCraftResult, &result) {
+		t.Fatal("no craft result sent")
+	}
+	if result.OK {
+		t.Fatal("locked transfer should fail")
+	}
+}
+
 func TestHub_ConcurrentPlayerMutations_DoNotDeadlock(t *testing.T) {
 	store := save.NewMemoryStore()
 	hub := NewHub(store)
