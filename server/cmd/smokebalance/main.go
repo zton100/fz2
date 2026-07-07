@@ -157,14 +157,20 @@ func main() {
 	} else {
 		soulsAfterReincarn := longPlayer.Souls
 		spentDamage := spendTalent(longPlayer, "damage")
+		spentQuality := spendTalent(longPlayer, "quality")
+		spentDrop := spendTalent(longPlayer, "drop")
 		starter.GrantLoadout(longPlayer, longGen)
 		secondMetrics := runCycle(longPlayer, longDrop, cfg.SecondLoopTargetFloor)
 		fmt.Printf("--- Second Loop After Reincarnation: floor 1 -> %d ---\n", cfg.SecondLoopTargetFloor)
-		fmt.Printf("Start: floor=1 power=%.1f souls=%d damage_talent=%d spent_damage=%d\n",
+		fmt.Printf("Start: floor=1 power=%.1f souls=%d damage_talent=%d quality_talent=%d drop_talent=%d spent_damage=%d spent_quality=%d spent_drop=%d\n",
 			secondMetrics.StartPower,
 			soulsAfterReincarn,
 			longPlayer.Talents["damage"],
-			spentDamage)
+			longPlayer.Talents["quality"],
+			longPlayer.Talents["drop"],
+			spentDamage,
+			spentQuality,
+			spentDrop)
 		printMetrics(secondMetrics)
 		printLootMix(secondMetrics)
 		firstLoopTicksToSecondTarget := longMetrics.Ticks + deepMetrics.Ticks + lateMetrics.Ticks + endgameMetrics.Ticks

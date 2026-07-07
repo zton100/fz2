@@ -516,6 +516,45 @@
 
 - 待提交。
 
+## 2026-07-07 Demo 后续硬化：80 层后怪物曲线调平
+
+### 本轮目标
+
+- 修正 80 -> 120 仍接近每层 1 tick 平推的问题。
+- 保持 120 层长线仍可突破，同时让高层怪物曲线开始产生更明确压力。
+
+### 本轮完成
+
+- 服务端 `MonsterPower` 改为三段曲线：
+  - 1 -> 20：线性成长。
+  - 21 -> 80：`1.05` 指数成长。
+  - 81+：从 80 层基准继续按 `1.055` 指数成长。
+- 客户端 `EquipmentPresenter.MonsterPowerAtFloor` 同步同一套三段曲线，保证 UI 预估和服务端一致。
+- 服务端怪物曲线测试增加 80 层后二次加速断言。
+- Unity `EquipmentPresenterTestRunner` 增加 80 层后二次加速断言。
+- 二周目长线 smoke 不再只投入 damage；会继续把剩余魂点投入 quality 和 drop，更接近玩家转生后的真实养成路径。
+
+### 本轮验证
+
+- `go test ./internal/data ./cmd/smokebalance` 通过。
+- `go run ./cmd/smokebalance` 通过：
+  - 80 -> 120 用 41 tick 到达。
+  - 80 -> 120 掉落 Artifact 3 件。
+  - 转生后二周目投入 damage=10、quality=3、drop=10 后，1 -> 120 用 120 tick 到达。
+- Unity `EquipmentPresenterTestRunner.Run` 通过，日志包含 `[EquipmentPresenterTestRunner] OK`。
+- `go test ./...` 通过。
+- `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`。
+- Unity `PlayModeRunner.RunMainSmoke` 通过，日志包含 `MAIN_SMOKE_OK`。
+- `git diff --check` 通过。
+
+### 本轮遗留
+
+- 虽然 80 层后指数已提高，但 80 -> 120 仍是 41 tick 到达；下一轮可以继续调 Boss 倍率或增加更高层 120 -> 160 观察段。
+
+### 提交信息
+
+- 待提交。
+
 ## 2026-07-07 Demo 后续硬化：120 层长线和高层 Artifact 验证
 
 ### 本轮目标

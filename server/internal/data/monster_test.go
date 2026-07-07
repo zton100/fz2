@@ -51,6 +51,19 @@ func TestMonsterPower_GrowthAcceleratesAfterFloor20(t *testing.T) {
 	}
 }
 
+func TestMonsterPower_GrowthAcceleratesAgainAfterFloor80(t *testing.T) {
+	p81 := MonsterPower(81)
+	p121 := MonsterPower(121)
+	if p81 <= 0 || p121 <= 0 {
+		t.Fatal("powers should be positive")
+	}
+	ratio := p121 / p81
+	// 80 层后从 1.05 提升到 1.055，40 层跨度应明显超过 1.05^40≈7.0。
+	if ratio < 7.5 {
+		t.Fatalf("p121/p81 = %.2f, want >= 7.5 (accelerated growth after floor 80)", ratio)
+	}
+}
+
 // TestMonsterPower_Floor20IsTransitionPoint verifies floor 1-20 are linear
 // (same step size) while floor 20→21 is the start of exponential acceleration.
 func TestMonsterPower_Floor20IsTransitionPoint(t *testing.T) {
