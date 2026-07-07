@@ -458,10 +458,16 @@ namespace EquipmentIdle.UI
             {
                 normal = 98f * (float)Math.Pow(1.05f, floor - 20);
             }
-            else
+            else if (floor <= 120)
             {
                 float baseAt80 = 98f * (float)Math.Pow(1.05f, 60);
                 normal = baseAt80 * (float)Math.Pow(1.055f, floor - 80);
+            }
+            else
+            {
+                float baseAt80 = 98f * (float)Math.Pow(1.05f, 60);
+                float baseAt120 = baseAt80 * (float)Math.Pow(1.055f, 40);
+                normal = baseAt120 * (float)Math.Pow(1.025f, floor - 120);
             }
             return floor % 5 == 0 ? normal * 1.2f : normal;
         }

@@ -25,6 +25,10 @@ type balanceConfig struct {
 	EndgameTargetFloor                   int
 	EndgameTicks                         tickRange
 	EndgameMinArtifactDrops              int
+	FrontierStartFloor                   int
+	FrontierTargetFloor                  int
+	FrontierTicks                        tickRange
+	FrontierMinArtifactDrops             int
 	PostReincarnationTargetFloor         int
 	RequirePostReincarnationDamageTalent bool
 }
@@ -50,7 +54,11 @@ func defaultBalanceConfig() balanceConfig {
 		EndgameTargetFloor:                   120,
 		EndgameTicks:                         tickRange{Min: 35, Max: 3000},
 		EndgameMinArtifactDrops:              2,
-		PostReincarnationTargetFloor:         120,
+		FrontierStartFloor:                   120,
+		FrontierTargetFloor:                  160,
+		FrontierTicks:                        tickRange{Min: 35, Max: 5000},
+		FrontierMinArtifactDrops:             2,
+		PostReincarnationTargetFloor:         160,
 		RequirePostReincarnationDamageTalent: true,
 	}
 }

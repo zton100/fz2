@@ -26,10 +26,15 @@ func MonsterPower(floor int) float64 {
 	} else if floor <= 80 {
 		const baseAt20 = 98.0
 		normal = baseAt20 * math.Pow(1.05, float64(floor-20))
-	} else {
+	} else if floor <= 120 {
 		const baseAt20 = 98.0
 		baseAt80 := baseAt20 * math.Pow(1.05, 60)
 		normal = baseAt80 * math.Pow(1.055, float64(floor-80))
+	} else {
+		const baseAt20 = 98.0
+		baseAt80 := baseAt20 * math.Pow(1.05, 60)
+		baseAt120 := baseAt80 * math.Pow(1.055, 40)
+		normal = baseAt120 * math.Pow(1.025, float64(floor-120))
 	}
 	if floor%5 == 0 {
 		return normal * 1.2

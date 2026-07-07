@@ -120,6 +120,29 @@ func checkEndgameRun(metrics cycleMetrics, cfg balanceConfig) []string {
 	return failures
 }
 
+func checkFrontierRun(metrics cycleMetrics, cfg balanceConfig) []string {
+	var failures []string
+	if metrics.FinalFloor < cfg.FrontierTargetFloor {
+		failures = append(failures, fmt.Sprintf("frontier run reached floor %d, want >= %d", metrics.FinalFloor, cfg.FrontierTargetFloor))
+	}
+	if metrics.Ticks < cfg.FrontierTicks.Min || metrics.Ticks > cfg.FrontierTicks.Max {
+		failures = append(failures, fmt.Sprintf("floor %d -> %d ticks out of target range %d..%d, got %d",
+			cfg.FrontierStartFloor,
+			cfg.FrontierTargetFloor,
+			cfg.FrontierTicks.Min,
+			cfg.FrontierTicks.Max,
+			metrics.Ticks))
+	}
+	if metrics.RarityCounts[data.RarityArtifact] < cfg.FrontierMinArtifactDrops {
+		failures = append(failures, fmt.Sprintf("floor %d -> %d artifact drops %d, want >= %d",
+			cfg.FrontierStartFloor,
+			cfg.FrontierTargetFloor,
+			metrics.RarityCounts[data.RarityArtifact],
+			cfg.FrontierMinArtifactDrops))
+	}
+	return failures
+}
+
 func checkPostReincarnationLoop(metrics cycleMetrics, cfg balanceConfig, firstRunStartPower float64, firstRunTicksToTarget int, spentDamage int) []string {
 	var failures []string
 	if cfg.RequirePostReincarnationDamageTalent && spentDamage == 0 {

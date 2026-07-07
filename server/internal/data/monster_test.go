@@ -64,6 +64,19 @@ func TestMonsterPower_GrowthAcceleratesAgainAfterFloor80(t *testing.T) {
 	}
 }
 
+func TestMonsterPower_GrowthTapersAfterFloor120(t *testing.T) {
+	p121 := MonsterPower(121)
+	p159 := MonsterPower(159)
+	if p121 <= 0 || p159 <= 0 {
+		t.Fatal("powers should be positive")
+	}
+	ratio := p159 / p121
+	// 120 层后进入 frontier 观察段，仍指数增长，但放缓到 1.025，避免首轮 120 -> 160 完全卡死。
+	if ratio < 2.3 || ratio > 3.2 {
+		t.Fatalf("p159/p121 = %.2f, want 2.3..3.2 (tapered growth after floor 120)", ratio)
+	}
+}
+
 // TestMonsterPower_Floor20IsTransitionPoint verifies floor 1-20 are linear
 // (same step size) while floor 20→21 is the start of exponential acceleration.
 func TestMonsterPower_Floor20IsTransitionPoint(t *testing.T) {

@@ -151,6 +151,24 @@ func main() {
 		endgameMetrics.RarityCounts[data.RarityArtifact])
 	fmt.Println()
 
+	frontierMetrics := runCycle(longPlayer, longDrop, cfg.FrontierTargetFloor)
+	fmt.Printf("--- Frontier Run: floor %d -> %d ---\n", cfg.FrontierStartFloor, cfg.FrontierTargetFloor)
+	fmt.Printf("Start: floor=%d power=%.1f souls=%d\n", cfg.FrontierStartFloor, frontierMetrics.StartPower, longPlayer.Souls)
+	printMetrics(frontierMetrics)
+	printLootMix(frontierMetrics)
+	frontierFailures := checkFrontierRun(frontierMetrics, cfg)
+	if len(frontierFailures) > 0 {
+		printFailures(frontierFailures)
+		failed = true
+	} else {
+		fmt.Printf("  PASS: floor %d -> %d tick count in target range\n", cfg.FrontierStartFloor, cfg.FrontierTargetFloor)
+	}
+	fmt.Printf("  PASS: floor %d -> %d artifact drops=%d\n",
+		cfg.FrontierStartFloor,
+		cfg.FrontierTargetFloor,
+		frontierMetrics.RarityCounts[data.RarityArtifact])
+	fmt.Println()
+
 	if err := reincarnation.Reincarnate(longPlayer); err != nil {
 		fmt.Printf("FAIL: long run reincarnation failed: %v\n", err)
 		failed = true
@@ -173,7 +191,7 @@ func main() {
 			spentDrop)
 		printMetrics(postReincarnationMetrics)
 		printLootMix(postReincarnationMetrics)
-		firstRunTicksToPostReincarnationTarget := longMetrics.Ticks + deepMetrics.Ticks + lateMetrics.Ticks + endgameMetrics.Ticks
+		firstRunTicksToPostReincarnationTarget := longMetrics.Ticks + deepMetrics.Ticks + lateMetrics.Ticks + endgameMetrics.Ticks + frontierMetrics.Ticks
 		postReincarnationFailures := checkPostReincarnationLoop(postReincarnationMetrics, cfg, longMetrics.StartPower, firstRunTicksToPostReincarnationTarget, spentDamage)
 		if len(postReincarnationFailures) > 0 {
 			printFailures(postReincarnationFailures)

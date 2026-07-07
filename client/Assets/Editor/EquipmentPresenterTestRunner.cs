@@ -169,6 +169,11 @@ public static class EquipmentPresenterTestRunner
         if (floor121.MonsterPower / floor81.MonsterPower < 7.5f)
             throw new Exception($"monster curve should accelerate again after floor 80, got ratio {floor121.MonsterPower / floor81.MonsterPower:F2}");
 
+        var floor159 = EquipmentPresenter.BuildDungeonState(159, 500f);
+        float frontierRatio = floor159.MonsterPower / floor121.MonsterPower;
+        if (frontierRatio < 2.3f || frontierRatio > 3.2f)
+            throw new Exception($"monster curve should taper after floor 120, got ratio {frontierRatio:F2}");
+
         var boss = EquipmentPresenter.BuildDungeonState(10, 10f);
         AssertContains(boss.Title, "Boss 关", "boss floor should be labeled");
         AssertContains(boss.Monster, "守层 Boss", "boss encounter should name boss");

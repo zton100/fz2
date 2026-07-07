@@ -365,6 +365,46 @@
 
 - 待提交。
 
+## 2026-07-07 Demo 后续硬化：160 层 frontier 平衡观察
+
+### 本轮目标
+
+- 继续推进高层挂机数值观察，把长线 smoke 从 120 层扩到 160 层。
+- 确认 120 层后怪物曲线不会让首轮完全卡死，同时保留高层压力。
+
+### 本轮完成
+
+- `smokebalance` 新增 `Frontier Run: floor 120 -> 160`：
+  - 单独输出 tick、掉落、强化/分解、Boss 奖励、稀有度和词缀分布。
+  - 新增 `FrontierStartFloor`、`FrontierTargetFloor`、`FrontierTicks`、`FrontierMinArtifactDrops` 配置。
+  - 新增 `checkFrontierRun` 和表格测试，覆盖目标层、tick 区间、Artifact 下限。
+- 转生后循环目标同步提升到 160 层，并继续对比首轮累计 tick。
+- 初次扩到 160 层时发现首轮卡在 140/150 层；据此把 120 层后的怪物指数从继续 `1.055` 调整为 frontier 段 `1.025`。
+- 客户端 `EquipmentPresenter.MonsterPowerAtFloor` 同步服务端三段半曲线，保持 UI 预估一致。
+- 服务端和 Unity Presenter 测试都增加 120 层后增长放缓断言。
+
+### 本轮验证
+
+- `env GOCACHE=/Users/zton/Documents/fz2/.gocache go test ./internal/data ./cmd/smokebalance` 通过。
+- `env GOCACHE=/Users/zton/Documents/fz2/.gocache go run ./cmd/smokebalance` 通过：
+  - 120 -> 160 用 43 tick 到达。
+  - 120 -> 160 掉落 Artifact 2 件。
+  - 转生后循环 1 -> 160 用 161 tick 到达，首轮累计 164 tick。
+- `env GOCACHE=/Users/zton/Documents/fz2/.gocache go test ./...` 通过。
+- `env GOCACHE=/Users/zton/Documents/fz2/.gocache ./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`。
+- Unity `EquipmentPresenterTestRunner.Run` 通过，日志包含 `[EquipmentPresenterTestRunner] OK`。
+- Unity `PlayModeRunner.RunMainSmoke` 通过，日志包含 `MAIN_SMOKE_OK`，`client/verify_result.txt` 为 `MAIN_SMOKE_OK`。
+- `git diff --check` 通过。
+
+### 本轮遗留
+
+- 下一步把 Artifact 下限升级为多 seed 分布检查，避免单 seed 下限在高层掉落上过于偶然。
+- `Frontier Run` 中 120 -> 160 主要依赖强化而不是新装备穿戴，下一步可观察高层装备生成战力是否偏保守。
+
+### 提交信息
+
+- 待提交。
+
 ## 2026-07-07 Demo 后续硬化：平衡 smoke 阈值配置化
 
 ### 本轮目标
