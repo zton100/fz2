@@ -541,10 +541,10 @@ namespace EquipmentIdle.UI
                 ? $"合成可用：基础材料 {baseMaterials}/10，可补缺失部位。"
                 : $"合成还差 {10 - baseMaterials} 个基础材料。";
             string cleanupLine = weakCount > 0
-                ? $"可清理弱装 {weakCount} 件，分解换强化材料。"
+                ? $"可清理弱装 {weakCount} 件；分解强化装会返还部分基础材料。"
                 : equipBestDelta > 0f
                     ? $"一键穿戴预计评分 +{equipBestDelta:F0}。"
-                    : "当前没有明显弱装或可一键提升。";
+                    : "当前没有明显弱装；替换旧强化装后可分解回收部分材料。";
 
             return new CraftPlanState
             {

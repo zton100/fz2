@@ -45,6 +45,31 @@ func TestDecompose_RareWithAffixesGivesAffixMat(t *testing.T) {
 	}
 }
 
+func TestDecompose_UpgradedEquipmentRefundsUpgradeMaterials(t *testing.T) {
+	p := model.NewPlayer("t")
+	eq := &model.Equipment{UID: "e3", Slot: data.SlotWeapon, Rarity: data.RarityMagic, Upgrade: 3}
+	yield, err := Decompose(p, eq)
+	if err != nil {
+		t.Fatalf("decompose error: %v", err)
+	}
+	wantRefund := int(float64(data.UpgradeCostTable[1]+data.UpgradeCostTable[2]+data.UpgradeCostTable[3]) * data.UpgradeRefundRate)
+	wantBase := data.DecomposeBaseYield[data.RarityMagic] + wantRefund
+	if yield[data.MatBase] != wantBase {
+		t.Fatalf("base mat = %d, want %d", yield[data.MatBase], wantBase)
+	}
+	if p.Materials[data.MatBase] != wantBase {
+		t.Fatalf("player base mat = %d, want %d", p.Materials[data.MatBase], wantBase)
+	}
+}
+
+func TestUpgradeRefund_ClampsAboveCostTable(t *testing.T) {
+	eq := &model.Equipment{UID: "e4", Upgrade: 99}
+	refund := UpgradeRefund(eq)
+	if refund <= 0 {
+		t.Fatalf("refund = %d, want positive", refund)
+	}
+}
+
 func TestDecompose_NilError(t *testing.T) {
 	p := model.NewPlayer("t")
 	_, err := Decompose(p, nil)

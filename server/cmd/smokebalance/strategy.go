@@ -31,20 +31,26 @@ func autoEquipBest(p *model.Player) (equipped int, powerGain float64) {
 	return equipped, powerGain
 }
 
-func autoDecomposeWeakBag(p *model.Player) int {
+type decomposeResult struct {
+	Count         int
+	UpgradeRefund int
+}
+
+func autoDecomposeWeakBag(p *model.Player) decomposeResult {
 	kept := p.EquipBag[:0]
-	decomposed := 0
+	result := decomposeResult{}
 	for _, eq := range p.EquipBag {
 		if eq == nil || powerGainIfEquipped(p, eq) > 0 {
 			kept = append(kept, eq)
 			continue
 		}
 		if _, err := crafting.Decompose(p, eq); err == nil {
-			decomposed++
+			result.Count++
+			result.UpgradeRefund += crafting.UpgradeRefund(eq)
 		}
 	}
 	p.EquipBag = kept
-	return decomposed
+	return result
 }
 
 func autoUpgradeEquipped(p *model.Player, rng *rand.Rand) int {

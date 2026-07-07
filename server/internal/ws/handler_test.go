@@ -2,6 +2,7 @@ package ws
 
 import (
 	"encoding/json"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -197,6 +198,47 @@ func TestHandleDecompose_LockedEquipmentRejected(t *testing.T) {
 	}
 	if result.OK {
 		t.Fatal("locked decompose should fail")
+	}
+}
+
+func TestHandleDecompose_UpgradedEquipmentReportsRefund(t *testing.T) {
+	store := save.NewMemoryStore()
+	hub := NewHub(store)
+	sess := &Session{Account: "hero", Send: make(chan []byte, 16)}
+	store.LoadOrCreate("hero")
+	store.WithPlayer("hero", func(p *model.Player) {
+		p.EquipBag = append(p.EquipBag, &model.Equipment{
+			UID:     "eq_upgraded",
+			BaseID:  "base_weapon",
+			Name:    "Upgraded Sword",
+			Slot:    data.SlotWeapon,
+			Rarity:  data.RarityRare,
+			Upgrade: 3,
+		})
+	})
+
+	reqData, _ := json.Marshal(protocol.DecomposeRequest{UID: "eq_upgraded"})
+	env := protocol.Envelope{T: protocol.TypeDecompose, ID: "decompose", Data: reqData}
+	raw, _ := json.Marshal(env)
+	hub.handleMessage(sess, raw)
+
+	store.WithPlayer("hero", func(p *model.Player) {
+		if len(p.EquipBag) != 0 {
+			t.Fatalf("upgraded item was not decomposed, bag len = %d", len(p.EquipBag))
+		}
+		if p.Materials[data.MatBase] <= data.DecomposeBaseYield[data.RarityRare] {
+			t.Fatalf("base materials = %d, want more than rarity yield after refund", p.Materials[data.MatBase])
+		}
+	})
+	var result protocol.CraftResult
+	if !readEnvelope(sess.Send, protocol.TypeCraftResult, &result) {
+		t.Fatal("no craft result sent")
+	}
+	if !result.OK {
+		t.Fatal("upgraded decompose should succeed")
+	}
+	if !strings.Contains(result.Msg, "返还强化材料") {
+		t.Fatalf("craft result msg = %q, want refund hint", result.Msg)
 	}
 }
 

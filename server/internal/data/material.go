@@ -1,4 +1,4 @@
-﻿package data
+package data
 
 // MaterialType 材料类型标识。
 type MaterialType string
@@ -42,6 +42,9 @@ const ComposeCost = 10
 
 // ReforgeCostPerAffix 每重铸一个词缀所需词缀材料数（按词缀 Tier 对应材料）。
 const ReforgeCostPerAffix = 1
+
+// UpgradeRefundRate 分解强化装备时返还已成功强化材料的一部分。
+const UpgradeRefundRate = 0.5
 
 // UpgradeCostTable 强化各级消耗基础材料（索引=目标等级）。
 var UpgradeCostTable = []int{0, 3, 5, 10, 18, 30, 50, 80, 120, 180, 250}

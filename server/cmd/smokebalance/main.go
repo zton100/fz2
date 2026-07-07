@@ -29,6 +29,7 @@ type cycleMetrics struct {
 	BossReward            int
 	UpgradeCount          int
 	DecomposeCount        int
+	UpgradeRefund         int
 	BaseMaterials         int
 	RarityCounts          map[data.Rarity]int
 	AffixCategoryCounts   map[data.AffixCategory]int
@@ -334,9 +335,10 @@ func printMetrics(metrics cycleMetrics) {
 		metrics.MatchedUpgradeDrops,
 		metrics.BestImmediateGain,
 		metrics.BestMatchedGain)
-	fmt.Printf("Crafting: upgrades=%d decomposed=%d base_materials=%d\n",
+	fmt.Printf("Crafting: upgrades=%d decomposed=%d upgrade_refund=%d base_materials=%d\n",
 		metrics.UpgradeCount,
 		metrics.DecomposeCount,
+		metrics.UpgradeRefund,
 		metrics.BaseMaterials)
 }
 
@@ -395,7 +397,9 @@ func runCycle(p *model.Player, drop *loot.DropTable, targetFloor int) cycleMetri
 		metrics.EquippedCount += equipped
 		metrics.PowerGain += gain
 		if p.Floor == beforeFloor {
-			metrics.DecomposeCount += autoDecomposeWeakBag(p)
+			decomposed := autoDecomposeWeakBag(p)
+			metrics.DecomposeCount += decomposed.Count
+			metrics.UpgradeRefund += decomposed.UpgradeRefund
 			metrics.UpgradeCount += autoUpgradeEquipped(p, craftRNG)
 		}
 		if p.Floor > metrics.FinalFloor {

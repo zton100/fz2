@@ -482,6 +482,54 @@
 
 - 待提交。
 
+## 2026-07-07 Demo 后续硬化：强化材料回收
+
+### 本轮目标
+
+- 继续处理 frontier 装备替换诊断暴露的问题：高强化旧装备让玩家不愿替换新掉落。
+- 先落地低风险的沉没成本缓解：分解强化装备返还部分已投入基础材料。
+
+### 本轮完成
+
+- 服务端分解逻辑新增强化返还：
+  - 按装备强化等级汇总已成功强化消耗。
+  - 分解时返还 50% 基础材料。
+  - 超出强化消耗表的等级会按表内最高等级截断，避免异常存档导致越界。
+- WebSocket 分解结果反馈：
+  - 强化装备分解成功时提示“返还强化材料 +N”。
+  - 非强化装备分解时提示基础材料收益。
+- `smokebalance` 指标新增 `upgrade_refund`，用于观测自动分解链路中来自强化装备的返还量。
+- 客户端锻造页弱装清理提示更新，明确替换旧强化装备后可通过分解回收部分材料。
+- 增加服务端单元测试覆盖：
+  - 强化装备分解返还。
+  - 返还等级截断。
+  - WebSocket 分解提示。
+  - 平衡 smoke 自动分解统计返还。
+
+### 本轮验证
+
+- `go run ./cmd/smokebalance` 通过。
+- `go test ./...` 通过。
+- `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`。
+- `git diff --check` 通过。
+- Unity `EquipmentPresenterTestRunner.Run` 通过，日志包含 `[EquipmentPresenterTestRunner] OK`。
+- Unity `PlayModeRunner.RunMainSmoke` 通过，日志包含 `MAIN_SMOKE_OK`，`client/verify_result.txt` 为 `MAIN_SMOKE_OK`。
+
+### 本轮观察
+
+- 当前 `smokebalance` 自动长线中 `upgrade_refund=0` 是合理结果：
+  - 自动分解主要处理背包弱装。
+  - frontier 卡点来自已穿戴高强化旧装，自动策略不会先卸下再分解。
+  - 本轮能力解决“玩家替换后能回收部分材料”，还没有解决“系统主动把强化从旧装转到新装”。
+
+### 本轮遗留
+
+- 下一步应做主动“强化继承/转移”操作，让玩家或自动策略可以把旧装备强化投入迁移到新装备上，真正降低高层替换门槛。
+
+### 提交信息
+
+- Commit subject: `Refund upgrade materials on decompose`
+
 ## 2026-07-07 Demo 后续硬化：平衡 smoke 阈值配置化
 
 ### 本轮目标

@@ -15,6 +15,9 @@ func Decompose(p *model.Player, eq *model.Equipment) (map[data.MaterialType]int,
 	}
 	yield := map[data.MaterialType]int{}
 	yield[data.MatBase] = data.DecomposeBaseYield[eq.Rarity]
+	if refund := UpgradeRefund(eq); refund > 0 {
+		yield[data.MatBase] += refund
+	}
 	for _, a := range eq.Affixes {
 		mt := data.AffixMaterialByTier(a.Tier)
 		yield[mt]++
@@ -23,4 +26,19 @@ func Decompose(p *model.Player, eq *model.Equipment) (map[data.MaterialType]int,
 		p.AddMaterial(mt, n)
 	}
 	return yield, nil
+}
+
+func UpgradeRefund(eq *model.Equipment) int {
+	if eq == nil || eq.Upgrade <= 0 {
+		return 0
+	}
+	maxLevel := eq.Upgrade
+	if maxLevel >= len(data.UpgradeCostTable) {
+		maxLevel = len(data.UpgradeCostTable) - 1
+	}
+	spent := 0
+	for level := 1; level <= maxLevel; level++ {
+		spent += data.UpgradeCostTable[level]
+	}
+	return int(float64(spent) * data.UpgradeRefundRate)
 }

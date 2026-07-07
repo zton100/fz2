@@ -296,10 +296,16 @@ func (h *Hub) handleDecompose(sess *Session, env protocol.Envelope) {
 		}
 		player.EquipBag = append(player.EquipBag[:idx], player.EquipBag[idx+1:]...)
 		delete(player.Locked, eq.UID)
-		crafting.Decompose(player, eq)
+		yield, _ := crafting.Decompose(player, eq)
 		h.pushMaterials(sess, player)
 		h.pushBag(sess, player)
-		h.pushCraftResult(sess, true, locale.Current().MsgDecomposed, "", 0)
+		msg := locale.Current().MsgDecomposed
+		if refund := crafting.UpgradeRefund(eq); refund > 0 {
+			msg = fmt.Sprintf("%s，返还强化材料 +%d", msg, refund)
+		} else if baseYield := yield[data.MatBase]; baseYield > 0 {
+			msg = fmt.Sprintf("%s，基础材料 +%d", msg, baseYield)
+		}
+		h.pushCraftResult(sess, true, msg, "", 0)
 	}); err != nil {
 		log.Printf("decompose save error for %s: %v", sess.Account, err)
 	}

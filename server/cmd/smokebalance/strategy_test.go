@@ -43,14 +43,32 @@ func TestAutoDecomposeWeakBagKeepsUpgrades(t *testing.T) {
 
 	decomposed := autoDecomposeWeakBag(player)
 
-	if decomposed != 1 {
-		t.Fatalf("decomposed = %d, want 1", decomposed)
+	if decomposed.Count != 1 {
+		t.Fatalf("decomposed count = %d, want 1", decomposed.Count)
 	}
 	if player.Materials[data.MatBase] != data.DecomposeBaseYield[data.RarityRare] {
 		t.Fatalf("base materials = %d, want rare yield", player.Materials[data.MatBase])
 	}
 	if len(player.EquipBag) != 2 || player.EquipBag[0] != strong || player.EquipBag[1] != nil {
 		t.Fatalf("bag = %v, want strong item and nil retained", player.EquipBag)
+	}
+}
+
+func TestAutoDecomposeWeakBagReportsUpgradeRefund(t *testing.T) {
+	player := model.NewPlayer("strategy")
+	current := strategyEquipment("current", data.SlotWeapon, data.RarityCommon, 100)
+	weak := strategyEquipment("weak", data.SlotWeapon, data.RarityCommon, 5)
+	weak.Upgrade = 2
+	player.Equipped[data.SlotWeapon] = current
+	player.EquipBag = []*model.Equipment{weak}
+
+	decomposed := autoDecomposeWeakBag(player)
+
+	if decomposed.Count != 1 {
+		t.Fatalf("decomposed count = %d, want 1", decomposed.Count)
+	}
+	if decomposed.UpgradeRefund <= 0 {
+		t.Fatalf("upgrade refund = %d, want positive", decomposed.UpgradeRefund)
 	}
 }
 
