@@ -143,6 +143,31 @@ func checkFrontierRun(metrics cycleMetrics, cfg balanceConfig) []string {
 	return failures
 }
 
+func checkArtifactDistribution(metrics artifactDistributionMetrics, cfg balanceConfig) []string {
+	var failures []string
+	failures = append(failures, checkArtifactSegmentDistribution(metrics.Endgame, cfg.EndgameArtifactDistribution)...)
+	failures = append(failures, checkArtifactSegmentDistribution(metrics.Frontier, cfg.FrontierArtifactDistribution)...)
+	return failures
+}
+
+func checkArtifactSegmentDistribution(metrics artifactSegmentDistribution, target artifactDistributionTarget) []string {
+	var failures []string
+	if metrics.Total < target.MinTotal {
+		failures = append(failures, fmt.Sprintf("%s artifact total %d across %d seeds, want >= %d",
+			metrics.Name,
+			metrics.Total,
+			metrics.SeedCount,
+			target.MinTotal))
+	}
+	if metrics.SeedsWithDrop < target.MinSeedsWithDrop {
+		failures = append(failures, fmt.Sprintf("%s artifact seeds_with_drop %d, want >= %d",
+			metrics.Name,
+			metrics.SeedsWithDrop,
+			target.MinSeedsWithDrop))
+	}
+	return failures
+}
+
 func checkPostReincarnationLoop(metrics cycleMetrics, cfg balanceConfig, firstRunStartPower float64, firstRunTicksToTarget int, spentDamage int) []string {
 	var failures []string
 	if cfg.RequirePostReincarnationDamageTalent && spentDamage == 0 {

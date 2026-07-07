@@ -33,6 +33,23 @@ type cycleMetrics struct {
 	PostReincPower      float64
 }
 
+type artifactDistributionMetrics struct {
+	Endgame  artifactSegmentDistribution
+	Frontier artifactSegmentDistribution
+}
+
+type artifactSegmentDistribution struct {
+	Name          string
+	StartFloor    int
+	TargetFloor   int
+	SeedCount     int
+	Total         int
+	Min           int
+	Max           int
+	SeedsWithDrop int
+	Counts        []int
+}
+
 func main() {
 	cfg := defaultBalanceConfig()
 	rng := rand.New(rand.NewSource(42))
@@ -169,6 +186,19 @@ func main() {
 		frontierMetrics.RarityCounts[data.RarityArtifact])
 	fmt.Println()
 
+	distributionMetrics := runArtifactDistribution(cfg)
+	fmt.Println("--- Artifact Distribution: multi-seed long runs ---")
+	printArtifactDistribution(distributionMetrics.Endgame)
+	printArtifactDistribution(distributionMetrics.Frontier)
+	distributionFailures := checkArtifactDistribution(distributionMetrics, cfg)
+	if len(distributionFailures) > 0 {
+		printFailures(distributionFailures)
+		failed = true
+	} else {
+		fmt.Printf("  PASS: artifact distribution across %d seeds is within target\n", len(cfg.ArtifactDistributionSeeds))
+	}
+	fmt.Println()
+
 	if err := reincarnation.Reincarnate(longPlayer); err != nil {
 		fmt.Printf("FAIL: long run reincarnation failed: %v\n", err)
 		failed = true
@@ -214,6 +244,65 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Println("=== Simulation Complete ===")
+}
+
+func runArtifactDistribution(cfg balanceConfig) artifactDistributionMetrics {
+	metrics := artifactDistributionMetrics{
+		Endgame:  newArtifactSegmentDistribution("80 -> 120", cfg.EndgameStartFloor, cfg.EndgameTargetFloor),
+		Frontier: newArtifactSegmentDistribution("120 -> 160", cfg.FrontierStartFloor, cfg.FrontierTargetFloor),
+	}
+	for _, seed := range cfg.ArtifactDistributionSeeds {
+		rng := rand.New(rand.NewSource(seed))
+		gen := loot.NewGenerator(rng)
+		drop := loot.NewDropTable(gen)
+		player := model.NewPlayer(fmt.Sprintf("artifact-dist-%d", seed))
+		starter.GrantLoadout(player, gen)
+
+		runCycle(player, drop, cfg.LongTargetFloor)
+		runCycle(player, drop, cfg.DeepTargetFloor)
+		runCycle(player, drop, cfg.LateTargetFloor)
+		endgameMetrics := runCycle(player, drop, cfg.EndgameTargetFloor)
+		frontierMetrics := runCycle(player, drop, cfg.FrontierTargetFloor)
+
+		metrics.Endgame.record(endgameMetrics.RarityCounts[data.RarityArtifact])
+		metrics.Frontier.record(frontierMetrics.RarityCounts[data.RarityArtifact])
+	}
+	return metrics
+}
+
+func newArtifactSegmentDistribution(name string, startFloor int, targetFloor int) artifactSegmentDistribution {
+	return artifactSegmentDistribution{
+		Name:        name,
+		StartFloor:  startFloor,
+		TargetFloor: targetFloor,
+		Min:         -1,
+	}
+}
+
+func (metrics *artifactSegmentDistribution) record(artifactDrops int) {
+	metrics.SeedCount++
+	metrics.Total += artifactDrops
+	if artifactDrops > 0 {
+		metrics.SeedsWithDrop++
+	}
+	if metrics.Min < 0 || artifactDrops < metrics.Min {
+		metrics.Min = artifactDrops
+	}
+	if artifactDrops > metrics.Max {
+		metrics.Max = artifactDrops
+	}
+	metrics.Counts = append(metrics.Counts, artifactDrops)
+}
+
+func printArtifactDistribution(metrics artifactSegmentDistribution) {
+	fmt.Printf("%s artifact distribution: seeds=%d total=%d min=%d max=%d seeds_with_drop=%d counts=%v\n",
+		metrics.Name,
+		metrics.SeedCount,
+		metrics.Total,
+		metrics.Min,
+		metrics.Max,
+		metrics.SeedsWithDrop,
+		metrics.Counts)
 }
 
 func spendTalent(p *model.Player, name string) int {

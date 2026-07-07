@@ -405,6 +405,45 @@
 
 - 待提交。
 
+## 2026-07-07 Demo 后续硬化：Artifact 多 seed 分布 smoke
+
+### 本轮目标
+
+- 将高层 Artifact 掉落验证从单 seed 下限升级为多 seed 分布检查。
+- 降低单个固定 seed 偶然性对 80 -> 120、120 -> 160 掉落判断的影响。
+
+### 本轮完成
+
+- `smokebalance` 新增 `Artifact Distribution: multi-seed long runs` 段。
+- 每个 seed 都从新号完整跑长线链路：1 -> 30、30 -> 50、50 -> 80、80 -> 120、120 -> 160。
+- 分别统计 80 -> 120 和 120 -> 160 的 Artifact：
+  - seed 数。
+  - 总 Artifact 数。
+  - 单 seed 最小/最大掉落。
+  - 至少掉到 1 件 Artifact 的 seed 数。
+  - 每个 seed 的具体 counts。
+- `balanceConfig` 新增 Artifact 分布 seed 列表和分布阈值。
+- 新增 `checkArtifactDistribution` / `checkArtifactSegmentDistribution`，并补表格单测覆盖总量不足和覆盖 seed 数不足。
+
+### 本轮验证
+
+- `env GOCACHE=/Users/zton/Documents/fz2/.gocache go test ./cmd/smokebalance` 通过。
+- `env GOCACHE=/Users/zton/Documents/fz2/.gocache go run ./cmd/smokebalance` 通过：
+  - 80 -> 120：5 seeds，总 Artifact 9 件，4 个 seed 有掉落，counts=`[3 2 2 2 0]`。
+  - 120 -> 160：5 seeds，总 Artifact 6 件，3 个 seed 有掉落，counts=`[2 0 1 3 0]`。
+  - 输出 `PASS: artifact distribution across 5 seeds is within target`。
+- `env GOCACHE=/Users/zton/Documents/fz2/.gocache go test ./...` 通过。
+- `env GOCACHE=/Users/zton/Documents/fz2/.gocache ./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`。
+- `git diff --check` 通过。
+
+### 本轮遗留
+
+- 下一步观察 `120 -> 160` 新装备穿戴为 0 的问题，判断高层装备生成战力是否偏保守。
+
+### 提交信息
+
+- 待提交。
+
 ## 2026-07-07 Demo 后续硬化：平衡 smoke 阈值配置化
 
 ### 本轮目标

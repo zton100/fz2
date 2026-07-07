@@ -149,3 +149,4 @@
 - [x] `smokebalance` 平衡目标、tick 区间、奖励和 Artifact 下限阈值配置化，降低调参改代码成本。
 - [x] 将转生后推进验证术语收口为“转生后循环”，避免联网放置语义误导。
 - [x] 长线平衡 smoke 扩展到 120 -> 160 层，并同步调平 120 层后 frontier 怪物曲线。
+- [x] Artifact 高层掉落从单 seed 下限升级为 5 seed 分布 smoke，覆盖总量和有掉落 seed 数。

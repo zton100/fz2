@@ -328,6 +328,35 @@ func TestCheckFrontierRun(t *testing.T) {
 	}
 }
 
+func TestCheckArtifactDistribution(t *testing.T) {
+	cfg := defaultBalanceConfig()
+	valid := artifactDistributionMetrics{
+		Endgame: artifactSegmentDistribution{
+			Name:          "80 -> 120",
+			SeedCount:     len(cfg.ArtifactDistributionSeeds),
+			Total:         cfg.EndgameArtifactDistribution.MinTotal,
+			SeedsWithDrop: cfg.EndgameArtifactDistribution.MinSeedsWithDrop,
+		},
+		Frontier: artifactSegmentDistribution{
+			Name:          "120 -> 160",
+			SeedCount:     len(cfg.ArtifactDistributionSeeds),
+			Total:         cfg.FrontierArtifactDistribution.MinTotal,
+			SeedsWithDrop: cfg.FrontierArtifactDistribution.MinSeedsWithDrop,
+		},
+	}
+	if failures := checkArtifactDistribution(valid, cfg); len(failures) != 0 {
+		t.Fatalf("valid artifact distribution got failures: %v", failures)
+	}
+
+	totalLow := valid
+	totalLow.Frontier.Total = cfg.FrontierArtifactDistribution.MinTotal - 1
+	assertFailureContains(t, checkArtifactDistribution(totalLow, cfg), "artifact total")
+
+	seedsLow := valid
+	seedsLow.Endgame.SeedsWithDrop = cfg.EndgameArtifactDistribution.MinSeedsWithDrop - 1
+	assertFailureContains(t, checkArtifactDistribution(seedsLow, cfg), "seeds_with_drop")
+}
+
 func TestCheckPostReincarnationLoop(t *testing.T) {
 	cfg := defaultBalanceConfig()
 	valid := cycleMetrics{

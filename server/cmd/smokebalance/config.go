@@ -31,6 +31,14 @@ type balanceConfig struct {
 	FrontierMinArtifactDrops             int
 	PostReincarnationTargetFloor         int
 	RequirePostReincarnationDamageTalent bool
+	ArtifactDistributionSeeds            []int64
+	EndgameArtifactDistribution          artifactDistributionTarget
+	FrontierArtifactDistribution         artifactDistributionTarget
+}
+
+type artifactDistributionTarget struct {
+	MinTotal         int
+	MinSeedsWithDrop int
 }
 
 func defaultBalanceConfig() balanceConfig {
@@ -60,5 +68,14 @@ func defaultBalanceConfig() balanceConfig {
 		FrontierMinArtifactDrops:             2,
 		PostReincarnationTargetFloor:         160,
 		RequirePostReincarnationDamageTalent: true,
+		ArtifactDistributionSeeds:            []int64{84, 126, 168, 210, 252},
+		EndgameArtifactDistribution: artifactDistributionTarget{
+			MinTotal:         8,
+			MinSeedsWithDrop: 4,
+		},
+		FrontierArtifactDistribution: artifactDistributionTarget{
+			MinTotal:         6,
+			MinSeedsWithDrop: 3,
+		},
 	}
 }
