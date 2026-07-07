@@ -92,6 +92,24 @@ func TestAutoUpgradeEquippedSpendsMaterialsAndRaisesPower(t *testing.T) {
 	}
 }
 
+func TestPowerGainIfEquippedAtMatchedUpgradeRevealsUpgradeGap(t *testing.T) {
+	player := model.NewPlayer("strategy")
+	current := strategyEquipment("current", data.SlotWeapon, data.RarityCommon, 50)
+	current.Upgrade = 5
+	candidate := strategyEquipment("candidate", data.SlotWeapon, data.RarityCommon, 55)
+	player.Equipped[data.SlotWeapon] = current
+
+	if gain := powerGainIfEquipped(player, candidate); gain >= 0 {
+		t.Fatalf("immediate gain = %.1f, want negative from upgrade gap", gain)
+	}
+	if gain := powerGainIfEquippedAtMatchedUpgrade(player, candidate); gain <= 0 {
+		t.Fatalf("matched upgrade gain = %.1f, want positive", gain)
+	}
+	if candidate.Upgrade != 0 {
+		t.Fatalf("candidate upgrade mutated to %d, want 0", candidate.Upgrade)
+	}
+}
+
 func strategyEquipment(uid string, slot data.Slot, rarity data.Rarity, strength float64) *model.Equipment {
 	return &model.Equipment{
 		UID:    uid,

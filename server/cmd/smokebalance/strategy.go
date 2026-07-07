@@ -110,3 +110,15 @@ func powerGainIfEquipped(p *model.Player, eq *model.Equipment) float64 {
 	}
 	return nextPower - currentPower
 }
+
+func powerGainIfEquippedAtMatchedUpgrade(p *model.Player, eq *model.Equipment) float64 {
+	old := p.Equipped[eq.Slot]
+	if old == nil || eq.Upgrade >= old.Upgrade {
+		return powerGainIfEquipped(p, eq)
+	}
+	originalUpgrade := eq.Upgrade
+	eq.Upgrade = old.Upgrade
+	gain := powerGainIfEquipped(p, eq)
+	eq.Upgrade = originalUpgrade
+	return gain
+}

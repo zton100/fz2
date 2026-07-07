@@ -14,23 +14,27 @@ import (
 )
 
 type cycleMetrics struct {
-	TargetFloor         int
-	Ticks               int
-	FinalFloor          int
-	StartPower          float64
-	FinalPower          float64
-	LootCount           int
-	EquippedCount       int
-	PowerGain           float64
-	BossReward          int
-	UpgradeCount        int
-	DecomposeCount      int
-	BaseMaterials       int
-	RarityCounts        map[data.Rarity]int
-	AffixCategoryCounts map[data.AffixCategory]int
-	ReincarnSouls       int
-	ReincarnErr         error
-	PostReincPower      float64
+	TargetFloor           int
+	Ticks                 int
+	FinalFloor            int
+	StartPower            float64
+	FinalPower            float64
+	LootCount             int
+	EquippedCount         int
+	PowerGain             float64
+	ImmediateUpgradeDrops int
+	MatchedUpgradeDrops   int
+	BestImmediateGain     float64
+	BestMatchedGain       float64
+	BossReward            int
+	UpgradeCount          int
+	DecomposeCount        int
+	BaseMaterials         int
+	RarityCounts          map[data.Rarity]int
+	AffixCategoryCounts   map[data.AffixCategory]int
+	ReincarnSouls         int
+	ReincarnErr           error
+	PostReincPower        float64
 }
 
 type artifactDistributionMetrics struct {
@@ -325,6 +329,11 @@ func printMetrics(metrics cycleMetrics) {
 		metrics.FinalPower,
 		metrics.PowerGain,
 		metrics.BossReward)
+	fmt.Printf("Drop upgrades: immediate=%d matched_upgrade=%d best_immediate_gain=%.1f best_matched_gain=%.1f\n",
+		metrics.ImmediateUpgradeDrops,
+		metrics.MatchedUpgradeDrops,
+		metrics.BestImmediateGain,
+		metrics.BestMatchedGain)
 	fmt.Printf("Crafting: upgrades=%d decomposed=%d base_materials=%d\n",
 		metrics.UpgradeCount,
 		metrics.DecomposeCount,
@@ -357,6 +366,20 @@ func runCycle(p *model.Player, drop *loot.DropTable, targetFloor int) cycleMetri
 	runner.LootCallback = func(eq *model.Equipment) {
 		metrics.LootCount++
 		metrics.RarityCounts[eq.Rarity]++
+		immediateGain := powerGainIfEquipped(p, eq)
+		matchedGain := powerGainIfEquippedAtMatchedUpgrade(p, eq)
+		if immediateGain > 0 {
+			metrics.ImmediateUpgradeDrops++
+		}
+		if matchedGain > 0 {
+			metrics.MatchedUpgradeDrops++
+		}
+		if metrics.LootCount == 1 || immediateGain > metrics.BestImmediateGain {
+			metrics.BestImmediateGain = immediateGain
+		}
+		if metrics.LootCount == 1 || matchedGain > metrics.BestMatchedGain {
+			metrics.BestMatchedGain = matchedGain
+		}
 		for _, affix := range eq.Affixes {
 			metrics.AffixCategoryCounts[data.AffixCategoryOf(affix.Type)]++
 		}

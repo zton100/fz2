@@ -444,6 +444,44 @@
 
 - 待提交。
 
+## 2026-07-07 Demo 后续硬化：Frontier 装备替换诊断
+
+### 本轮目标
+
+- 解释 `120 -> 160` 中新装备穿戴为 0 的原因。
+- 区分“高层新装备基础偏弱”和“旧装备强化等级形成替换门槛”。
+
+### 本轮完成
+
+- `smokebalance` 的 `cycleMetrics` 新增掉落替换诊断：
+  - `immediate`：掉落后立即可提升战力的装备数。
+  - `matched_upgrade`：把新装备临时对齐当前槽位强化等级后可提升战力的装备数。
+  - `best_immediate_gain`：即时替换的最佳战力收益。
+  - `best_matched_gain`：强化等级对齐后的最佳战力收益。
+- `runCycle` 在掉落回调里记录每件掉落的即时替换收益和强化等级对齐收益。
+- 新增 `powerGainIfEquippedAtMatchedUpgrade`，用于诊断强化等级门槛，且不会改变装备原始强化等级。
+- `Frontier Run` 新增 `FrontierMinMatchedUpgradeDrops` 断言，要求高层至少存在强化等级对齐后可替换的掉落候选。
+- 补充策略测试，覆盖“即时不提升，但强化等级对齐后提升”的场景。
+
+### 本轮验证
+
+- `env GOCACHE=/Users/zton/Documents/fz2/.gocache go test ./cmd/smokebalance` 通过。
+- `env GOCACHE=/Users/zton/Documents/fz2/.gocache go run ./cmd/smokebalance` 通过：
+  - 120 -> 160：`immediate=0`，`matched_upgrade=2`。
+  - 120 -> 160：`best_immediate_gain=-1746.2`，`best_matched_gain=804.4`。
+  - 结论：frontier 新装备不是基础完全偏弱，主要是旧装强化等级压制了即时替换。
+- `env GOCACHE=/Users/zton/Documents/fz2/.gocache go test ./...` 通过。
+- `env GOCACHE=/Users/zton/Documents/fz2/.gocache ./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`。
+- `git diff --check` 通过。
+
+### 本轮遗留
+
+- 下一步应设计“强化继承/转移/回收”方案，否则高层新掉落即使基础更好，也可能因为强化成本沉没而长期不能即时替换。
+
+### 提交信息
+
+- 待提交。
+
 ## 2026-07-07 Demo 后续硬化：平衡 smoke 阈值配置化
 
 ### 本轮目标

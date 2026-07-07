@@ -277,8 +277,9 @@ func TestCheckEndgameRun(t *testing.T) {
 func TestCheckFrontierRun(t *testing.T) {
 	cfg := defaultBalanceConfig()
 	valid := cycleMetrics{
-		FinalFloor: cfg.FrontierTargetFloor,
-		Ticks:      80,
+		FinalFloor:          cfg.FrontierTargetFloor,
+		Ticks:               80,
+		MatchedUpgradeDrops: cfg.FrontierMinMatchedUpgradeDrops,
 		RarityCounts: map[data.Rarity]int{
 			data.RarityArtifact: cfg.FrontierMinArtifactDrops,
 		},
@@ -313,6 +314,13 @@ func TestCheckFrontierRun(t *testing.T) {
 				metrics.RarityCounts[data.RarityArtifact] = cfg.FrontierMinArtifactDrops - 1
 			},
 			want: "artifact drops",
+		},
+		{
+			name: "matched upgrade drop missing",
+			edit: func(metrics *cycleMetrics) {
+				metrics.MatchedUpgradeDrops = cfg.FrontierMinMatchedUpgradeDrops - 1
+			},
+			want: "matched-upgrade drops",
 		},
 	}
 

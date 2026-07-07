@@ -140,6 +140,13 @@ func checkFrontierRun(metrics cycleMetrics, cfg balanceConfig) []string {
 			metrics.RarityCounts[data.RarityArtifact],
 			cfg.FrontierMinArtifactDrops))
 	}
+	if metrics.MatchedUpgradeDrops < cfg.FrontierMinMatchedUpgradeDrops {
+		failures = append(failures, fmt.Sprintf("floor %d -> %d matched-upgrade drops %d, want >= %d",
+			cfg.FrontierStartFloor,
+			cfg.FrontierTargetFloor,
+			metrics.MatchedUpgradeDrops,
+			cfg.FrontierMinMatchedUpgradeDrops))
+	}
 	return failures
 }
 
