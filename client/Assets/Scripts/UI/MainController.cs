@@ -261,9 +261,9 @@ namespace EquipmentIdle.UI
 
         private void BuildUI()
         {
-            _battleBackground = Resources.Load<Texture2D>("UI/dark-dungeon-battle-bg");
-            _heroSprite = Resources.Load<Texture2D>("UI/hero-combat-sprite");
-            _bossSprite = Resources.Load<Texture2D>("UI/boss-combat-sprite");
+            _battleBackground = Resources.Load<Texture2D>("UI/dungeon-battle-bg-v2");
+            _heroSprite = Resources.Load<Texture2D>("UI/hero-combat-sprite-v2");
+            _bossSprite = Resources.Load<Texture2D>("UI/boss-combat-sprite-v2");
             _craftIcon = Resources.Load<Texture2D>("UI/icon-craft");
             _slotIcons = new[]
             {
@@ -320,7 +320,6 @@ namespace EquipmentIdle.UI
             root.Add(_battleTabContent);
             BuildDungeonPanel(_battleTabContent);
             BuildMobileStatusCards(_battleTabContent);
-            BuildEquipmentOverview(_battleTabContent);
 
             _bagTabContent = new VisualElement();
             _bagTabContent.style.flexDirection = FlexDirection.Column;

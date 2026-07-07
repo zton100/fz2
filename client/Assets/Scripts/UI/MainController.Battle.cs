@@ -10,22 +10,26 @@ namespace EquipmentIdle.UI
         {
             var dungeon = Panel("dungeon");
             _dungeonPanel = dungeon;
-            dungeon.style.height = 540;
+            dungeon.style.height = 760;
             dungeon.style.marginBottom = 8;
             dungeon.style.flexDirection = FlexDirection.Column;
             dungeon.style.backgroundColor = new StyleColor(new Color32(7, 8, 8, 255));
-            dungeon.style.paddingLeft = 8;
-            dungeon.style.paddingRight = 8;
-            dungeon.style.paddingTop = 8;
-            dungeon.style.paddingBottom = 8;
+            dungeon.style.paddingLeft = 0;
+            dungeon.style.paddingRight = 0;
+            dungeon.style.paddingTop = 0;
+            dungeon.style.paddingBottom = 0;
             root.Add(dungeon);
 
             var bossRow = Row();
-            bossRow.style.marginBottom = 5;
+            bossRow.style.height = 66;
+            bossRow.style.paddingLeft = 18;
+            bossRow.style.paddingRight = 18;
+            bossRow.style.marginBottom = 0;
+            bossRow.style.backgroundColor = new StyleColor(new Color32(9, 7, 6, 235));
             _dungeonTitleText = Text("", 23, true);
             _dungeonTitleText.style.flexGrow = 1;
-            _dungeonTitleText.style.color = new StyleColor(new Color32(255, 72, 54, 255));
-            _dungeonTitleText.style.unityTextAlign = TextAnchor.MiddleCenter;
+            _dungeonTitleText.style.color = new StyleColor(new Color32(255, 214, 138, 255));
+            _dungeonTitleText.style.unityTextAlign = TextAnchor.MiddleLeft;
             bossRow.Add(_dungeonTitleText);
             _monsterText = Text("", 14, true);
             _monsterText.style.unityTextAlign = TextAnchor.MiddleRight;
@@ -34,10 +38,11 @@ namespace EquipmentIdle.UI
             dungeon.Add(bossRow);
 
             var progressFrame = new VisualElement();
-            progressFrame.style.height = 24;
-            progressFrame.style.marginLeft = 170;
-            progressFrame.style.marginRight = 170;
-            progressFrame.style.marginBottom = 7;
+            progressFrame.style.height = 18;
+            progressFrame.style.marginLeft = 20;
+            progressFrame.style.marginRight = 20;
+            progressFrame.style.marginTop = 10;
+            progressFrame.style.marginBottom = 10;
             progressFrame.style.backgroundColor = new StyleColor(new Color32(10, 8, 7, 255));
             progressFrame.style.borderTopWidth = 2;
             progressFrame.style.borderRightWidth = 2;
@@ -64,7 +69,12 @@ namespace EquipmentIdle.UI
             dungeon.Add(BuildBattleStage());
 
             var combatFooter = Row();
-            combatFooter.style.marginTop = 8;
+            combatFooter.style.height = 84;
+            combatFooter.style.paddingLeft = 18;
+            combatFooter.style.paddingRight = 18;
+            combatFooter.style.paddingTop = 10;
+            combatFooter.style.paddingBottom = 10;
+            combatFooter.style.backgroundColor = new StyleColor(new Color32(9, 8, 7, 235));
             combatFooter.style.alignItems = Align.FlexStart;
             _battleText = Text("", 16, true);
             _battleText.style.color = new StyleColor(GoldText);
@@ -136,12 +146,13 @@ namespace EquipmentIdle.UI
         {
             var stage = new VisualElement();
             stage.style.flexGrow = 1;
-            stage.style.marginTop = 4;
-            stage.style.paddingLeft = 16;
-            stage.style.paddingRight = 16;
-            stage.style.paddingTop = 14;
-            stage.style.paddingBottom = 12;
-            stage.style.backgroundColor = new StyleColor(new Color32(15, 17, 16, 255));
+            stage.style.marginLeft = 12;
+            stage.style.marginRight = 12;
+            stage.style.paddingLeft = 0;
+            stage.style.paddingRight = 0;
+            stage.style.paddingTop = 0;
+            stage.style.paddingBottom = 0;
+            stage.style.backgroundColor = new StyleColor(new Color32(7, 7, 7, 255));
             stage.style.overflow = Overflow.Hidden;
             if (_battleBackground != null)
             {
@@ -151,24 +162,24 @@ namespace EquipmentIdle.UI
                 bg.style.right = 0;
                 bg.style.top = 0;
                 bg.style.bottom = 0;
-                bg.style.opacity = 0.92f;
+                bg.style.opacity = 1f;
                 stage.Add(bg);
             }
             if (_heroSprite != null)
             {
-                _stageHeroSpriteImage = StageSprite(_heroSprite, 170, 170, 34, null, ScaleMode.ScaleToFit);
+                _stageHeroSpriteImage = StageSprite(_heroSprite, 330, 380, 26, null, ScaleMode.ScaleToFit);
                 stage.Add(_stageHeroSpriteImage);
             }
             if (_bossSprite != null)
             {
-                _stageBossSpriteImage = StageSprite(_bossSprite, 270, 270, null, 28, ScaleMode.ScaleToFit);
+                _stageBossSpriteImage = StageSprite(_bossSprite, 430, 430, null, -8, ScaleMode.ScaleToFit);
                 stage.Add(_stageBossSpriteImage);
             }
             _stageImpactText = Text("", 24, true);
             _stageImpactText.style.position = Position.Absolute;
             _stageImpactText.style.left = 0;
             _stageImpactText.style.right = 0;
-            _stageImpactText.style.top = 172;
+            _stageImpactText.style.top = 220;
             _stageImpactText.style.unityTextAlign = TextAnchor.MiddleCenter;
             _stageImpactText.style.color = new StyleColor(new Color32(255, 224, 137, 255));
             _stageImpactText.style.opacity = 0f;
@@ -177,8 +188,8 @@ namespace EquipmentIdle.UI
             _stageBannerText.style.position = Position.Absolute;
             _stageBannerText.style.left = 34;
             _stageBannerText.style.right = 34;
-            _stageBannerText.style.top = 50;
-            _stageBannerText.style.height = 34;
+            _stageBannerText.style.top = 74;
+            _stageBannerText.style.height = 42;
             _stageBannerText.style.unityTextAlign = TextAnchor.MiddleCenter;
             _stageBannerText.style.color = new StyleColor(new Color32(255, 224, 137, 255));
             _stageBannerText.style.backgroundColor = new StyleColor(new Color32(55, 30, 14, 220));
@@ -206,14 +217,23 @@ namespace EquipmentIdle.UI
             stage.style.borderBottomRightRadius = 6;
 
             _stageZoneText = Text("", 13, true);
+            _stageZoneText.style.position = Position.Absolute;
+            _stageZoneText.style.left = 22;
+            _stageZoneText.style.right = 22;
+            _stageZoneText.style.top = 18;
+            _stageZoneText.style.height = 26;
             _stageZoneText.style.unityTextAlign = TextAnchor.MiddleCenter;
-            _stageZoneText.style.marginBottom = 6;
             _stageZoneText.style.color = new StyleColor(GoldText);
+            _stageZoneText.style.backgroundColor = new StyleColor(new Color32(13, 10, 8, 190));
             stage.Add(_stageZoneText);
 
             var combatants = Row();
+            combatants.style.position = Position.Absolute;
+            combatants.style.left = 18;
+            combatants.style.right = 18;
+            combatants.style.bottom = 18;
+            combatants.style.height = 84;
             combatants.style.alignItems = Align.Stretch;
-            combatants.style.flexGrow = 1;
 
             VisualElement heroCard = CombatantCard(
                 new Color32(59, 130, 246, 255),
@@ -223,12 +243,21 @@ namespace EquipmentIdle.UI
             combatants.Add(heroCard);
 
             var center = new VisualElement();
-            center.style.width = 54;
+            center.style.width = 96;
             center.style.alignItems = Align.Center;
             center.style.justifyContent = Justify.Center;
-            _stageSlash = Text("VS", 20, true);
+            _stageSlash = Text("VS", 28, true);
             _stageSlash.style.unityTextAlign = TextAnchor.MiddleCenter;
             _stageSlash.style.color = new StyleColor(new Color32(255, 202, 112, 255));
+            _stageSlash.style.backgroundColor = new StyleColor(new Color32(55, 21, 13, 205));
+            _stageSlash.style.borderTopWidth = 1;
+            _stageSlash.style.borderRightWidth = 1;
+            _stageSlash.style.borderBottomWidth = 1;
+            _stageSlash.style.borderLeftWidth = 1;
+            _stageSlash.style.borderTopColor = new StyleColor(PanelBorderHot);
+            _stageSlash.style.borderRightColor = new StyleColor(PanelBorderHot);
+            _stageSlash.style.borderBottomColor = new StyleColor(PanelBorderHot);
+            _stageSlash.style.borderLeftColor = new StyleColor(PanelBorderHot);
             center.Add(_stageSlash);
             combatants.Add(center);
 
@@ -241,8 +270,11 @@ namespace EquipmentIdle.UI
             stage.Add(combatants);
 
             _stageStatusText = Text("", 14, true);
+            _stageStatusText.style.position = Position.Absolute;
+            _stageStatusText.style.left = 0;
+            _stageStatusText.style.right = 0;
+            _stageStatusText.style.bottom = 112;
             _stageStatusText.style.unityTextAlign = TextAnchor.MiddleCenter;
-            _stageStatusText.style.marginTop = 6;
             _stageStatusText.style.color = new StyleColor(GoldText);
             stage.Add(_stageStatusText);
             return stage;
@@ -254,10 +286,10 @@ namespace EquipmentIdle.UI
             image.style.position = Position.Absolute;
             image.style.width = width;
             image.style.height = height;
-            image.style.bottom = 6;
+            image.style.bottom = 54;
             if (left.HasValue) image.style.left = left.Value;
             if (right.HasValue) image.style.right = right.Value;
-            image.style.opacity = 0.96f;
+            image.style.opacity = 1f;
             return image;
         }
 
@@ -269,7 +301,7 @@ namespace EquipmentIdle.UI
             card.style.paddingRight = 8;
             card.style.paddingTop = 6;
             card.style.paddingBottom = 6;
-            card.style.backgroundColor = new StyleColor(new Color32(10, 9, 8, 175));
+            card.style.backgroundColor = new StyleColor(new Color32(10, 9, 8, 215));
             card.style.borderTopWidth = 1;
             card.style.borderRightWidth = 1;
             card.style.borderBottomWidth = 3;

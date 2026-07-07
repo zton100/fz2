@@ -103,7 +103,6 @@ public static class PlayModeRunner
         AssertNode(root, "dungeon");
         AssertNode(root, "boss-progress-card");
         AssertNode(root, "recent-loot-card");
-        AssertNode(root, "battle-equipped-overview");
         AssertNode(root, "mobile-bag");
         AssertNode(root, "bag-equipped");
         AssertNode(root, "mobile-detail");

@@ -1414,6 +1414,46 @@
 
 - Commit: `2e7b9aa`
 
+## 2026-07-07 Demo 后续硬化：首屏游戏化重构
+
+### 本轮目标
+
+- 回应“目前不像一个游戏”的反馈，优先升级首屏视觉，而不是继续堆功能。
+- 将战斗页从信息面板堆叠调整为暗黑放置 RPG 的主战斗舞台。
+- 使用新生成图片资产承载地牢、英雄和 Boss 的第一视觉。
+
+### 本轮完成
+
+- 新增并接入首屏战斗资产：
+  - 地牢战斗背景：`client/Assets/Resources/UI/dungeon-battle-bg-v2.png`
+  - 英雄战斗透明图：`client/Assets/Resources/UI/hero-combat-sprite-v2.png`
+  - Boss 战斗透明图：`client/Assets/Resources/UI/boss-combat-sprite-v2.png`
+  - 生成源图归档到 `client/Assets/Art/UIReferences/`。
+- 战斗页重构：
+  - 战斗页首屏聚焦地牢舞台、Boss 进度、双方战斗状态和掉落反馈。
+  - 移除战斗页装备概览，装备管理保留在背包页，减少首屏信息噪音。
+  - 放大英雄/Boss 立绘，背景改为满幅地牢场景。
+  - Boss 标题、血条、VS 状态、战斗底栏统一暗黑铜金风格。
+- 验收更新：
+  - PlayMode 主界面 smoke 去掉战斗页装备概览断言，继续覆盖战斗页、背包页、锻造页、天赋页切换。
+
+### 本轮验证
+
+- `git diff --check` 通过。
+- `go test ./...` 通过。
+- `go test -race ./...` 通过。
+- `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`。
+- Unity `EquipmentPresenterTestRunner.Run` 通过，日志包含 `[EquipmentPresenterTestRunner] OK`。
+- Unity `PlayModeRunner.RunMainSmoke` 通过，日志包含 `MAIN_SMOKE_OK`，`client/verify_result.txt` 为 `MAIN_SMOKE_OK`。
+
+### 本轮遗留
+
+- 后续还需要继续做 UI 第二轮：装备卡、背包列表、锻造页和天赋页的整体视觉一致性。
+
+### 提交信息
+
+- Commit subject: `Gameify battle first screen`
+
 ## 2026-07-06 Demo-3 第二轮：掉落和 Boss 仪式
 
 ### 本轮目标
