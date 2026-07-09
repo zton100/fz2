@@ -24,18 +24,20 @@ namespace EquipmentIdle.UI
         private void BuildBagPanel(VisualElement root)
         {
             var row = Row();
-            row.style.height = 430;
+            row.style.height = 520;
             row.style.marginBottom = 8;
+            row.style.alignItems = Align.Stretch;
             root.Add(row);
 
             var bag = Panel("mobile-bag");
             bag.style.flexGrow = 1;
             bag.style.marginRight = 10;
+            bag.style.backgroundColor = new StyleColor(new Color32(12, 11, 9, 250));
             bag.Add(SectionTitle("背包"));
             _bagFilterActions = new VisualElement();
             _bagFilterActions.style.flexDirection = FlexDirection.Row;
             _bagFilterActions.style.flexWrap = Wrap.Wrap;
-            _bagFilterActions.style.marginBottom = 4;
+            _bagFilterActions.style.marginBottom = 8;
             bag.Add(_bagFilterActions);
             var bagScroll = new ScrollView();
             bagScroll.style.flexGrow = 1;
@@ -45,6 +47,7 @@ namespace EquipmentIdle.UI
 
             var equipped = Panel("bag-equipped");
             equipped.style.width = 350;
+            equipped.style.backgroundColor = new StyleColor(new Color32(13, 11, 9, 250));
             equipped.Add(SectionTitle("当前穿戴"));
             var equippedScroll = new ScrollView();
             equippedScroll.style.flexGrow = 1;
@@ -83,16 +86,18 @@ namespace EquipmentIdle.UI
         private void BuildMobileDetailPanel(VisualElement root)
         {
             var detail = Panel("mobile-detail");
-            detail.style.height = 250;
+            detail.style.height = 340;
             detail.style.marginBottom = 0;
             detail.style.borderTopWidth = 2;
             detail.style.borderTopColor = new StyleColor(PanelBorderHot);
+            detail.style.backgroundColor = new StyleColor(new Color32(10, 9, 8, 255));
             root.Add(detail);
 
             detail.Add(SectionTitle("装备详情"));
             var detailColumns = Row();
             detailColumns.style.flexGrow = 1;
             detailColumns.style.marginBottom = 8;
+            detailColumns.style.alignItems = Align.Stretch;
             _selectedDetailContent = DetailColumn("当前选择", 1.05f);
             _equippedDetailContent = DetailColumn("已装备", 1.05f);
             _compareDetailContent = DetailColumn("对比结果", 1.25f);
@@ -114,14 +119,14 @@ namespace EquipmentIdle.UI
             var column = new VisualElement();
             column.style.flexGrow = grow;
             column.style.marginRight = 8;
-            column.style.paddingLeft = 8;
-            column.style.paddingRight = 8;
-            column.style.paddingTop = 6;
-            column.style.paddingBottom = 6;
-            column.style.backgroundColor = new StyleColor(new Color32(13, 12, 10, 235));
+            column.style.paddingLeft = 10;
+            column.style.paddingRight = 10;
+            column.style.paddingTop = 8;
+            column.style.paddingBottom = 8;
+            column.style.backgroundColor = new StyleColor(new Color32(15, 13, 10, 245));
             column.style.borderTopWidth = 1;
             column.style.borderRightWidth = 1;
-            column.style.borderBottomWidth = 1;
+            column.style.borderBottomWidth = 2;
             column.style.borderLeftWidth = 1;
             column.style.borderTopColor = new StyleColor(new Color32(72, 52, 34, 255));
             column.style.borderRightColor = new StyleColor(new Color32(72, 52, 34, 255));
@@ -178,95 +183,172 @@ namespace EquipmentIdle.UI
         {
             int rarity = eq != null ? eq.rarity : 0;
             var tile = new VisualElement();
-            tile.style.width = Length.Percent(32);
-            tile.style.height = 76;
+            bool selected = eq != null && _selected != null && _selected.uid == eq.uid;
+            tile.style.width = Length.Percent(48);
+            tile.style.height = 110;
             tile.style.marginRight = 5;
-            tile.style.marginBottom = 6;
-            tile.style.paddingLeft = 6;
-            tile.style.paddingRight = 6;
-            tile.style.paddingTop = 5;
-            tile.style.paddingBottom = 5;
+            tile.style.marginBottom = 8;
+            tile.style.paddingLeft = 7;
+            tile.style.paddingRight = 7;
+            tile.style.paddingTop = 7;
+            tile.style.paddingBottom = 7;
             tile.style.backgroundColor = new StyleColor(eq != null ? RarityTileBackground(rarity) : new Color32(12, 11, 10, 255));
             tile.style.borderTopWidth = 2;
             tile.style.borderRightWidth = 2;
-            tile.style.borderBottomWidth = 2;
+            tile.style.borderBottomWidth = selected ? 4 : 2;
             tile.style.borderLeftWidth = 2;
             tile.style.borderTopColor = new StyleColor(eq != null ? RarityGlowColor(rarity) : new Color32(55, 48, 39, 255));
             tile.style.borderRightColor = new StyleColor(eq != null ? RarityGlowColor(rarity) : new Color32(55, 48, 39, 255));
-            tile.style.borderBottomColor = new StyleColor(eq != null ? RarityFrameColor(rarity) : new Color32(31, 27, 22, 255));
+            tile.style.borderBottomColor = new StyleColor(selected ? GoldText : eq != null ? RarityFrameColor(rarity) : new Color32(31, 27, 22, 255));
             tile.style.borderLeftColor = new StyleColor(eq != null ? RarityGlowColor(rarity) : new Color32(55, 48, 39, 255));
             tile.RegisterCallback<ClickEvent>(_ => select?.Invoke());
 
             var top = Row();
             top.style.alignItems = Align.FlexStart;
-            var icon = IconImage(IconForSlot(eq != null ? eq.slot : SlotIndexByName(slot)), 42, 42);
-            icon.style.marginRight = 5;
+            var icon = IconImage(IconForSlot(eq != null ? eq.slot : SlotIndexByName(slot)), 48, 48);
+            icon.style.marginRight = 7;
             top.Add(icon);
 
             var copy = new VisualElement();
             copy.style.flexGrow = 1;
-            var slotText = Text(slot + (eq != null && _lockedEquipment.Contains(eq.uid) ? " 锁" : ""), 11, true);
+            var slotText = Text(slot + (eq != null && _lockedEquipment.Contains(eq.uid) ? " 锁定" : ""), 11, true);
             slotText.style.color = new StyleColor(TextMuted);
             copy.Add(slotText);
 
             string name = eq != null ? eq.name : L10n.UIEmptySlot;
-            var nameText = Text(name, 13, true);
+            var nameText = Text(name, 12, true);
             nameText.style.color = new StyleColor(eq != null ? RarityUIColor(eq.rarity) : new Color32(105, 96, 82, 255));
+            nameText.style.height = 34;
             copy.Add(nameText);
             top.Add(copy);
             tile.Add(top);
 
-            string footer = eq != null ? $"+{eq.upgrade}  评分 {EquipmentPresenter.Score(eq):F0}" : "等待掉落";
-            var footerText = Text(footer, 11, false);
+            var footerText = Text(eq != null ? $"评分 {EquipmentPresenter.Score(eq):F0}" : "等待掉落", 11, true);
             footerText.style.color = new StyleColor(eq != null && eq.rarity >= 2 ? GoldText : eq != null ? TextMain : TextMuted);
+            footerText.style.marginTop = 6;
             tile.Add(footerText);
+
+            if (eq != null)
+            {
+                var bottom = Row();
+                bottom.style.marginTop = 4;
+                bottom.Add(MiniBadge(L10n.RarityName(eq.rarity), RarityGlowColor(eq.rarity), new Color32(12, 10, 8, 255), 48));
+                bottom.Add(MiniBadge($"+{eq.upgrade}", new Color32(44, 34, 23, 255), GoldText, 42));
+                tile.Add(bottom);
+            }
             return tile;
         }
 
         private VisualElement BagEquipmentCard(EquipmentDTO eq, EquipmentDTO current)
         {
-            var row = Row();
+            float delta = EquipmentPresenter.Score(eq) - EquipmentPresenter.Score(current);
+            bool selected = _selected != null && _selected.uid == eq.uid;
+            var row = new VisualElement();
+            row.style.flexDirection = FlexDirection.Row;
+            row.style.alignItems = Align.Stretch;
+            row.style.minHeight = 104;
             row.style.backgroundColor = new StyleColor(RarityTileBackground(eq.rarity));
-            row.style.borderLeftWidth = 5;
+            row.style.borderLeftWidth = selected ? 7 : 5;
             row.style.borderLeftColor = new StyleColor(RarityGlowColor(eq.rarity));
             row.style.borderTopWidth = 1;
             row.style.borderRightWidth = 1;
-            row.style.borderBottomWidth = 1;
+            row.style.borderBottomWidth = selected ? 3 : 1;
             row.style.borderTopColor = new StyleColor(RarityGlowColor(eq.rarity));
             row.style.borderRightColor = new StyleColor(RarityFrameColor(eq.rarity));
-            row.style.borderBottomColor = new StyleColor(RarityFrameColor(eq.rarity));
+            row.style.borderBottomColor = new StyleColor(selected ? GoldText : RarityFrameColor(eq.rarity));
             row.style.paddingLeft = 8;
             row.style.paddingRight = 6;
-            row.style.paddingTop = 6;
-            row.style.paddingBottom = 6;
-            row.style.marginBottom = 6;
+            row.style.paddingTop = 8;
+            row.style.paddingBottom = 8;
+            row.style.marginBottom = 8;
+            row.RegisterCallback<ClickEvent>(_ => Select(eq));
 
-            var icon = IconImage(IconForSlot(eq.slot), 46, 46);
-            icon.style.marginRight = 7;
+            var icon = IconImage(IconForSlot(eq.slot), 64, 64);
+            icon.style.marginRight = 10;
+            icon.style.alignSelf = Align.Center;
             row.Add(icon);
 
             var body = new VisualElement();
             body.style.flexGrow = 1;
-            body.RegisterCallback<ClickEvent>(_ => Select(eq));
 
             string lockText = _lockedEquipment.Contains(eq.uid) ? " 锁" : "";
-            var title = Text($"{eq.name} +{eq.upgrade}{lockText}", 14, true);
+            var title = Text($"{eq.name}{lockText}", 15, true);
             title.style.color = RarityUIColor(eq.rarity);
+            title.style.height = 24;
             body.Add(title);
 
-            float delta = EquipmentPresenter.Score(eq) - EquipmentPresenter.Score(current);
             string state = current == null ? "新部位" : delta > 0f ? $"提升 +{delta:F0}" : delta < 0f ? $"更弱 {delta:F0}" : "持平";
-            var meta = Text($"{L10n.SlotName(eq.slot)}  评分 {EquipmentPresenter.Score(eq):F0}  {state}", 11, false);
+            var tags = Row();
+            tags.style.marginTop = 3;
+            tags.style.marginBottom = 4;
+            tags.Add(MiniBadge(L10n.SlotName(eq.slot), new Color32(39, 31, 23, 255), TextMuted, 54));
+            tags.Add(MiniBadge(L10n.RarityName(eq.rarity), RarityGlowColor(eq.rarity), new Color32(9, 7, 6, 255), 54));
+            tags.Add(MiniBadge($"+{eq.upgrade}", new Color32(63, 42, 22, 255), GoldText, 42));
+            body.Add(tags);
+
+            var meta = Text($"评分 {EquipmentPresenter.Score(eq):F0} · {state}", 12, true);
             meta.style.color = new StyleColor(delta > 0f || current == null ? new Color32(74, 222, 128, 255) : delta < 0f ? new Color32(248, 113, 113, 255) : TextMuted);
             body.Add(meta);
 
+            var affix = Text(FirstAffixText(eq), 11, false);
+            affix.style.color = new StyleColor(TextMuted);
+            affix.style.height = 18;
+            body.Add(affix);
+
             row.Add(body);
-            row.Add(ActionButton(_lockedEquipment.Contains(eq.uid) ? "解锁" : "锁", () => ToggleLock(eq), 50, ButtonDefault));
-            row.Add(ActionButton(L10n.UIEquip, () => _gameState.Equip(eq.uid), 54, ButtonEquip));
+            var actions = new VisualElement();
+            actions.style.width = 76;
+            actions.style.flexDirection = FlexDirection.Column;
+            actions.style.justifyContent = Justify.Center;
+            actions.Add(CompactButton(_lockedEquipment.Contains(eq.uid) ? "解锁" : "锁", () => ToggleLock(eq), ButtonDefault));
+            actions.Add(CompactButton(L10n.UIEquip, () => _gameState.Equip(eq.uid), ButtonEquip));
             var decompose = ActionButton(L10n.UIDecompose, () => DecomposeFromUI(eq), 64, ButtonDanger);
+            decompose.style.height = 26;
+            decompose.style.fontSize = 11;
+            decompose.style.marginTop = 2;
+            decompose.style.marginBottom = 2;
             decompose.SetEnabled(!_lockedEquipment.Contains(eq.uid));
-            row.Add(decompose);
+            actions.Add(decompose);
+            row.Add(actions);
             return row;
+        }
+
+        private static Button CompactButton(string label, System.Action action, Color32 color)
+        {
+            var button = ActionButton(label, action, 64, color);
+            button.style.height = 26;
+            button.style.fontSize = 11;
+            button.style.marginTop = 2;
+            button.style.marginBottom = 2;
+            return button;
+        }
+
+        private static Label MiniBadge(string text, Color32 background, Color color, float width)
+        {
+            var badge = Text(text, 10, true);
+            badge.style.width = width;
+            badge.style.height = 20;
+            badge.style.marginRight = 4;
+            badge.style.unityTextAlign = TextAnchor.MiddleCenter;
+            badge.style.color = new StyleColor(color);
+            badge.style.backgroundColor = new StyleColor(background);
+            badge.style.borderTopWidth = 1;
+            badge.style.borderRightWidth = 1;
+            badge.style.borderBottomWidth = 1;
+            badge.style.borderLeftWidth = 1;
+            badge.style.borderTopColor = new StyleColor(new Color32(96, 70, 42, 220));
+            badge.style.borderRightColor = new StyleColor(new Color32(42, 31, 24, 220));
+            badge.style.borderBottomColor = new StyleColor(new Color32(31, 24, 19, 220));
+            badge.style.borderLeftColor = new StyleColor(new Color32(96, 70, 42, 220));
+            return badge;
+        }
+
+        private static string FirstAffixText(EquipmentDTO eq)
+        {
+            if (eq == null || eq.affixes == null || eq.affixes.Length == 0) return "无词缀";
+            string text = EquipmentPresenter.FormatAffix(eq.affixes[0]);
+            if (eq.affixes.Length > 1) text += $" 等 {eq.affixes.Length} 条词缀";
+            return text;
         }
 
         private Texture2D IconForSlot(int slot)
@@ -359,16 +441,68 @@ namespace EquipmentIdle.UI
             {
                 column.RemoveAt(1);
             }
-            if (eq != null)
+            if (eq == null)
             {
-                var icon = IconImage(IconForSlot(eq.slot), 64, 64);
-                icon.style.marginBottom = 5;
-                column.Add(icon);
+                var label = Text(text, 13, false);
+                label.style.whiteSpace = WhiteSpace.Normal;
+                label.style.color = new StyleColor(color);
+                column.Add(label);
+                return;
             }
-            var label = Text(text, 13, false);
-            label.style.whiteSpace = WhiteSpace.Normal;
-            label.style.color = new StyleColor(color);
-            column.Add(label);
+
+            var header = Row();
+            header.style.alignItems = Align.FlexStart;
+            header.style.marginBottom = 8;
+            var icon = IconImage(IconForSlot(eq.slot), 68, 68);
+            icon.style.marginRight = 10;
+            header.Add(icon);
+
+            var copy = new VisualElement();
+            copy.style.flexGrow = 1;
+            var name = Text(eq.name, 15, true);
+            name.style.color = new StyleColor(color);
+            name.style.height = 24;
+            copy.Add(name);
+            var tags = Row();
+            tags.Add(MiniBadge(L10n.RarityName(eq.rarity), RarityGlowColor(eq.rarity), new Color32(10, 8, 6, 255), 54));
+            tags.Add(MiniBadge(L10n.SlotName(eq.slot), new Color32(39, 31, 23, 255), TextMuted, 54));
+            tags.Add(MiniBadge($"+{eq.upgrade}", new Color32(63, 42, 22, 255), GoldText, 42));
+            copy.Add(tags);
+            header.Add(copy);
+            column.Add(header);
+
+            column.Add(DetailStatLine("评分", $"{EquipmentPresenter.Score(eq):F0}", GoldText));
+            if (eq.affixes == null || eq.affixes.Length == 0)
+            {
+                column.Add(DetailStatLine("词缀", "无", TextMuted));
+                return;
+            }
+
+            foreach (var affix in eq.affixes)
+            {
+                column.Add(DetailStatLine("词缀", EquipmentPresenter.FormatAffix(affix), TextMain));
+            }
+        }
+
+        private static VisualElement DetailStatLine(string label, string value, Color color)
+        {
+            var row = Row();
+            row.style.height = 25;
+            row.style.marginBottom = 3;
+            row.style.paddingLeft = 6;
+            row.style.paddingRight = 6;
+            row.style.backgroundColor = new StyleColor(new Color32(10, 9, 8, 210));
+
+            var name = Text(label, 11, true);
+            name.style.width = 42;
+            name.style.color = new StyleColor(TextMuted);
+            row.Add(name);
+
+            var val = Text(value, 12, true);
+            val.style.flexGrow = 1;
+            val.style.color = new StyleColor(color);
+            row.Add(val);
+            return row;
         }
 
         private void RefreshComparisonRows(EquipmentDTO selected, EquipmentDTO current)
@@ -397,11 +531,16 @@ namespace EquipmentIdle.UI
         private VisualElement ComparisonRow(EquipmentComparisonRow row)
         {
             var container = Row();
-            container.style.marginBottom = 3;
-            container.style.minHeight = 20;
+            container.style.marginBottom = 4;
+            container.style.minHeight = 27;
+            container.style.paddingLeft = 6;
+            container.style.paddingRight = 6;
+            container.style.backgroundColor = new StyleColor(new Color32(11, 10, 9, 220));
+            container.style.borderLeftWidth = 3;
+            container.style.borderLeftColor = new StyleColor(row.Delta > 0f ? new Color32(74, 222, 128, 255) : row.Delta < 0f ? new Color32(248, 113, 113, 255) : PanelBorder);
 
             var name = Text(row.Label, 12, true);
-            name.style.width = 64;
+            name.style.width = 76;
             name.style.color = new StyleColor(TextMuted);
             container.Add(name);
 
