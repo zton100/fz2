@@ -62,6 +62,7 @@ namespace EquipmentIdle.UI
         private VisualElement _detailActions;
         private VisualElement _talentActions;
         private VisualElement _craftPlanContent;
+        private VisualElement _materialsContent;
         private VisualElement _reincarnPlanContent;
         private VisualElement _dungeonPanel;
         private VisualElement _lootPanel;

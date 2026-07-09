@@ -1454,6 +1454,46 @@
 
 - Commit subject: `Gameify equipment screens`
 
+## 2026-07-09 Demo 后续硬化：成长系统界面游戏化
+
+### 本轮目标
+
+- 继续 UI 第三轮，把锻造页和天赋页统一到暗黑 RPG 成长系统语言。
+- 让强化、继承、重铸、合成、转生、永久天赋看起来像游戏功能，而不是调试面板。
+- 保持所有现有交互不变，只升级客户端展示层。
+
+### 本轮完成
+
+- 锻造页：
+  - 重构为“魔炉强化 / 材料库 / 合成槽”三块布局。
+  - 强化计划卡片化，继承、强化、重铸、合成、清理弱装都有清晰的颜色侧边强调。
+  - 材料摘要从单段文本改成材料库卡片，显示基础材料和 5 档词缀材料数量与用途。
+  - 批量穿戴和一键分解弱装保留，并放进魔炉底部操作栏。
+- 合成页区域：
+  - 合成按钮保留 8 个部位操作。
+  - 增加合成用途说明，强化“补缺口 / 赌词缀”的游戏语义。
+- 转生天赋页：
+  - 重构为“转生祭坛 / 永久成长”双区布局。
+  - 转生计划沿用卡片行，奖励、重置代价和推荐天赋更像仪式面板。
+  - 四个天赋改为成长卡，展示等级、说明、进度条和升级按钮。
+
+### 本轮验证
+
+- `git diff --check` 通过。
+- `go test ./...` 通过。
+- `go test -race ./...` 通过。
+- `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`。
+- Unity `EquipmentPresenterTestRunner.Run` 通过，日志包含 `[EquipmentPresenterTestRunner] OK`。
+- Unity `PlayModeRunner.RunMainSmoke` 通过，日志包含 `MAIN_SMOKE_OK`，`client/verify_result.txt` 为 `MAIN_SMOKE_OK`。
+
+### 本轮遗留
+
+- 下一轮建议做实际视觉 QA：运行项目后人工检查四个 tab 的首屏高度、滚动节奏、按钮密度和移动端阅读性。
+
+### 提交信息
+
+- Commit subject: `Gameify progression screens`
+
 ## 2026-07-07 Demo 后续硬化：首屏游戏化重构
 
 ### 本轮目标
