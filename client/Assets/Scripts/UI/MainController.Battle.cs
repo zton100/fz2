@@ -10,7 +10,8 @@ namespace EquipmentIdle.UI
         {
             var dungeon = Panel("dungeon");
             _dungeonPanel = dungeon;
-            dungeon.style.height = 760;
+            dungeon.style.minHeight = 760;
+            dungeon.style.flexGrow = 1;
             dungeon.style.marginBottom = 8;
             dungeon.style.flexDirection = FlexDirection.Column;
             dungeon.style.backgroundColor = new StyleColor(new Color32(7, 8, 8, 255));
@@ -99,8 +100,9 @@ namespace EquipmentIdle.UI
         private void BuildMobileStatusCards(VisualElement root)
         {
             var row = Row();
-            row.style.height = 136;
+            row.style.height = 160;
             row.style.marginBottom = 8;
+            row.style.alignItems = Align.Stretch;
             root.Add(row);
 
             _objectiveCardText = StatusCard(row, "当前目标", "连接后开始自动战斗。");

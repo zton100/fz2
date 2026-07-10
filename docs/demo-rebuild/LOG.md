@@ -1494,6 +1494,47 @@
 
 - Commit subject: `Gameify progression screens`
 
+## 2026-07-10 Demo 后续硬化：四页视觉 QA
+
+### 本轮目标
+
+- 将主场景验收从“节点存在”推进到真实像素画面检查。
+- 固定捕获战斗、背包、锻造、天赋四个 tab 的 `945 x 1672` 运行画面。
+- 根据截图修复首屏布局、裁切、对比度和空白区域问题。
+
+### 本轮完成
+
+- 可重复视觉捕获：
+  - `PlayModeRunner.RunMainVisualCapture` 将 UI Toolkit 渲染到固定 RenderTexture。
+  - 自动切换四个 tab，并输出 `artifacts/ui-qa/battle.png`、`bag.png`、`craft.png`、`talent.png`。
+  - 捕获时强制重绘整棵 VisualElement 树，避免切页后 HUD 或导航缺失。
+  - 本地截图产物加入 `.gitignore`，仓库只保留捕获工具。
+- 截图发现并修复：
+  - 底部导航从滚动内容移到根布局，四个 tab 均固定在视口底部。
+  - Boss 进度卡高度增加，5 个进度节点不再被裁切。
+  - 顶部在线状态不再换行，账号输入框补齐暗色背景、亮色文字和边框。
+  - 全局复用低对比地牢背景，短页面不再出现大片纯黑空屏。
+  - 主滚动容器和 tab 增加伸展约束，同时保留小屏滚动能力。
+
+### 本轮验证
+
+- `git diff --check` 通过。
+- `go test ./...` 通过。
+- `go test -race ./...` 通过。
+- `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`。
+- Unity `EquipmentPresenterTestRunner.Run` 通过，日志包含 `[EquipmentPresenterTestRunner] OK`。
+- Unity `PlayModeRunner.RunMainSmoke` 通过，日志包含 `MAIN_SMOKE_OK`。
+- Unity `PlayModeRunner.RunMainVisualCapture` 通过，日志包含 `VISUAL_CAPTURE_OK`。
+- 四张截图均为 `945 x 1672` RGBA PNG；人工检查确认 HUD、内容面板和固定导航完整渲染，无明显重叠或裁切。
+
+### 本轮遗留
+
+- 当前截图使用未连接空状态；后续可继续增加连接服务端后的“有背包、有掉落、有材料”视觉状态捕获。
+
+### 提交信息
+
+- Commit subject: `Add main UI visual QA`
+
 ## 2026-07-07 Demo 后续硬化：首屏游戏化重构
 
 ### 本轮目标

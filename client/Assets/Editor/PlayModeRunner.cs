@@ -18,6 +18,14 @@ public static class PlayModeRunner
     private static EnterPlayModeOptions _oldEnterPlayModeOptions;
     private static double _mainSmokeStart;
     private static bool _mainSmokeChecked;
+    private static readonly string[] VisualCaptureTabs = { "Battle", "Bag", "Craft", "Talent" };
+    private static readonly string[] VisualCaptureNodes = { "dungeon", "mobile-bag", "mobile-craft", "talent-panel" };
+    private static int _visualCaptureIndex;
+    private static int _visualCapturePhase;
+    private static double _visualCaptureNextAt;
+    private static RenderTexture _visualCaptureTexture;
+    private static PanelSettings _visualCapturePanelSettings;
+    private static string _visualCaptureDirectory;
 
     public static void Run()
     {
@@ -61,6 +69,127 @@ public static class PlayModeRunner
         EditorSettings.enterPlayModeOptions = EnterPlayModeOptions.DisableDomainReload;
         EditorApplication.update += CheckMainSmoke;
         EditorApplication.EnterPlaymode();
+    }
+
+    public static void RunMainVisualCapture()
+    {
+        EditorSceneManager.OpenScene("Assets/Scenes/Main.unity");
+        File.WriteAllText("verify_result.txt", "VISUAL_CAPTURE_PENDING");
+        _mainSmokeStart = EditorApplication.timeSinceStartup;
+        _visualCaptureIndex = 0;
+        _visualCapturePhase = 0;
+        _visualCaptureNextAt = 0;
+        string repositoryRoot = Directory.GetParent(Directory.GetParent(Application.dataPath).FullName).FullName;
+        _visualCaptureDirectory = Path.Combine(repositoryRoot, "artifacts", "ui-qa");
+        Directory.CreateDirectory(_visualCaptureDirectory);
+        foreach (string tab in VisualCaptureTabs)
+        {
+            string path = Path.Combine(_visualCaptureDirectory, tab.ToLowerInvariant() + ".png");
+            if (File.Exists(path)) File.Delete(path);
+        }
+
+        _oldEnterPlayModeOptionsEnabled = EditorSettings.enterPlayModeOptionsEnabled;
+        _oldEnterPlayModeOptions = EditorSettings.enterPlayModeOptions;
+        EditorSettings.enterPlayModeOptionsEnabled = true;
+        EditorSettings.enterPlayModeOptions = EnterPlayModeOptions.DisableDomainReload;
+        EditorApplication.update += CheckMainVisualCapture;
+        EditorApplication.EnterPlaymode();
+    }
+
+    private static void CheckMainVisualCapture()
+    {
+        if (!EditorApplication.isPlaying || EditorApplication.timeSinceStartup - _mainSmokeStart < 3.0) return;
+        try
+        {
+            var doc = UnityEngine.Object.FindObjectOfType<UIDocument>();
+            if (doc == null || doc.rootVisualElement == null) throw new Exception("UIDocument missing");
+
+            if (_visualCapturePhase == 0)
+            {
+                _visualCaptureTexture = new RenderTexture(945, 1672, 24, RenderTextureFormat.ARGB32);
+                _visualCaptureTexture.Create();
+                _visualCapturePanelSettings = doc.panelSettings;
+                _visualCapturePanelSettings.targetTexture = _visualCaptureTexture;
+                ActivateTabAndAssertVisible(doc.rootVisualElement, VisualCaptureTabs[0], VisualCaptureNodes[0]);
+                ScrollToTop(doc.rootVisualElement);
+                MarkAllDirty(doc.rootVisualElement);
+                _visualCapturePhase = 1;
+                _visualCaptureNextAt = EditorApplication.timeSinceStartup + 1.0;
+                return;
+            }
+
+            if (EditorApplication.timeSinceStartup < _visualCaptureNextAt) return;
+            CaptureVisualTab(VisualCaptureTabs[_visualCaptureIndex]);
+            _visualCaptureIndex++;
+            if (_visualCaptureIndex >= VisualCaptureTabs.Length)
+            {
+                File.WriteAllText("verify_result.txt", "VISUAL_CAPTURE_OK " + _visualCaptureDirectory);
+                Debug.Log("[PlayModeRunner] VISUAL_CAPTURE_OK " + _visualCaptureDirectory);
+                FinishMainVisualCapture(0);
+                return;
+            }
+
+            ActivateTabAndAssertVisible(
+                doc.rootVisualElement,
+                VisualCaptureTabs[_visualCaptureIndex],
+                VisualCaptureNodes[_visualCaptureIndex]);
+            ScrollToTop(doc.rootVisualElement);
+            MarkAllDirty(doc.rootVisualElement);
+            _visualCaptureNextAt = EditorApplication.timeSinceStartup + 0.8;
+        }
+        catch (Exception e)
+        {
+            File.WriteAllText("verify_result.txt", "VISUAL_CAPTURE_FAIL " + e.Message);
+            Debug.LogError("[PlayModeRunner] VISUAL_CAPTURE_FAIL: " + e);
+            FinishMainVisualCapture(1);
+        }
+    }
+
+    private static void CaptureVisualTab(string tabName)
+    {
+        RenderTexture previous = RenderTexture.active;
+        RenderTexture.active = _visualCaptureTexture;
+        var texture = new Texture2D(_visualCaptureTexture.width, _visualCaptureTexture.height, TextureFormat.RGBA32, false);
+        texture.ReadPixels(new Rect(0, 0, _visualCaptureTexture.width, _visualCaptureTexture.height), 0, 0);
+        texture.Apply();
+        RenderTexture.active = previous;
+
+        string path = Path.Combine(_visualCaptureDirectory, tabName.ToLowerInvariant() + ".png");
+        File.WriteAllBytes(path, texture.EncodeToPNG());
+        UnityEngine.Object.DestroyImmediate(texture);
+        if (!File.Exists(path) || new FileInfo(path).Length < 1024)
+            throw new Exception("capture missing or empty: " + tabName);
+        Debug.Log("[PlayModeRunner] captured " + path);
+    }
+
+    private static void ScrollToTop(VisualElement root)
+    {
+        var scroll = root.Q<ScrollView>();
+        if (scroll != null) scroll.scrollOffset = Vector2.zero;
+    }
+
+    private static void MarkAllDirty(VisualElement root)
+    {
+        root.MarkDirtyRepaint();
+        var elements = new List<VisualElement>();
+        root.Query<VisualElement>().ToList(elements);
+        foreach (var element in elements) element.MarkDirtyRepaint();
+    }
+
+    private static void FinishMainVisualCapture(int exitCode)
+    {
+        EditorApplication.update -= CheckMainVisualCapture;
+        if (_visualCapturePanelSettings != null) _visualCapturePanelSettings.targetTexture = null;
+        if (_visualCaptureTexture != null)
+        {
+            _visualCaptureTexture.Release();
+            UnityEngine.Object.DestroyImmediate(_visualCaptureTexture);
+        }
+        _visualCapturePanelSettings = null;
+        _visualCaptureTexture = null;
+        EditorSettings.enterPlayModeOptionsEnabled = _oldEnterPlayModeOptionsEnabled;
+        EditorSettings.enterPlayModeOptions = _oldEnterPlayModeOptions;
+        EditorApplication.Exit(exitCode);
     }
 
     private static void CheckMainSmoke()

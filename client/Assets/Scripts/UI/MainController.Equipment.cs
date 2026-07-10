@@ -24,7 +24,8 @@ namespace EquipmentIdle.UI
         private void BuildBagPanel(VisualElement root)
         {
             var row = Row();
-            row.style.height = 520;
+            row.style.minHeight = 520;
+            row.style.flexGrow = 1;
             row.style.marginBottom = 8;
             row.style.alignItems = Align.Stretch;
             root.Add(row);

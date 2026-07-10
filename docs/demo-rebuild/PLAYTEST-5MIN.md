@@ -106,6 +106,7 @@ go test ./...
 ```bash
 Unity -batchmode -projectPath client -executeMethod EquipmentPresenterTestRunner.Run -logFile equipment-presenter-test.log
 Unity -batchmode -projectPath client -executeMethod PlayModeRunner.RunMainSmoke -logFile unity-main-smoke.log
+Unity -batchmode -projectPath client -executeMethod PlayModeRunner.RunMainVisualCapture -logFile unity-visual-capture.log
 ```
 
 期望结果：
@@ -116,3 +117,5 @@ Unity -batchmode -projectPath client -executeMethod PlayModeRunner.RunMainSmoke 
 - 协议闭环验证会覆盖：自动战斗掉落新装、旧装强化、继承强化并自动穿戴新装、分解旧装、转生后重建穿戴。
 - Presenter 测试日志包含 `[EquipmentPresenterTestRunner] OK`。
 - 主场景 smoke 日志包含 `MAIN_SMOKE_OK`。
+- 视觉捕获日志包含 `VISUAL_CAPTURE_OK`。
+- `artifacts/ui-qa/` 生成 `battle.png`、`bag.png`、`craft.png`、`talent.png`，分辨率均为 `945 x 1672`。

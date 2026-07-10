@@ -15,7 +15,8 @@ namespace EquipmentIdle.UI
         private void BuildTalentPanel(VisualElement root)
         {
             var panel = Panel("talent-panel");
-            panel.style.height = 520;
+            panel.style.minHeight = 520;
+            panel.style.flexGrow = 1;
             panel.style.marginBottom = 8;
             panel.style.backgroundColor = new StyleColor(new Color32(10, 9, 8, 255));
             root.Add(panel);

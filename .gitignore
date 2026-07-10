@@ -9,6 +9,7 @@ server/saves/
 # Local verification output
 *.log
 client/verify_result.txt
+artifacts/ui-qa/
 
 # Unity (后续阶段)
 client/[Ll]ibrary/

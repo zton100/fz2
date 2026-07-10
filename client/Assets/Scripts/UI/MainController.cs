@@ -289,15 +289,29 @@ namespace EquipmentIdle.UI
             root.style.backgroundColor = new StyleColor(RootBg);
             root.style.alignItems = Align.Center;
 
+            if (_battleBackground != null)
+            {
+                var shellBackground = new Image { image = _battleBackground, scaleMode = ScaleMode.ScaleAndCrop };
+                shellBackground.style.position = Position.Absolute;
+                shellBackground.style.left = 0;
+                shellBackground.style.right = 0;
+                shellBackground.style.top = 0;
+                shellBackground.style.bottom = 0;
+                shellBackground.style.opacity = 0.16f;
+                root.Add(shellBackground);
+            }
+
             var scroll = new ScrollView(ScrollViewMode.Vertical);
             scroll.style.flexGrow = 1;
             scroll.style.width = Length.Percent(100);
             scroll.contentContainer.style.alignItems = Align.Center;
+            scroll.contentContainer.style.flexGrow = 1;
             root.Add(scroll);
 
             var mobile = new VisualElement { name = "mobile-frame" };
             mobile.style.width = Length.Percent(100);
             mobile.style.maxWidth = 945;
+            mobile.style.flexGrow = 1;
             mobile.style.flexDirection = FlexDirection.Column;
             mobile.style.paddingLeft = 12;
             mobile.style.paddingRight = 12;
@@ -309,7 +323,7 @@ namespace EquipmentIdle.UI
 
             BuildTabbedContent(mobile);
 
-            BuildBottomBar(mobile);
+            BuildBottomBar(root);
 
             BuildOfflinePanel(root);
         }
@@ -317,23 +331,27 @@ namespace EquipmentIdle.UI
         private void BuildTabbedContent(VisualElement root)
         {
             _battleTabContent = new VisualElement();
+            _battleTabContent.style.flexGrow = 1;
             _battleTabContent.style.flexDirection = FlexDirection.Column;
             root.Add(_battleTabContent);
             BuildDungeonPanel(_battleTabContent);
             BuildMobileStatusCards(_battleTabContent);
 
             _bagTabContent = new VisualElement();
+            _bagTabContent.style.flexGrow = 1;
             _bagTabContent.style.flexDirection = FlexDirection.Column;
             root.Add(_bagTabContent);
             BuildBagPanel(_bagTabContent);
             BuildMobileDetailPanel(_bagTabContent);
 
             _craftTabContent = new VisualElement();
+            _craftTabContent.style.flexGrow = 1;
             _craftTabContent.style.flexDirection = FlexDirection.Column;
             root.Add(_craftTabContent);
             BuildCraftPanel(_craftTabContent);
 
             _talentTabContent = new VisualElement();
+            _talentTabContent.style.flexGrow = 1;
             _talentTabContent.style.flexDirection = FlexDirection.Column;
             root.Add(_talentTabContent);
             BuildTalentPanel(_talentTabContent);
@@ -374,7 +392,7 @@ namespace EquipmentIdle.UI
             header.style.backgroundColor = new StyleColor(new Color32(9, 9, 8, 245));
             root.Add(header);
 
-            var titleCol = Column(96);
+            var titleCol = Column(110);
             titleCol.style.alignItems = Align.Center;
             var avatar = new VisualElement();
             avatar.style.width = 66;
@@ -400,6 +418,9 @@ namespace EquipmentIdle.UI
             titleCol.Add(avatar);
             _statusText = Text("", 13, true);
             _statusText.style.color = new StyleColor(TextMuted);
+            _statusText.style.fontSize = 11;
+            _statusText.style.whiteSpace = WhiteSpace.NoWrap;
+            _statusText.style.unityTextAlign = TextAnchor.MiddleCenter;
             titleCol.Add(_statusText);
             header.Add(titleCol);
 
@@ -415,6 +436,17 @@ namespace EquipmentIdle.UI
             _accountInput = new TextField { value = "hero" };
             _accountInput.style.width = 118;
             _accountInput.style.height = 34;
+            _accountInput.style.marginRight = 4;
+            _accountInput.style.color = new StyleColor(TextMain);
+            _accountInput.style.backgroundColor = new StyleColor(new Color32(18, 15, 12, 255));
+            _accountInput.style.borderTopWidth = 1;
+            _accountInput.style.borderRightWidth = 1;
+            _accountInput.style.borderBottomWidth = 1;
+            _accountInput.style.borderLeftWidth = 1;
+            _accountInput.style.borderTopColor = new StyleColor(PanelBorder);
+            _accountInput.style.borderRightColor = new StyleColor(PanelBorder);
+            _accountInput.style.borderBottomColor = new StyleColor(PanelBorderHot);
+            _accountInput.style.borderLeftColor = new StyleColor(PanelBorder);
             loginCol.Add(_accountInput);
             loginCol.Add(ActionButton(L10n.UIConnect, () =>
             {
@@ -458,6 +490,9 @@ namespace EquipmentIdle.UI
         {
             var bottom = Panel("bottom-bar");
             bottom.style.height = 84;
+            bottom.style.width = Length.Percent(100);
+            bottom.style.maxWidth = 921;
+            bottom.style.flexShrink = 0;
             bottom.style.marginTop = 8;
             bottom.style.flexDirection = FlexDirection.Column;
             root.Add(bottom);
