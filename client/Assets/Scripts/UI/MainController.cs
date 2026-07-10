@@ -163,15 +163,16 @@ namespace EquipmentIdle.UI
 
         private void OnPower(float power)
         {
+            bool hasPreviousPower = _prevPower > 0f;
             float delta = power - _prevPower;
             _prevPower = power;
             if (_nextCombatBeatAt <= 0f) _nextCombatBeatAt = Time.realtimeSinceStartup + 0.35f;
-            if (delta > 0.5f)
-                _powerText.text = $"战力：{power:F1} +{delta:F1}";
-            else if (delta < -0.5f)
-                _powerText.text = $"战力：{power:F1} {delta:F1}";
+            if (hasPreviousPower && delta > 0.5f)
+                _powerText.text = $"{power:F1} +{delta:F1}";
+            else if (hasPreviousPower && delta < -0.5f)
+                _powerText.text = $"{power:F1} {delta:F1}";
             else
-                _powerText.text = string.Format(L10n.UIPowerLabel, power);
+                _powerText.text = power.ToString("F1");
             RefreshStuck();
         }
 
@@ -426,8 +427,12 @@ namespace EquipmentIdle.UI
 
             _floorText = HudCell(header, "层数", "1", 92);
             _powerText = HudCell(header, "战力", "0", 142);
+            _powerText.style.fontSize = 16;
+            _powerText.style.whiteSpace = WhiteSpace.NoWrap;
             _soulsText = HudCell(header, "魂点", "0", 112);
             _syncText = HudCell(header, "账号", "hero", 122);
+            _syncText.style.fontSize = 15;
+            _syncText.style.whiteSpace = WhiteSpace.NoWrap;
             _powerText.style.color = new StyleColor(new Color32(255, 178, 83, 255));
 
             var loginCol = Row();
@@ -502,8 +507,10 @@ namespace EquipmentIdle.UI
             log.style.paddingLeft = 8;
             log.style.paddingRight = 8;
             log.style.justifyContent = Justify.Center;
+            log.style.overflow = Overflow.Hidden;
             _toastText = Text("", 13, false);
             _toastText.style.color = new StyleColor(new Color32(244, 202, 121, 255));
+            _toastText.style.whiteSpace = WhiteSpace.NoWrap;
             log.Add(_toastText);
             bottom.Add(log);
 
@@ -556,11 +563,17 @@ namespace EquipmentIdle.UI
         {
             string status = _gameState.IsConnected ? L10n.UIStatusConnected : L10n.UIStatusDisconnected;
             _statusText.text = "在线状态：" + status;
-            _syncText.text = string.IsNullOrEmpty(_gameState.Account) ? "hero" : _gameState.Account;
+            _syncText.text = CompactAccount(_gameState.Account);
             if (_floorText != null) _floorText.text = $"{_gameState.Floor} 层";
             if (_soulsText != null) _soulsText.text = _gameState.Souls.ToString();
-            _powerText.text = string.Format(L10n.UIPowerLabel, _gameState.Power);
+            _powerText.text = _gameState.Power.ToString("F1");
             RefreshDungeon();
+        }
+
+        private static string CompactAccount(string account)
+        {
+            if (string.IsNullOrEmpty(account)) return "hero";
+            return account.Length <= 10 ? account : account.Substring(0, 8) + "...";
         }
 
         private void RefreshStuck()

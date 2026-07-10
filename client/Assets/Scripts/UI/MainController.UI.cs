@@ -88,9 +88,7 @@ namespace EquipmentIdle.UI
                 if (now >= _toasts[i].ExpireAt) _toasts.RemoveAt(i);
             }
             if (_toastText == null) return;
-            string text = "";
-            foreach (var toast in _toasts) text += toast.Text + "\n";
-            _toastText.text = text;
+            _toastText.text = _toasts.Count > 0 ? _toasts[_toasts.Count - 1].Text : "";
         }
 
         private static VisualElement Panel(string name)

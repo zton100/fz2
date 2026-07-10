@@ -107,6 +107,7 @@ go test ./...
 Unity -batchmode -projectPath client -executeMethod EquipmentPresenterTestRunner.Run -logFile equipment-presenter-test.log
 Unity -batchmode -projectPath client -executeMethod PlayModeRunner.RunMainSmoke -logFile unity-main-smoke.log
 Unity -batchmode -projectPath client -executeMethod PlayModeRunner.RunMainVisualCapture -logFile unity-visual-capture.log
+Unity -batchmode -projectPath client -executeMethod PlayModeRunner.RunMainPopulatedVisualCapture -logFile unity-populated-capture.log
 ```
 
 期望结果：
@@ -119,3 +120,4 @@ Unity -batchmode -projectPath client -executeMethod PlayModeRunner.RunMainVisual
 - 主场景 smoke 日志包含 `MAIN_SMOKE_OK`。
 - 视觉捕获日志包含 `VISUAL_CAPTURE_OK`。
 - `artifacts/ui-qa/` 生成 `battle.png`、`bag.png`、`craft.png`、`talent.png`，分辨率均为 `945 x 1672`。
+- `artifacts/ui-qa/populated/` 生成同名填充状态截图，覆盖装备、词缀、材料、魂点和高等级天赋。

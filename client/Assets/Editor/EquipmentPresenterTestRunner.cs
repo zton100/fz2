@@ -62,6 +62,8 @@ public static class EquipmentPresenterTestRunner
     {
         AssertEqual("力量 +12", EquipmentPresenter.FormatAffix(Affix("strength", 1, 12)), "strength affix label");
         AssertEqual("暴击率 +8.0%", EquipmentPresenter.FormatAffix(Affix("crit_rate", 2, 0.08f)), "crit rate affix label");
+        AssertEqual("击杀恢复 +96", EquipmentPresenter.FormatAffix(Affix("kill_heal", 4, 96)), "kill heal affix label");
+        AssertEqual("资源获取 +38", EquipmentPresenter.FormatAffix(Affix("resource_gain", 5, 38)), "resource gain affix label");
     }
 
     private static void SummarizesEquipmentWithSlotComparison()

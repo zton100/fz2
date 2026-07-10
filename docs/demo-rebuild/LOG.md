@@ -1535,6 +1535,50 @@
 
 - Commit subject: `Add main UI visual QA`
 
+## 2026-07-10 Demo 后续硬化：填充状态视觉 QA
+
+### 本轮目标
+
+- 补足空状态截图无法覆盖的真实数据密度。
+- 验证长装备名、多词缀、锁定装备、四位材料数、高层战力和高等级天赋不会破坏布局。
+- 继续使用正式消息处理和 UI 事件链，不给生产状态类增加调试接口。
+
+### 本轮完成
+
+- `PlayModeRunner.RunMainPopulatedVisualCapture`：
+  - 通过反射调用 `GameState.HandleMessage` 注入确定性 sync、bag、power、materials、talents、loot 消息。
+  - 捕获期间将连接状态标记为已连接，不发起真实网络请求。
+  - 输出到 `artifacts/ui-qa/populated/`，与空状态截图分开保存。
+- 填充样本覆盖：
+  - 8 件已穿戴装备和 8 件背包装备。
+  - 神器、传奇、锁定装备、长名称、最高 4 条词缀和强化继承对比。
+  - 四位基础材料、五档词缀材料、可转生状态、满级与未满级天赋。
+- 截图发现并修复：
+  - 首次战力同步不再误显示为大额战力提升，HUD 去掉重复“战力”前缀。
+  - 长账号在 HUD 中压缩显示，不再换行挤占顶部高度。
+  - 底部日志只显示最新 toast，避免多行文字覆盖导航。
+  - 补齐生命偷取、命中、闪避、掉落率、击杀恢复、移动速度、冷却缩减、反射、护盾、资源获取等词缀中文名。
+  - Presenter 测试增加击杀恢复和资源获取本地化断言。
+
+### 本轮验证
+
+- `git diff --check` 通过。
+- `go test ./...` 通过。
+- `go test -race ./...` 通过。
+- `./scripts/verify-flow.sh` 通过，输出 `VERIFY_OK`。
+- Unity `EquipmentPresenterTestRunner.Run` 通过，包含新增词缀本地化断言。
+- Unity `PlayModeRunner.RunMainSmoke` 通过，日志包含 `MAIN_SMOKE_OK`。
+- Unity 空状态与填充状态视觉捕获均通过，日志包含 `VISUAL_CAPTURE_OK`。
+- 两组共 8 张截图均为 `945 x 1672` RGBA PNG；人工检查未发现长名称、词缀、材料数或天赋等级溢出。
+
+### 本轮遗留
+
+- 后续可以把截图像素尺寸和非空检查接入统一脚本，减少手动执行多条 Unity 命令。
+
+### 提交信息
+
+- Commit subject: `Add populated UI visual QA`
+
 ## 2026-07-07 Demo 后续硬化：首屏游戏化重构
 
 ### 本轮目标

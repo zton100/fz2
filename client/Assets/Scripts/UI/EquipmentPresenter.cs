@@ -790,6 +790,17 @@ namespace EquipmentIdle.UI
                 case "crit_rate": return "暴击率";
                 case "crit_damage": return "暴击伤害";
                 case "attack_speed": return "攻击速度";
+                case "lifesteal": return "生命偷取";
+                case "accuracy": return "命中";
+                case "evasion": return "闪避";
+                case "drop_rate": return "掉落率";
+                case "exp_bonus": return "经验加成";
+                case "kill_heal": return "击杀恢复";
+                case "move_speed": return "移动速度";
+                case "cooldown_red": return "冷却缩减";
+                case "reflect": return "伤害反射";
+                case "shield": return "护盾";
+                case "resource_gain": return "资源获取";
                 case "agility": return "敏捷";
                 case "intellect": return "智力";
                 case "vitality": return "体质";
