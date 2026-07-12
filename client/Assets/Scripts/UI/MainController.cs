@@ -81,6 +81,9 @@ namespace EquipmentIdle.UI
         private Texture2D _bossSprite;
         private Texture2D _minionSprite;
         private Texture2D _guardianSprite;
+        private Texture2D[] _bossActionFrames;
+        private Texture2D[] _minionActionFrames;
+        private Texture2D[] _guardianActionFrames;
         private Texture2D _craftIcon;
         private Texture2D[] _slotIcons;
         private EquipmentDTO _selected;
@@ -105,7 +108,7 @@ namespace EquipmentIdle.UI
         private readonly HashSet<string> _lockedEquipment = new HashSet<string>();
         private readonly Dictionary<string, Texture2D> _equipmentIconCache = new Dictionary<string, Texture2D>();
         private const float ToastDuration = 3f;
-        private const float CombatBeatDuration = 0.55f;
+        private const float CombatBeatDuration = 0.95f;
 
         private void Start()
         {
@@ -295,6 +298,9 @@ namespace EquipmentIdle.UI
             _bossSprite = Resources.Load<Texture2D>("UI/boss-combat-sprite-v2");
             _minionSprite = Resources.Load<Texture2D>("UI/minion-combat-sprite");
             _guardianSprite = Resources.Load<Texture2D>("UI/guardian-combat-sprite");
+            _bossActionFrames = LoadActionFrames("UI/boss-combat-action", _bossSprite);
+            _minionActionFrames = LoadActionFrames("UI/minion-combat-action", _minionSprite);
+            _guardianActionFrames = LoadActionFrames("UI/guardian-combat-action", _guardianSprite);
             _craftIcon = Resources.Load<Texture2D>("UI/icon-craft");
             _slotIcons = new[]
             {

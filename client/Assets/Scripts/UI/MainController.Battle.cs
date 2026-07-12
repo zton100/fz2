@@ -480,7 +480,7 @@ namespace EquipmentIdle.UI
             _stageMonsterHealthFill.style.backgroundColor = new StyleColor(boss ? new Color32(220, 38, 38, 255) : clearingMinions ? new Color32(234, 179, 8, 255) : new Color32(245, 158, 11, 255));
             if (_stageBossSpriteImage != null)
             {
-                _stageBossSpriteImage.image = clearingMinions ? _minionSprite : boss ? _bossSprite : _guardianSprite;
+                _stageBossSpriteImage.image = EnemyActionFrame(clearingMinions ? "minion" : boss ? "boss" : "guardian", 0);
                 _stageBossSpriteImage.style.width = clearingMinions ? 330 : boss ? 430 : 380;
                 _stageBossSpriteImage.style.height = clearingMinions ? 360 : boss ? 430 : 410;
                 _stageBossSpriteImage.style.right = clearingMinions ? 18 : -8;
@@ -664,7 +664,7 @@ namespace EquipmentIdle.UI
             bool playerAttack = playerHit && (evt.kind == "hit" || evt.kind == "echo" || evt.kind == "execute");
             bool enemyAttack = !playerHit && evt.kind == "hit";
             float strike = Mathf.Sin(eventProgress * Mathf.PI);
-            float snap = Mathf.Sin(Mathf.Clamp01(eventProgress * 2.2f) * Mathf.PI);
+            float snap = Mathf.Sin(Mathf.Clamp01(eventProgress * 1.65f) * Mathf.PI);
             if (_stageHeroSpriteImage != null)
             {
                 _stageHeroSpriteImage.image = playerAttack ? HeroAttackFrame(eventProgress) : _heroSprite;
@@ -698,6 +698,7 @@ namespace EquipmentIdle.UI
             }
             if (_stageBossSpriteImage != null)
             {
+                _stageBossSpriteImage.image = playerAttack ? EnemyActionFrame(_activeCombat.enemy_kind, 2) : enemyAttack ? EnemyActionFrame(_activeCombat.enemy_kind, 1) : EnemyActionFrame(_activeCombat.enemy_kind, 0);
                 float enemyRight = _activeCombat.enemy_kind == "minion" ? 18f : -8f;
                 float enemyBottom = 54f;
                 float enemyWidth = _activeCombat.enemy_kind == "minion" ? 330f : _activeCombat.enemy_kind == "boss" ? 430f : 380f;
@@ -751,9 +752,43 @@ namespace EquipmentIdle.UI
             {
                 return _heroSprite;
             }
-            if (progress < 0.22f && _heroAttackFrames[1] != null) return _heroAttackFrames[1];
-            if (progress < 0.68f && _heroAttackFrames[2] != null) return _heroAttackFrames[2];
+            if (progress < 0.34f && _heroAttackFrames[1] != null) return _heroAttackFrames[1];
+            if (progress < 0.78f && _heroAttackFrames[2] != null) return _heroAttackFrames[2];
             return _heroAttackFrames[3] != null ? _heroAttackFrames[3] : _heroSprite;
+        }
+
+        private Texture2D[] LoadActionFrames(string prefix, Texture2D fallback)
+        {
+            return new[]
+            {
+                Resources.Load<Texture2D>($"{prefix}-0") ?? fallback,
+                Resources.Load<Texture2D>($"{prefix}-1") ?? fallback,
+                Resources.Load<Texture2D>($"{prefix}-2") ?? fallback,
+            };
+        }
+
+        private Texture2D EnemyActionFrame(string enemyKind, int frameIndex)
+        {
+            Texture2D fallback = _guardianSprite;
+            Texture2D[] frames = _guardianActionFrames;
+            if (enemyKind == "minion")
+            {
+                fallback = _minionSprite;
+                frames = _minionActionFrames;
+            }
+            else if (enemyKind == "boss")
+            {
+                fallback = _bossSprite;
+                frames = _bossActionFrames;
+            }
+
+            if (frames == null || frames.Length == 0)
+            {
+                return fallback;
+            }
+
+            int index = Mathf.Clamp(frameIndex, 0, frames.Length - 1);
+            return frames[index] != null ? frames[index] : fallback;
         }
     }
 }
