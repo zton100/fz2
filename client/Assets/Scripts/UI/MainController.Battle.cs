@@ -619,12 +619,16 @@ namespace EquipmentIdle.UI
 
             if (_stageHeroSpriteImage != null)
             {
-                _stageHeroSpriteImage.style.left = 34 + beat.HeroOffset;
+                _stageHeroSpriteImage.style.left = 26 + beat.HeroOffset * 2.2f;
+                _stageHeroSpriteImage.style.bottom = 54 + Mathf.Sin(Mathf.Clamp01(elapsed / CombatBeatDuration) * Mathf.PI) * 10f;
+                _stageHeroSpriteImage.style.width = 330 + beat.HeroOffset * 0.8f;
+                _stageHeroSpriteImage.style.height = 380 + beat.HeroOffset * 0.6f;
             }
             if (_stageBossSpriteImage != null)
             {
                 float enemyRight = _activeCombat != null && _activeCombat.enemy_kind == "minion" ? 18f : -8f;
-                _stageBossSpriteImage.style.right = enemyRight - beat.MonsterOffset;
+                _stageBossSpriteImage.style.right = enemyRight - beat.MonsterOffset * 1.6f;
+                _stageBossSpriteImage.style.bottom = 54 - beat.MonsterOffset * 0.35f;
                 if (_activeCombat != null && _activeCombat.win && elapsed >= CombatBeatDuration * 0.62f)
                 {
                     float deathProgress = Mathf.Clamp01((elapsed - CombatBeatDuration * 0.62f) / (CombatBeatDuration * 0.38f));
@@ -645,6 +649,7 @@ namespace EquipmentIdle.UI
         {
             float progress = Mathf.Clamp01(elapsed / CombatBeatDuration);
             int eventIndex = Mathf.Clamp(Mathf.FloorToInt(progress * _activeCombat.events.Length), 0, _activeCombat.events.Length - 1);
+            float eventProgress = Mathf.Clamp01(progress * _activeCombat.events.Length - eventIndex);
             CombatEventData evt = _activeCombat.events[eventIndex];
             float playerMax = Mathf.Max(1f, _activeCombat.player_start_hp + _activeCombat.player_start_shield);
             float enemyMax = Mathf.Max(1f, _activeCombat.enemy_start_hp + _activeCombat.enemy_start_shield);
@@ -654,14 +659,65 @@ namespace EquipmentIdle.UI
             _stageMonsterHealthFill.style.width = Length.Percent(Mathf.Clamp01(enemyCurrent / enemyMax) * 100f);
 
             bool playerHit = evt.actor == "player";
+            bool playerAttack = playerHit && (evt.kind == "hit" || evt.kind == "echo" || evt.kind == "execute");
+            bool enemyAttack = !playerHit && evt.kind == "hit";
+            float strike = Mathf.Sin(eventProgress * Mathf.PI);
+            float snap = Mathf.Sin(Mathf.Clamp01(eventProgress * 2.2f) * Mathf.PI);
             if (_stageHeroSpriteImage != null)
             {
-                _stageHeroSpriteImage.style.left = 34 + (playerHit ? beat.HeroOffset : -beat.MonsterOffset * 0.35f);
+                float heroLeft = 26f;
+                float heroBottom = 54f;
+                float heroWidth = 330f;
+                float heroHeight = 380f;
+                if (playerAttack)
+                {
+                    heroLeft += 96f * strike + 34f * snap;
+                    heroBottom += 18f * strike;
+                    heroWidth += 34f * strike;
+                    heroHeight += 24f * strike;
+                }
+                else if (enemyAttack)
+                {
+                    heroLeft -= 18f * strike;
+                    heroBottom -= 7f * strike;
+                    heroWidth -= 12f * strike;
+                }
+                else if (evt.kind == "shield" || evt.kind == "heal")
+                {
+                    heroBottom += 10f * strike;
+                    heroWidth += 18f * strike;
+                    heroHeight += 18f * strike;
+                }
+                _stageHeroSpriteImage.style.left = heroLeft;
+                _stageHeroSpriteImage.style.bottom = heroBottom;
+                _stageHeroSpriteImage.style.width = heroWidth;
+                _stageHeroSpriteImage.style.height = heroHeight;
             }
             if (_stageBossSpriteImage != null)
             {
                 float enemyRight = _activeCombat.enemy_kind == "minion" ? 18f : -8f;
-                _stageBossSpriteImage.style.right = enemyRight - (playerHit ? beat.MonsterOffset : beat.HeroOffset * 0.35f);
+                float enemyBottom = 54f;
+                float enemyWidth = _activeCombat.enemy_kind == "minion" ? 330f : _activeCombat.enemy_kind == "boss" ? 430f : 380f;
+                float enemyHeight = _activeCombat.enemy_kind == "minion" ? 360f : _activeCombat.enemy_kind == "boss" ? 430f : 410f;
+                if (playerAttack)
+                {
+                    float shake = Mathf.Sin(eventProgress * Mathf.PI * 7f) * 12f * (1f - eventProgress);
+                    enemyRight += 20f * strike + shake;
+                    enemyBottom -= 10f * strike;
+                    enemyWidth -= 18f * strike;
+                    enemyHeight += 10f * strike;
+                }
+                else if (enemyAttack)
+                {
+                    enemyRight += 72f * strike + 24f * snap;
+                    enemyBottom += 12f * strike;
+                    enemyWidth += 18f * strike;
+                    enemyHeight += 14f * strike;
+                }
+                _stageBossSpriteImage.style.right = enemyRight;
+                _stageBossSpriteImage.style.bottom = enemyBottom;
+                _stageBossSpriteImage.style.width = enemyWidth;
+                _stageBossSpriteImage.style.height = enemyHeight;
                 if (_activeCombat.win && progress >= 0.88f)
                 {
                     float deathProgress = Mathf.Clamp01((progress - 0.88f) / 0.12f);
