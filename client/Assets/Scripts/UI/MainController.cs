@@ -77,6 +77,7 @@ namespace EquipmentIdle.UI
         private Image _stageBossSpriteImage;
         private Texture2D _battleBackground;
         private Texture2D _heroSprite;
+        private Texture2D[] _heroAttackFrames;
         private Texture2D _bossSprite;
         private Texture2D _minionSprite;
         private Texture2D _guardianSprite;
@@ -284,6 +285,13 @@ namespace EquipmentIdle.UI
         {
             _battleBackground = Resources.Load<Texture2D>("UI/dungeon-battle-bg-v2");
             _heroSprite = Resources.Load<Texture2D>("UI/hero-combat-sprite-v2");
+            _heroAttackFrames = new[]
+            {
+                Resources.Load<Texture2D>("UI/hero-combat-attack-0"),
+                Resources.Load<Texture2D>("UI/hero-combat-attack-1"),
+                Resources.Load<Texture2D>("UI/hero-combat-attack-2"),
+                Resources.Load<Texture2D>("UI/hero-combat-attack-3"),
+            };
             _bossSprite = Resources.Load<Texture2D>("UI/boss-combat-sprite-v2");
             _minionSprite = Resources.Load<Texture2D>("UI/minion-combat-sprite");
             _guardianSprite = Resources.Load<Texture2D>("UI/guardian-combat-sprite");

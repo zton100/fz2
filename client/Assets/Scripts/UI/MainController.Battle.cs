@@ -475,6 +475,7 @@ namespace EquipmentIdle.UI
             }
             _stageHeroHealthFill.style.width = Length.Percent(stage.HeroHealth * 100f);
             _stageMonsterHealthFill.style.width = Length.Percent(stage.MonsterHealth * 100f);
+            if (_stageHeroSpriteImage != null) _stageHeroSpriteImage.image = _heroSprite;
             if (_stageArtifactText != null) _stageArtifactText.style.opacity = 0f;
             _stageMonsterHealthFill.style.backgroundColor = new StyleColor(boss ? new Color32(220, 38, 38, 255) : clearingMinions ? new Color32(234, 179, 8, 255) : new Color32(245, 158, 11, 255));
             if (_stageBossSpriteImage != null)
@@ -619,6 +620,7 @@ namespace EquipmentIdle.UI
 
             if (_stageHeroSpriteImage != null)
             {
+                _stageHeroSpriteImage.image = beat.Active ? HeroAttackFrame(Mathf.Clamp01(elapsed / CombatBeatDuration)) : _heroSprite;
                 _stageHeroSpriteImage.style.left = 26 + beat.HeroOffset * 2.2f;
                 _stageHeroSpriteImage.style.bottom = 54 + Mathf.Sin(Mathf.Clamp01(elapsed / CombatBeatDuration) * Mathf.PI) * 10f;
                 _stageHeroSpriteImage.style.width = 330 + beat.HeroOffset * 0.8f;
@@ -665,6 +667,7 @@ namespace EquipmentIdle.UI
             float snap = Mathf.Sin(Mathf.Clamp01(eventProgress * 2.2f) * Mathf.PI);
             if (_stageHeroSpriteImage != null)
             {
+                _stageHeroSpriteImage.image = playerAttack ? HeroAttackFrame(eventProgress) : _heroSprite;
                 float heroLeft = 26f;
                 float heroBottom = 54f;
                 float heroWidth = 330f;
@@ -740,6 +743,17 @@ namespace EquipmentIdle.UI
                     _stageArtifactText.style.opacity = artifactEvent ? Mathf.Max(0.42f, beat.ImpactOpacity) : 0f;
                 }
             }
+        }
+
+        private Texture2D HeroAttackFrame(float progress)
+        {
+            if (_heroAttackFrames == null || _heroAttackFrames.Length < 4 || _heroAttackFrames[0] == null)
+            {
+                return _heroSprite;
+            }
+            if (progress < 0.22f && _heroAttackFrames[1] != null) return _heroAttackFrames[1];
+            if (progress < 0.68f && _heroAttackFrames[2] != null) return _heroAttackFrames[2];
+            return _heroAttackFrames[3] != null ? _heroAttackFrames[3] : _heroSprite;
         }
     }
 }
