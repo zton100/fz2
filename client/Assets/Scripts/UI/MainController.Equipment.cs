@@ -206,7 +206,7 @@ namespace EquipmentIdle.UI
 
             var top = Row();
             top.style.alignItems = Align.FlexStart;
-            var icon = IconImage(IconForSlot(eq != null ? eq.slot : SlotIndexByName(slot)), 48, 48);
+            var icon = IconImage(eq != null ? IconForEquipment(eq) : IconForSlot(SlotIndexByName(slot)), 48, 48);
             icon.style.marginRight = 7;
             top.Add(icon);
 
@@ -224,7 +224,7 @@ namespace EquipmentIdle.UI
             top.Add(copy);
             tile.Add(top);
 
-            var footerText = Text(eq != null ? $"评分 {EquipmentPresenter.Score(eq):F0}" : "等待掉落", 11, true);
+            var footerText = Text(eq != null ? $"战力贡献 {EquipmentPresenter.Score(eq):F0}" : "等待掉落", 11, true);
             footerText.style.color = new StyleColor(eq != null && eq.rarity >= 2 ? GoldText : eq != null ? TextMain : TextMuted);
             footerText.style.marginTop = 6;
             tile.Add(footerText);
@@ -264,7 +264,7 @@ namespace EquipmentIdle.UI
             row.style.marginBottom = 8;
             row.RegisterCallback<ClickEvent>(_ => Select(eq));
 
-            var icon = IconImage(IconForSlot(eq.slot), 64, 64);
+            var icon = IconImage(IconForEquipment(eq), 64, 64);
             icon.style.marginRight = 10;
             icon.style.alignSelf = Align.Center;
             row.Add(icon);
@@ -278,7 +278,9 @@ namespace EquipmentIdle.UI
             title.style.height = 24;
             body.Add(title);
 
-            string state = current == null ? "新部位" : delta > 0f ? $"提升 +{delta:F0}" : delta < 0f ? $"更弱 {delta:F0}" : "持平";
+            string state = EquipmentPresenter.HasEconomyAffix(eq)
+                ? "经济流派"
+                : current == null ? "新部位" : delta > 0f ? $"提升 +{delta:F0}" : delta < 0f ? $"更弱 {delta:F0}" : "持平";
             var tags = Row();
             tags.style.marginTop = 3;
             tags.style.marginBottom = 4;
@@ -287,7 +289,7 @@ namespace EquipmentIdle.UI
             tags.Add(MiniBadge($"+{eq.upgrade}", new Color32(63, 42, 22, 255), GoldText, 42));
             body.Add(tags);
 
-            var meta = Text($"评分 {EquipmentPresenter.Score(eq):F0} · {state}", 12, true);
+            var meta = Text($"战力贡献 {EquipmentPresenter.Score(eq):F0} · {state}", 12, true);
             meta.style.color = new StyleColor(delta > 0f || current == null ? new Color32(74, 222, 128, 255) : delta < 0f ? new Color32(248, 113, 113, 255) : TextMuted);
             body.Add(meta);
 
@@ -358,6 +360,24 @@ namespace EquipmentIdle.UI
             if (slot < 0) slot = 0;
             if (slot >= _slotIcons.Length) slot = _slotIcons.Length - 1;
             return _slotIcons[slot];
+        }
+
+        private Texture2D IconForEquipment(EquipmentDTO eq)
+        {
+            if (eq == null) return IconForSlot(0);
+			string resourceKey = EquipmentPresenter.IconResourceKey(eq);
+            if (!string.IsNullOrEmpty(resourceKey))
+            {
+				if (!_equipmentIconCache.TryGetValue(resourceKey, out Texture2D texture))
+                {
+					texture = Resources.Load<Texture2D>("UI/Equipment/" + resourceKey);
+					if (texture == null && !string.IsNullOrEmpty(eq.base_id) && resourceKey != eq.base_id)
+						texture = Resources.Load<Texture2D>("UI/Equipment/" + eq.base_id);
+					_equipmentIconCache[resourceKey] = texture;
+                }
+                if (texture != null) return texture;
+            }
+            return IconForSlot(eq.slot);
         }
 
         private static int SlotIndexByName(string slotName)
@@ -454,7 +474,7 @@ namespace EquipmentIdle.UI
             var header = Row();
             header.style.alignItems = Align.FlexStart;
             header.style.marginBottom = 8;
-            var icon = IconImage(IconForSlot(eq.slot), 68, 68);
+            var icon = IconImage(IconForEquipment(eq), 68, 68);
             icon.style.marginRight = 10;
             header.Add(icon);
 
@@ -472,7 +492,22 @@ namespace EquipmentIdle.UI
             header.Add(copy);
             column.Add(header);
 
-            column.Add(DetailStatLine("评分", $"{EquipmentPresenter.Score(eq):F0}", GoldText));
+            column.Add(DetailStatLine("战力贡献", $"{EquipmentPresenter.Score(eq):F0}", GoldText));
+			if (!string.IsNullOrEmpty(eq.legendary_id))
+			{
+				column.Add(DetailTextBlock("传奇特效", eq.legendary_description, new Color32(255, 153, 50, 255)));
+				if (eq.legendary_bonuses != null)
+				{
+					foreach (var bonus in eq.legendary_bonuses)
+					{
+						column.Add(DetailStatLine("固定加成", EquipmentPresenter.FormatAffix(bonus), GoldText));
+					}
+				}
+				if (eq.legendary_power_bonus > 0f)
+					column.Add(DetailStatLine("传奇增幅", $"全局战力 +{eq.legendary_power_bonus * 100f:F1}%", GoldText));
+				if (eq.boss_reward_bonus > 0f)
+					column.Add(DetailStatLine("传奇增幅", $"首通材料 +{eq.boss_reward_bonus * 100f:F1}%", GoldText));
+			}
             if (eq.affixes == null || eq.affixes.Length == 0)
             {
                 column.Add(DetailStatLine("词缀", "无", TextMuted));
@@ -495,7 +530,8 @@ namespace EquipmentIdle.UI
             row.style.backgroundColor = new StyleColor(new Color32(10, 9, 8, 210));
 
             var name = Text(label, 11, true);
-            name.style.width = 42;
+            name.style.width = 58;
+            name.style.whiteSpace = WhiteSpace.NoWrap;
             name.style.color = new StyleColor(TextMuted);
             row.Add(name);
 
@@ -505,6 +541,27 @@ namespace EquipmentIdle.UI
             row.Add(val);
             return row;
         }
+
+		private static VisualElement DetailTextBlock(string label, string value, Color color)
+		{
+			var block = new VisualElement();
+			block.style.minHeight = 48;
+			block.style.marginBottom = 3;
+			block.style.paddingLeft = 6;
+			block.style.paddingRight = 6;
+			block.style.paddingTop = 5;
+			block.style.paddingBottom = 5;
+			block.style.backgroundColor = new StyleColor(new Color32(10, 9, 8, 210));
+
+			var title = Text(label, 11, true);
+			title.style.color = new StyleColor(color);
+			block.Add(title);
+			var copy = Text(string.IsNullOrEmpty(value) ? "固定传奇能力" : value, 11, false);
+			copy.style.whiteSpace = WhiteSpace.Normal;
+			copy.style.color = new StyleColor(TextMain);
+			block.Add(copy);
+			return block;
+		}
 
         private void RefreshComparisonRows(EquipmentDTO selected, EquipmentDTO current)
         {
@@ -694,7 +751,7 @@ namespace EquipmentIdle.UI
                     equippedCount++;
                 }
             }
-            if (equippedCount > 0) AddToast($"{string.Format(L10n.UIEquipBestDone, equippedCount)}  评分 +{expectedDelta:F0}", ToastDuration);
+            if (equippedCount > 0) AddToast($"{string.Format(L10n.UIEquipBestDone, equippedCount)}  战力贡献 +{expectedDelta:F0}", ToastDuration);
         }
 
         private void DecomposeWeakItems()

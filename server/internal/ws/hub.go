@@ -1,10 +1,11 @@
-﻿package ws
+package ws
 
 import (
 	"log"
 	"math/rand"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 
@@ -33,13 +34,22 @@ type Hub struct {
 	sessions        map[*Session]struct{}
 	accountSessions map[string]*Session
 	store           *save.Store
+	battleInterval  time.Duration
 }
 
 func NewHub(store *save.Store) *Hub {
+	return NewHubWithBattleInterval(store, 2*time.Second)
+}
+
+func NewHubWithBattleInterval(store *save.Store, battleInterval time.Duration) *Hub {
+	if battleInterval <= 0 {
+		battleInterval = 2 * time.Second
+	}
 	return &Hub{
 		sessions:        make(map[*Session]struct{}),
 		accountSessions: make(map[string]*Session),
 		store:           store,
+		battleInterval:  battleInterval,
 	}
 }
 

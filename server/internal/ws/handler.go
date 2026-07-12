@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"sort"
 	"time"
 
+	"equipment-idle-server/internal/combat"
 	"equipment-idle-server/internal/crafting"
 	"equipment-idle-server/internal/data"
 	"equipment-idle-server/internal/dungeon"
@@ -99,7 +101,10 @@ func (h *Hub) handleLogin(sess *Session, env protocol.Envelope) {
 		player.LastOnline = now
 
 		sync := protocol.SyncData{
-			Account: player.Account, Floor: player.Floor, Souls: player.Souls, Inventory: player.Inventory,
+			Account: player.Account, Floor: player.Floor, FloorKills: player.FloorKills,
+			MinionsTotal: dungeon.MinionsPerFloor, EquipmentDataVersion: data.EquipmentDataVersion(),
+			LegendaryDataVersion: data.LegendaryDataVersion(),
+			Souls:                player.Souls, Inventory: player.Inventory,
 		}
 		syncData, _ := json.Marshal(sync)
 		resp := protocol.Envelope{T: protocol.TypeSync, ID: env.ID, Data: syncData}
@@ -115,6 +120,9 @@ func (h *Hub) handleLogin(sess *Session, env protocol.Envelope) {
 	}
 
 	runner := dungeon.NewRunner(player, nil, sess.drop)
+	runner.CombatCallback = func(result dungeon.TickResult) {
+		h.pushCombat(sess, result)
+	}
 	runner.LootCallback = func(eq *model.Equipment) {
 		h.pushLoot(sess, eq)
 		h.pushBag(sess, player)
@@ -170,7 +178,7 @@ func (h *Hub) handleUnequip(sess *Session, env protocol.Envelope) {
 }
 
 func (h *Hub) battleLoop(sess *Session, runner *dungeon.Runner) {
-	ticker := time.NewTicker(2 * time.Second)
+	ticker := time.NewTicker(h.battleInterval)
 	defer ticker.Stop()
 	for {
 		select {
@@ -192,11 +200,59 @@ func (h *Hub) battleLoop(sess *Session, runner *dungeon.Runner) {
 	}
 }
 
+func (h *Hub) pushCombat(sess *Session, result dungeon.TickResult) {
+	dataBytes, _ := json.Marshal(protocol.CombatData{
+		Floor: result.Floor, EnemyKind: string(result.EnemyKind), Win: result.Win,
+		PlayerPower: result.PlayerPower, EnemyPower: result.EnemyPower,
+		MinionsKilled: result.MinionsKilled, MinionsTotal: result.MinionsTotal,
+		FloorAdvanced: result.FloorAdvanced,
+		PlayerStartHP: result.PlayerStartHP, EnemyStartHP: result.EnemyStartHP,
+		PlayerStartShield: result.PlayerStartShield, EnemyStartShield: result.EnemyStartShield,
+		PlayerEndHP: result.PlayerEndHP, EnemyEndHP: result.EnemyEndHP,
+		PlayerEndShield: result.PlayerEndShield, EnemyEndShield: result.EnemyEndShield,
+		Events: toCombatEventDTOs(result.Events),
+	})
+	env := protocol.Envelope{T: protocol.TypeCombat, Data: dataBytes}
+	out, _ := json.Marshal(env)
+	select {
+	case sess.Send <- out:
+	default:
+	}
+}
+
+func toCombatEventDTOs(events []combat.HitEvent) []protocol.CombatEventDTO {
+	if len(events) == 0 {
+		return nil
+	}
+	out := make([]protocol.CombatEventDTO, 0, len(events))
+	for _, event := range events {
+		out = append(out, protocol.CombatEventDTO{
+			Index:        event.Index,
+			Actor:        event.Actor,
+			Kind:         event.Kind,
+			Damage:       event.Damage,
+			Critical:     event.Critical,
+			PlayerHP:     event.PlayerHP,
+			EnemyHP:      event.EnemyHP,
+			PlayerShield: event.PlayerShield,
+			EnemyShield:  event.EnemyShield,
+		})
+	}
+	return out
+}
+
 func (h *Hub) pushLoot(sess *Session, eq *model.Equipment) {
 	ld := protocol.LootData{
 		UID: eq.UID, BaseID: eq.BaseID, Name: eq.Name,
 		Slot: int(eq.Slot), Rarity: int(eq.Rarity), Upgrade: eq.Upgrade,
 		Affixes: toAffixDTOs(eq.Affixes),
+	}
+	if def, ok := data.LegendaryByID(eq.LegendaryID); ok {
+		ld.LegendaryID = def.ID
+		ld.LegendaryDescription = def.Description
+		ld.LegendaryBonuses = toStatDTOs(def.BonusStats)
+		ld.LegendaryPowerBonus = def.PowerMultiplier
+		ld.BossRewardBonus = def.BossRewardMultiplier
 	}
 	dataBytes, _ := json.Marshal(ld)
 	env := protocol.Envelope{T: protocol.TypeLoot, Data: dataBytes}
@@ -221,12 +277,12 @@ func (h *Hub) pushFloor(sess *Session, newFloor int) {
 func (h *Hub) pushBag(sess *Session, player *model.Player) {
 	items := make([]protocol.EquipmentDTO, len(player.EquipBag))
 	for i, eq := range player.EquipBag {
-		items[i] = toEquipmentDTO(eq, player.Locked)
+		items[i] = toEquipmentDTO(eq, player.Locked, reincarnation.PowerScoreIfEquipped(player, eq))
 	}
 	equipped := make([]protocol.EquipmentDTO, 0, len(player.Equipped))
 	for _, slot := range data.AllSlots() {
 		if eq := player.Equipped[slot]; eq != nil {
-			equipped = append(equipped, toEquipmentDTO(eq, player.Locked))
+			equipped = append(equipped, toEquipmentDTO(eq, player.Locked, reincarnation.PowerScoreIfEquipped(player, eq)))
 		}
 	}
 	bd := protocol.BagData{Items: items, Equipped: equipped}
@@ -251,19 +307,42 @@ func (h *Hub) pushPower(sess *Session, player *model.Player) {
 	}
 }
 
-func toEquipmentDTO(eq *model.Equipment, locked map[string]bool) protocol.EquipmentDTO {
-	return protocol.EquipmentDTO{
+func toEquipmentDTO(eq *model.Equipment, locked map[string]bool, powerScore float64) protocol.EquipmentDTO {
+	dto := protocol.EquipmentDTO{
 		UID: eq.UID, BaseID: eq.BaseID, Name: eq.Name,
 		Slot: int(eq.Slot), Rarity: int(eq.Rarity), Upgrade: eq.Upgrade,
-		Locked:  locked != nil && locked[eq.UID],
-		Affixes: toAffixDTOs(eq.Affixes),
+		Locked:          locked != nil && locked[eq.UID],
+		PowerScore:      powerScore,
+		PowerScoreValid: true,
+		Affixes:         toAffixDTOs(eq.Affixes),
 	}
+	if def, ok := data.LegendaryByID(eq.LegendaryID); ok {
+		dto.LegendaryID = def.ID
+		dto.LegendaryDescription = def.Description
+		dto.LegendaryBonuses = toStatDTOs(def.BonusStats)
+		dto.LegendaryPowerBonus = def.PowerMultiplier
+		dto.BossRewardBonus = def.BossRewardMultiplier
+	}
+	return dto
 }
 
 func toAffixDTOs(affixes []model.AffixInstance) []protocol.AffixDTO {
 	out := make([]protocol.AffixDTO, len(affixes))
 	for i, a := range affixes {
 		out[i] = protocol.AffixDTO{Type: string(a.Type), Tier: a.Tier, Value: a.Value}
+	}
+	return out
+}
+
+func toStatDTOs(stats map[data.AffixType]float64) []protocol.AffixDTO {
+	types := make([]string, 0, len(stats))
+	for stat := range stats {
+		types = append(types, string(stat))
+	}
+	sort.Strings(types)
+	out := make([]protocol.AffixDTO, 0, len(types))
+	for _, stat := range types {
+		out = append(out, protocol.AffixDTO{Type: stat, Value: stats[data.AffixType(stat)]})
 	}
 	return out
 }

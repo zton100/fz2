@@ -62,6 +62,21 @@ func TestDecompose_UpgradedEquipmentRefundsUpgradeMaterials(t *testing.T) {
 	}
 }
 
+func TestDecompose_AppliesEquippedResourceGain(t *testing.T) {
+	p := model.NewPlayer("t")
+	p.Equipped[data.SlotNeck] = &model.Equipment{
+		Affixes: []model.AffixInstance{{Type: data.ATResourceGain, Value: 0.50}},
+	}
+	eq := &model.Equipment{UID: "resource-target", Slot: data.SlotWeapon, Rarity: data.RarityCommon}
+	yield, err := Decompose(p, eq)
+	if err != nil {
+		t.Fatalf("decompose error: %v", err)
+	}
+	if yield[data.MatBase] != 3 || p.Materials[data.MatBase] != 3 {
+		t.Fatalf("resource-adjusted base material = %d inventory=%d, want 3", yield[data.MatBase], p.Materials[data.MatBase])
+	}
+}
+
 func TestUpgradeRefund_ClampsAboveCostTable(t *testing.T) {
 	eq := &model.Equipment{UID: "e4", Upgrade: 99}
 	refund := UpgradeRefund(eq)

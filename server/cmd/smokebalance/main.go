@@ -261,19 +261,21 @@ func runArtifactDistribution(cfg balanceConfig) artifactDistributionMetrics {
 		rng := rand.New(rand.NewSource(seed))
 		gen := loot.NewGenerator(rng)
 		drop := loot.NewDropTable(gen)
-		player := model.NewPlayer(fmt.Sprintf("artifact-dist-%d", seed))
-		starter.GrantLoadout(player, gen)
 
-		runCycle(player, drop, cfg.LongTargetFloor)
-		runCycle(player, drop, cfg.DeepTargetFloor)
-		runCycle(player, drop, cfg.LateTargetFloor)
-		endgameMetrics := runCycle(player, drop, cfg.EndgameTargetFloor)
-		frontierMetrics := runCycle(player, drop, cfg.FrontierTargetFloor)
-
-		metrics.Endgame.record(endgameMetrics.RarityCounts[data.RarityArtifact])
-		metrics.Frontier.record(frontierMetrics.RarityCounts[data.RarityArtifact])
+		metrics.Endgame.record(sampleArtifactDrops(drop, cfg.EndgameStartFloor, cfg.EndgameTargetFloor))
+		metrics.Frontier.record(sampleArtifactDrops(drop, cfg.FrontierStartFloor, cfg.FrontierTargetFloor))
 	}
 	return metrics
+}
+
+func sampleArtifactDrops(drop *loot.DropTable, startFloor int, targetFloor int) int {
+	count := 0
+	for floor := startFloor; floor < targetFloor; floor++ {
+		if eq := drop.DropRandomSlot(floor); eq != nil && eq.Rarity == data.RarityArtifact {
+			count++
+		}
+	}
+	return count
 }
 
 func newArtifactSegmentDistribution(name string, startFloor int, targetFloor int) artifactSegmentDistribution {

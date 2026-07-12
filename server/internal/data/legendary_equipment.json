@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "legendaries": [
+    {"id":"legendary_ember_cleaver","name":"焚城者之誓","base_id":"weapon_ember_axe","slot":0,"description":"余烬吞噬战意，全面提升伤害。","bonus_stats":{"fire_dmg":18},"power_multiplier":0.12},
+    {"id":"legendary_frost_wake","name":"霜醒","base_id":"weapon_frost_hammer","slot":0,"description":"寒霜在攻守之间凝成坚壁。","bonus_stats":{"cold_dmg":20,"shield":15},"power_multiplier":0.08},
+    {"id":"legendary_star_crown","name":"星穹冠冕","base_id":"helmet_arcane_crown","slot":1,"description":"星辉强化法术与致命洞察。","bonus_stats":{"intellect":12,"crit_rate":0.03}},
+    {"id":"legendary_last_bulwark","name":"最后壁垒","base_id":"armor_bulwark_plate","slot":2,"description":"守势越坚，战意越盛。","bonus_stats":{"armor":15,"shield":30},"power_multiplier":0.06},
+    {"id":"legendary_ash_mantle","name":"灰烬王衣","base_id":"armor_ember_garb","slot":2,"description":"征服守关者时收获更多锻造材料。","bonus_stats":{"vitality":12,"fire_dmg":15},"boss_reward_multiplier":0.25},
+    {"id":"legendary_gale_grasp","name":"风暴之握","base_id":"gloves_gale","slot":3,"description":"疾风令每次出手更快、更准。","bonus_stats":{"attack_speed":0.12,"accuracy":0.08}},
+    {"id":"legendary_night_stride","name":"夜幕行者","base_id":"boots_shadowstep","slot":4,"description":"在暗影中积蓄敏捷与闪避。","bonus_stats":{"agility":12,"evasion":0.08}},
+    {"id":"legendary_coinbound","name":"贪欲契约","base_id":"ring1_treasure","slot":5,"description":"以风险换取更优掉落与材料。","bonus_stats":{"drop_rate":0.12,"resource_gain":0.08}},
+    {"id":"legendary_sun_brand","name":"太阳烙印","base_id":"ring1_flame","slot":5,"description":"烈日印记强化火焰与暴击。","bonus_stats":{"fire_dmg":18,"crit_rate":0.05}},
+    {"id":"legendary_tempest_eye","name":"风暴之眼","base_id":"ring2_thunder","slot":6,"description":"雷霆汇聚为毁灭性的暴击。","bonus_stats":{"lightning_dmg":20,"crit_damage":0.25}},
+    {"id":"legendary_blood_covenant","name":"血契","base_id":"neck_blood_charm","slot":7,"description":"鲜血循环维持持久战力。","bonus_stats":{"lifesteal":0.08,"kill_heal":20},"power_multiplier":0.05},
+    {"id":"legendary_harvest_seal","name":"丰收圣印","base_id":"neck_abundance","slot":7,"description":"丰饶祝福放大材料与首通收益。","bonus_stats":{"resource_gain":0.15,"drop_rate":0.05},"boss_reward_multiplier":0.20}
+  ]
+}

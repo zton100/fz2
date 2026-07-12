@@ -46,7 +46,7 @@ type artifactDistributionTarget struct {
 func defaultBalanceConfig() balanceConfig {
 	return balanceConfig{
 		EarlyTargetFloor:                     10,
-		EarlyTicks:                           tickRange{Min: 5, Max: 25},
+		EarlyTicks:                           tickRange{Min: 30, Max: 60},
 		EarlyMinLoot:                         8,
 		ReincarnationSoulsPerCycle:           2,
 		LongTargetFloor:                      30,

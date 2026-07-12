@@ -1,11 +1,19 @@
-﻿package data
+package data
 
 import "testing"
 
-func TestBuildAffixPool_Count115(t *testing.T) {
+func TestBuildAffixPool_ContainsOnlyImplementedAffixes(t *testing.T) {
 	pool := BuildAffixPool()
-	if len(pool) != 115 {
-		t.Fatalf("pool size = %d, want 115", len(pool))
+	if len(pool) != 100 {
+		t.Fatalf("pool size = %d, want 20 active affixes x 5 tiers = 100", len(pool))
+	}
+	unsupported := map[AffixType]bool{
+		ATExpBonus: true, ATMoveSpeed: true, ATCooldownRed: true,
+	}
+	for _, affix := range pool {
+		if unsupported[affix.Type] {
+			t.Fatalf("unsupported affix %s should not appear in the drop pool", affix.Type)
+		}
 	}
 }
 
@@ -25,8 +33,8 @@ func TestAffixesByPosition(t *testing.T) {
 	pool := BuildAffixPool()
 	prefixes := AffixesByPosition(pool, PosPrefix)
 	suffixes := AffixesByPosition(pool, PosSuffix)
-	if len(prefixes)+len(suffixes) != 115 {
-		t.Fatalf("prefix %d + suffix %d != 115", len(prefixes), len(suffixes))
+	if len(prefixes)+len(suffixes) != len(pool) {
+		t.Fatalf("prefix %d + suffix %d != pool size %d", len(prefixes), len(suffixes), len(pool))
 	}
 	for _, a := range prefixes {
 		if a.Position != PosPrefix {

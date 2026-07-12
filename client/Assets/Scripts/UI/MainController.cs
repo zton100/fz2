@@ -77,6 +77,8 @@ namespace EquipmentIdle.UI
         private Texture2D _battleBackground;
         private Texture2D _heroSprite;
         private Texture2D _bossSprite;
+        private Texture2D _minionSprite;
+        private Texture2D _guardianSprite;
         private Texture2D _craftIcon;
         private Texture2D[] _slotIcons;
         private EquipmentDTO _selected;
@@ -86,7 +88,6 @@ namespace EquipmentIdle.UI
         private bool _prevCanReincarn;
         private float _battlePulseUntil;
         private float _combatBeatStartedAt = -10f;
-        private float _nextCombatBeatAt;
         private float _lootPulseUntil;
         private float _stageBannerUntil;
         private float _bossProgressTarget;
@@ -94,13 +95,15 @@ namespace EquipmentIdle.UI
         private string _pendingCraftUid;
         private string _pendingCraftAction;
         private float _pendingCraftScore;
+        private CombatData _activeCombat;
+        private bool _combatTransitionPending;
 
 
         private readonly List<EquipmentDTO> _lootFeed = new List<EquipmentDTO>();
         private readonly HashSet<string> _lockedEquipment = new HashSet<string>();
+        private readonly Dictionary<string, Texture2D> _equipmentIconCache = new Dictionary<string, Texture2D>();
         private const float ToastDuration = 3f;
         private const float CombatBeatDuration = 0.55f;
-        private const float CombatBeatInterval = 2f;
 
         private void Start()
         {
@@ -114,6 +117,7 @@ namespace EquipmentIdle.UI
             _gameState.OnSyncReceived += OnSync;
             _gameState.OnBagReceived += OnBag;
             _gameState.OnPowerReceived += OnPower;
+            _gameState.OnCombatReceived += OnCombat;
             _gameState.OnLootReceived += OnLoot;
             _gameState.OnFloorReceived += OnFloor;
             _gameState.OnMaterialsReceived += OnMaterials;
@@ -131,6 +135,7 @@ namespace EquipmentIdle.UI
             _gameState.OnSyncReceived -= OnSync;
             _gameState.OnBagReceived -= OnBag;
             _gameState.OnPowerReceived -= OnPower;
+            _gameState.OnCombatReceived -= OnCombat;
             _gameState.OnLootReceived -= OnLoot;
             _gameState.OnFloorReceived -= OnFloor;
             _gameState.OnMaterialsReceived -= OnMaterials;
@@ -166,7 +171,6 @@ namespace EquipmentIdle.UI
             bool hasPreviousPower = _prevPower > 0f;
             float delta = power - _prevPower;
             _prevPower = power;
-            if (_nextCombatBeatAt <= 0f) _nextCombatBeatAt = Time.realtimeSinceStartup + 0.35f;
             if (hasPreviousPower && delta > 0.5f)
                 _powerText.text = $"{power:F1} +{delta:F1}";
             else if (hasPreviousPower && delta < -0.5f)
@@ -200,9 +204,22 @@ namespace EquipmentIdle.UI
             AddToast(lootToast, ToastDuration);
         }
 
+        private void OnCombat(CombatData combat)
+        {
+            _activeCombat = combat;
+            StartCombatBeat();
+            if (combat.win && combat.enemy_kind == "minion" && combat.minions_killed >= combat.minions_total)
+            {
+                _combatTransitionPending = true;
+                ShowStageBanner(combat.floor % 5 == 0 ? "小兵清剿完成 · Boss 现身" : "小兵清剿完成 · 守关精英现身", new Color32(255, 202, 112, 255));
+            }
+            if (combat.floor_advanced) _combatTransitionPending = true;
+            RefreshDungeon();
+        }
+
         private void OnFloor(int newFloor)
         {
-            StartCombatBeat();
+            if (_activeCombat != null) _combatTransitionPending = true;
             if (newFloor > 1 && (newFloor - 1) % 5 == 0)
             {
                 string banner = EquipmentPresenter.BuildBossClearBanner(newFloor - 1);
@@ -211,6 +228,7 @@ namespace EquipmentIdle.UI
             }
             RefreshHeader();
             RefreshStuck();
+            RefreshDungeon();
         }
 
         private void OnOfflineResult(OfflineResultData ord)
@@ -242,7 +260,7 @@ namespace EquipmentIdle.UI
             }
             else if (!string.IsNullOrEmpty(_pendingCraftUid) && cr.uid == _pendingCraftUid)
             {
-                AddToast($"{_pendingCraftAction}完成：评分未变化", ToastDuration);
+                AddToast($"{_pendingCraftAction}完成：战力贡献未变化", ToastDuration);
                 ClearPendingCraft();
             }
             RefreshMaterials();
@@ -266,6 +284,8 @@ namespace EquipmentIdle.UI
             _battleBackground = Resources.Load<Texture2D>("UI/dungeon-battle-bg-v2");
             _heroSprite = Resources.Load<Texture2D>("UI/hero-combat-sprite-v2");
             _bossSprite = Resources.Load<Texture2D>("UI/boss-combat-sprite-v2");
+            _minionSprite = Resources.Load<Texture2D>("UI/minion-combat-sprite");
+            _guardianSprite = Resources.Load<Texture2D>("UI/guardian-combat-sprite");
             _craftIcon = Resources.Load<Texture2D>("UI/icon-craft");
             _slotIcons = new[]
             {

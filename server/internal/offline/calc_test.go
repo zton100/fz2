@@ -79,6 +79,23 @@ func TestCalc_AdvancesFloor(t *testing.T) {
 	}
 }
 
+func TestCalc_ResumesSavedMinionProgress(t *testing.T) {
+	p := model.NewPlayer("t")
+	p.FloorKills = 2
+	p.Equipped[data.SlotWeapon] = &model.Equipment{
+		BaseStats: map[data.AffixType]float64{data.ATStrength: 100000},
+	}
+	gen := loot.NewGenerator(rand.New(rand.NewSource(1)))
+	result := Calc(p, nil, loot.NewDropTable(gen), 4*time.Second, 0, 0, 0)
+
+	if p.Floor != 2 || p.FloorKills != 0 {
+		t.Fatalf("progress = floor %d kills %d, want floor 2 with reset kills", p.Floor, p.FloorKills)
+	}
+	if result.FloorsAdvanced != 1 || result.LootCount != 1 {
+		t.Fatalf("result = %+v, want one guardian clear and one loot", result)
+	}
+}
+
 func TestCalc_BossFirstClearGrantsBaseMaterials(t *testing.T) {
 	p := model.NewPlayer("t")
 	p.Floor = 5
@@ -89,7 +106,7 @@ func TestCalc_BossFirstClearGrantsBaseMaterials(t *testing.T) {
 	gen := loot.NewGenerator(rand.New(rand.NewSource(1)))
 	drop := loot.NewDropTable(gen)
 
-	Calc(p, nil, drop, 2*time.Second, 0, 0, 0)
+	Calc(p, nil, drop, 8*time.Second, 0, 0, 0)
 
 	if p.Materials[data.MatBase] != 15 {
 		t.Fatalf("base materials = %d, want 15", p.Materials[data.MatBase])

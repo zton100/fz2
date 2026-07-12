@@ -12,7 +12,11 @@ public static class EquipmentPresenterTestRunner
         try
         {
             SortsUpgradesBeforeWeakItems();
+            PrefersAuthoritativePowerScoreWhenAvailable();
             FormatsAffixesForPlayers();
+            DescribesFixedLegendaryEffects();
+            PrefersLegendaryIconIdentity();
+            RecognizesLegendaryEconomyEffects();
             SummarizesEquipmentWithSlotComparison();
             FiltersBagItemsByUserModeAndLockState();
             ProtectsLowRarityUpgradesFromBulkDecompose();
@@ -21,6 +25,7 @@ public static class EquipmentPresenterTestRunner
             OffersUpgradeInheritanceForSameSlotNewGear();
             EncodesLockEquipmentRequests();
             EncodesTransferUpgradeRequests();
+            ParsesAuthoritativeCombatEvents();
             DescribesDungeonStateWithServerMonsterCurve();
             RecommendsNextGoalFromProgressState();
             LabelsEquipmentRowsWithUpgradeContext();
@@ -62,8 +67,64 @@ public static class EquipmentPresenterTestRunner
     {
         AssertEqual("力量 +12", EquipmentPresenter.FormatAffix(Affix("strength", 1, 12)), "strength affix label");
         AssertEqual("暴击率 +8.0%", EquipmentPresenter.FormatAffix(Affix("crit_rate", 2, 0.08f)), "crit rate affix label");
+        AssertEqual("暴击伤害 +48.0%", EquipmentPresenter.FormatAffix(Affix("crit_damage", 3, 0.48f)), "crit damage affix label");
         AssertEqual("击杀恢复 +96", EquipmentPresenter.FormatAffix(Affix("kill_heal", 4, 96)), "kill heal affix label");
-        AssertEqual("资源获取 +38", EquipmentPresenter.FormatAffix(Affix("resource_gain", 5, 38)), "resource gain affix label");
+        AssertEqual("资源获取 +38.0%", EquipmentPresenter.FormatAffix(Affix("resource_gain", 5, 0.38f)), "resource gain affix label");
+    }
+
+    private static void DescribesFixedLegendaryEffects()
+    {
+        var eq = Equipment("legendary", 0, 3, 0, Affix("strength", 4, 120));
+        eq.name = "焚城者之誓";
+        eq.legendary_id = "legendary_ember_cleaver";
+        eq.legendary_description = "余烬吞噬战意，全面提升伤害。";
+        eq.legendary_bonuses = new[] { Affix("fire_dmg", 0, 18) };
+        eq.legendary_power_bonus = 0.12f;
+
+        string detail = EquipmentPresenter.BuildDetail(eq, null);
+        AssertContains(detail, "传奇特效", "legendary detail should identify its fixed effect");
+        AssertContains(detail, eq.legendary_description, "legendary detail should show its description");
+        AssertContains(detail, "固定加成：火焰伤害 +18", "legendary detail should show fixed stat bonuses");
+        AssertContains(detail, "全局战力 +12.0%", "legendary detail should show its global power multiplier");
+    }
+
+    private static void PrefersLegendaryIconIdentity()
+    {
+        var legendary = Equipment("legendary", 0, 3, 0);
+        legendary.base_id = "weapon_ember_axe";
+        legendary.legendary_id = "legendary_ember_cleaver";
+        AssertEqual("legendary_ember_cleaver", EquipmentPresenter.IconResourceKey(legendary), "legendary icon identity");
+
+        var ordinary = Equipment("ordinary", 0, 2, 0);
+        ordinary.base_id = "weapon_iron_sword";
+        AssertEqual("weapon_iron_sword", EquipmentPresenter.IconResourceKey(ordinary), "ordinary icon identity");
+    }
+
+    private static void RecognizesLegendaryEconomyEffects()
+    {
+        var eq = Equipment("coinbound", 5, 3, 0);
+        eq.legendary_id = "legendary_coinbound";
+        eq.legendary_bonuses = new[] { Affix("drop_rate", 0, 0.12f) };
+        if (!EquipmentPresenter.HasEconomyAffix(eq))
+            throw new Exception("legendary economy bonus should receive the economy build label");
+    }
+
+    private static void PrefersAuthoritativePowerScoreWhenAvailable()
+    {
+        var visuallyRareButWeak = Equipment("weak", 0, 4, 10, Affix("strength", 5, 999));
+        var visuallyPlainButStrong = Equipment("strong", 0, 0, 0, Affix("strength", 1, 1));
+        visuallyRareButWeak.power_score = 80f;
+        visuallyRareButWeak.power_score_valid = true;
+        visuallyPlainButStrong.power_score = 120f;
+        visuallyPlainButStrong.power_score_valid = true;
+
+        if (EquipmentPresenter.Score(visuallyRareButWeak) != 80f || EquipmentPresenter.Score(visuallyPlainButStrong) != 120f)
+            throw new Exception("equipment score should prefer the authoritative server power score");
+        if (!EquipmentPresenter.ShouldShowInBag(visuallyPlainButStrong, visuallyRareButWeak, EquipmentBagFilter.Upgrades, false))
+            throw new Exception("upgrade filtering should use authoritative power score");
+        visuallyRareButWeak.power_score = 0f;
+        if (EquipmentPresenter.Score(visuallyRareButWeak) != 0f)
+            throw new Exception("a valid zero power score must not fall back to rarity heuristics");
     }
 
     private static void SummarizesEquipmentWithSlotComparison()
@@ -72,7 +133,7 @@ public static class EquipmentPresenterTestRunner
         var upgrade = Equipment("upgrade", 0, 2, 0, Affix("strength", 2, 30));
         string summary = EquipmentPresenter.BuildDetail(upgrade, current);
 
-        AssertContains(summary, "评分：", "detail should show score");
+        AssertContains(summary, "战力贡献：", "detail should show score");
         AssertContains(summary, "对比：+", "detail should show positive comparison");
         AssertContains(summary, "力量 +30", "detail should use readable affix names");
     }
@@ -105,14 +166,18 @@ public static class EquipmentPresenterTestRunner
         var current = Equipment("current", 0, 1, 0, Affix("strength", 1, 5));
         var weakCommon = Equipment("weak-common", 0, 0, 0, Affix("max_hp", 1, 3));
         var usefulMagic = Equipment("useful-magic", 0, 1, 0, Affix("strength", 2, 30));
+        var economyMagic = Equipment("economy-magic", 0, 1, 0, Affix("drop_rate", 2, 0.08f));
+        economyMagic.power_score_valid = true;
+        economyMagic.power_score = 0f;
         var rare = Equipment("rare", 0, 2, 0, Affix("strength", 1, 1));
 
         var decompose = EquipmentPresenter.BulkDecomposeCandidates(
-            new[] { weakCommon, usefulMagic, rare },
+            new[] { weakCommon, usefulMagic, economyMagic, rare },
             new[] { current });
 
         AssertContainsUid(decompose, "weak-common", "weak low-rarity item should be decomposed");
         AssertMissingUid(decompose, "useful-magic", "low-rarity upgrade should be protected");
+        AssertMissingUid(decompose, "economy-magic", "economy affix item should be protected");
         AssertMissingUid(decompose, "rare", "rare item should be protected");
     }
 
@@ -160,9 +225,9 @@ public static class EquipmentPresenterTestRunner
         if (!EquipmentPresenter.CanInheritUpgrade(current, target))
             throw new Exception("same-slot higher source should be inheritable");
         AssertContains(EquipmentPresenter.BuildTransferLine(current, target), "继承强化", "transfer line should explain inheritance");
-        AssertContains(EquipmentPresenter.BuildTransferLine(current, target), "评分", "transfer line should preview score change");
+        AssertContains(EquipmentPresenter.BuildTransferLine(current, target), "战力贡献", "transfer line should preview score change");
         if (target.upgrade != 1) throw new Exception($"transfer preview should not mutate target upgrade, got {target.upgrade}");
-        AssertContainsComparison(EquipmentPresenter.BuildTransferPreviewRows(current, target), "继承后评分", true, "transfer preview should include target score gain");
+        AssertContainsComparison(EquipmentPresenter.BuildTransferPreviewRows(current, target), "继承后贡献", true, "transfer preview should include target score gain");
         AssertContainsComparison(EquipmentPresenter.BuildTransferPreviewRows(current, target), "旧装回退", false, "transfer preview should include source rollback");
 
         var noTransfer = EquipmentPresenter.DetailActions(otherSlot, false, current);
@@ -191,6 +256,20 @@ public static class EquipmentPresenterTestRunner
         var parsed = Message.Parse(encoded);
         AssertEqual(Message.TypeTransferUpgrade, parsed.t, "parsed transfer request type");
         AssertContains(parsed.dataJson, "\"source_uid\"", "parsed transfer request data should preserve source uid");
+    }
+
+    private static void ParsesAuthoritativeCombatEvents()
+    {
+        const string json = "{\"t\":\"combat\",\"data\":{\"floor\":7,\"enemy_kind\":\"minion\",\"win\":true,\"player_power\":42.5,\"enemy_power\":18.0,\"minions_killed\":2,\"minions_total\":3,\"floor_advanced\":false,\"player_start_hp\":160,\"enemy_start_hp\":120,\"player_start_shield\":20,\"events\":[{\"index\":1,\"actor\":\"player\",\"kind\":\"hit\",\"damage\":36,\"player_hp\":160,\"enemy_hp\":84,\"player_shield\":20}]}}";
+        var parsed = Message.Parse(json);
+        AssertEqual(Message.TypeCombat, parsed.t, "combat event type");
+        var combat = JsonUtility.FromJson<CombatData>(parsed.dataJson);
+        if (combat == null || combat.floor != 7 || combat.enemy_kind != "minion" || combat.minions_killed != 2 || !combat.win)
+            throw new Exception("combat event should preserve authoritative encounter progress");
+        if (combat.player_start_hp != 160f || combat.player_start_shield != 20f || combat.events == null || combat.events.Length != 1)
+            throw new Exception("combat event should preserve hp, shield and hit timeline");
+        if (combat.events[0].actor != "player" || combat.events[0].damage != 36f)
+            throw new Exception("combat hit event should preserve actor and damage");
     }
 
     private static void DescribesDungeonStateWithServerMonsterCurve()
@@ -252,10 +331,10 @@ public static class EquipmentPresenterTestRunner
 
         var rows = EquipmentPresenter.BuildComparisonRows(upgrade, current);
 
-        AssertContainsComparison(rows, "评分", true, "comparison should include score gain");
+        AssertContainsComparison(rows, "战力贡献", true, "comparison should include score gain");
         AssertContainsComparison(rows, "力量", true, "comparison should include selected affix gain");
         AssertContainsComparison(rows, "护甲", false, "comparison should include lost current affix");
-        AssertContains(EquipmentPresenter.BuildSelectedSummary(upgrade), "评分", "selected summary should show score");
+        AssertContains(EquipmentPresenter.BuildSelectedSummary(upgrade), "战力贡献", "selected summary should show score");
         AssertContains(EquipmentPresenter.BuildCurrentSummary(current), "current", "current summary should show equipped item name");
     }
 

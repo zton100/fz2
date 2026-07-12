@@ -10,7 +10,7 @@ import (
 func TestCheckEarlyCycle(t *testing.T) {
 	cfg := defaultBalanceConfig()
 	valid := cycleMetrics{
-		Ticks:      9,
+		Ticks:      cfg.EarlyTicks.Min,
 		FinalFloor: cfg.EarlyTargetFloor,
 		LootCount:  cfg.EarlyMinLoot,
 		StartPower: 100,

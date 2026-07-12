@@ -350,15 +350,32 @@ namespace EquipmentIdle.UI
         private void RefreshDungeon()
         {
             if (_dungeonTitleText == null) return;
-            var dungeon = EquipmentPresenter.BuildDungeonState(_gameState.Floor, _gameState.Power);
-            _bossProgressTarget = dungeon.GateProgress;
+            bool showingCombatEvent = _activeCombat != null && Time.realtimeSinceStartup - _combatBeatStartedAt < CombatBeatDuration;
+            int displayFloor = showingCombatEvent ? _activeCombat.floor : _gameState.Floor;
+            int minionsKilled = showingCombatEvent ? _activeCombat.minions_killed : _gameState.FloorKills;
+            int minionsTotal = showingCombatEvent ? _activeCombat.minions_total : _gameState.MinionsTotal;
+            string enemyKind = showingCombatEvent
+                ? _activeCombat.enemy_kind
+                : minionsKilled < minionsTotal ? "minion" : displayFloor % 5 == 0 ? "boss" : "guardian";
+            var dungeon = EquipmentPresenter.BuildDungeonState(displayFloor, _gameState.Power);
+            bool clearingMinions = enemyKind == "minion";
+            bool boss = enemyKind == "boss";
+            _bossProgressTarget = clearingMinions
+                ? (float)minionsKilled / Mathf.Max(1, minionsTotal)
+                : 1f;
 
-            _dungeonTitleText.text = dungeon.Title;
-            _monsterText.text = dungeon.Monster;
-            _battleText.text = dungeon.Battle;
+            _dungeonTitleText.text = clearingMinions
+                ? $"第 {displayFloor} 层 · 清剿 {minionsKilled}/{minionsTotal}"
+                : boss ? $"第 {displayFloor} 层 Boss 关 · {dungeon.Zone}" : $"第 {displayFloor} 层守关战 · {dungeon.Zone}";
+            float encounterPower = showingCombatEvent ? _activeCombat.enemy_power : clearingMinions ? dungeon.MonsterPower * 0.5f : dungeon.MonsterPower;
+            string encounterName = clearingMinions ? "地牢爪牙" : boss ? "守层 Boss" : "守关精英";
+            _monsterText.text = $"{encounterName}\n战力 {encounterPower:F1}";
+            _battleText.text = clearingMinions
+                ? $"小兵进度 {minionsKilled}/{minionsTotal}，清剿完成后进入守关战。"
+                : dungeon.Battle;
             _bossHintText.text = dungeon.BossHint;
-            _bossHintText.style.color = new StyleColor(dungeon.IsBoss ? new Color32(255, 92, 64, 255) : EmberText);
-            RefreshBattleStage();
+            _bossHintText.style.color = new StyleColor(boss ? new Color32(255, 92, 64, 255) : EmberText);
+            RefreshBattleStage(displayFloor, minionsKilled, minionsTotal, clearingMinions, boss, encounterName, encounterPower);
             string nextGoal = EquipmentPresenter.BuildNextGoal(
                 _gameState.Floor,
                 _gameState.Power,
@@ -368,7 +385,7 @@ namespace EquipmentIdle.UI
             _goalText.text = nextGoal;
             if (_objectiveCardText != null) _objectiveCardText.text = nextGoal.Replace("目标：", "");
             if (_bossProgressCardText != null) _bossProgressCardText.text = dungeon.BossHint;
-            _bossProgressFill.style.backgroundColor = new StyleColor(dungeon.IsBoss ? new Color32(220, 38, 38, 255) : new Color32(217, 119, 6, 255));
+            _bossProgressFill.style.backgroundColor = new StyleColor(boss ? new Color32(220, 38, 38, 255) : clearingMinions ? new Color32(59, 130, 246, 255) : new Color32(217, 119, 6, 255));
             RefreshProgressNodes();
         }
 
@@ -412,25 +429,33 @@ namespace EquipmentIdle.UI
             return box;
         }
 
-        private void RefreshBattleStage()
+        private void RefreshBattleStage(int displayFloor, int minionsKilled, int minionsTotal, bool clearingMinions, bool boss, string encounterName, float encounterPower)
         {
             if (_stageHeroNameText == null) return;
-            var stage = EquipmentPresenter.BuildBattleStageState(_gameState.Floor, _gameState.Power);
+            var stage = EquipmentPresenter.BuildBattleStageState(displayFloor, _gameState.Power);
             _stageZoneText.text = stage.Zone;
             _stageHeroNameText.text = stage.HeroName;
             _stageHeroPowerText.text = stage.HeroPower;
-            _stageMonsterNameText.text = stage.MonsterName;
-            _stageMonsterPowerText.text = stage.MonsterPower;
-            _stageStatusText.text = stage.IsBoss ? $"Boss 战：{stage.Status}" : $"自动战斗：{stage.Status}";
+            _stageMonsterNameText.text = encounterName;
+            _stageMonsterPowerText.text = $"战力 {encounterPower:F1}";
+            _stageStatusText.text = clearingMinions ? $"清剿小兵：{minionsKilled}/{minionsTotal}" : boss ? $"Boss 战：{stage.Status}" : $"守关战：{stage.Status}";
             _stageStatusText.style.color = new StyleColor(stage.Status == "受阻" ? new Color32(248, 113, 113, 255) : GoldText);
             if (_stageSlash != null)
             {
-                _stageSlash.text = stage.IsBoss ? "BOSS" : "VS";
-                _stageSlash.style.color = new StyleColor(stage.IsBoss ? new Color32(255, 92, 64, 255) : new Color32(255, 202, 112, 255));
+                _stageSlash.text = boss ? "BOSS" : clearingMinions ? $"{minionsKilled}/{minionsTotal}" : "ELITE";
+                _stageSlash.style.color = new StyleColor(boss ? new Color32(255, 92, 64, 255) : new Color32(255, 202, 112, 255));
             }
             _stageHeroHealthFill.style.width = Length.Percent(stage.HeroHealth * 100f);
             _stageMonsterHealthFill.style.width = Length.Percent(stage.MonsterHealth * 100f);
-            _stageMonsterHealthFill.style.backgroundColor = new StyleColor(stage.IsBoss ? new Color32(220, 38, 38, 255) : new Color32(245, 158, 11, 255));
+            _stageMonsterHealthFill.style.backgroundColor = new StyleColor(boss ? new Color32(220, 38, 38, 255) : clearingMinions ? new Color32(234, 179, 8, 255) : new Color32(245, 158, 11, 255));
+            if (_stageBossSpriteImage != null)
+            {
+                _stageBossSpriteImage.image = clearingMinions ? _minionSprite : boss ? _bossSprite : _guardianSprite;
+                _stageBossSpriteImage.style.width = clearingMinions ? 330 : boss ? 430 : 380;
+                _stageBossSpriteImage.style.height = clearingMinions ? 360 : boss ? 430 : 410;
+                _stageBossSpriteImage.style.right = clearingMinions ? 18 : -8;
+                _stageBossSpriteImage.style.opacity = 1f;
+            }
         }
 
         private void RefreshLootFeed()
@@ -468,7 +493,7 @@ namespace EquipmentIdle.UI
             row.style.paddingBottom = 3;
             row.style.marginBottom = 4;
 
-            var icon = IconImage(IconForSlot(eq != null ? eq.slot : 0), 36, 36);
+            var icon = IconImage(eq != null ? IconForEquipment(eq) : IconForSlot(0), 36, 36);
             icon.style.marginRight = 6;
             row.Add(icon);
 
@@ -482,11 +507,6 @@ namespace EquipmentIdle.UI
         private void UpdateCombatFeedback()
         {
             float now = Time.realtimeSinceStartup;
-            if (_gameState != null && _gameState.IsConnected && _gameState.Power > 0f && now >= _nextCombatBeatAt)
-            {
-                StartCombatBeat();
-            }
-
             if (_bossProgressFill != null)
             {
                 _bossProgressCurrent = Mathf.Lerp(_bossProgressCurrent, _bossProgressTarget, Time.deltaTime * 8f);
@@ -503,6 +523,12 @@ namespace EquipmentIdle.UI
             }
 
             RefreshCombatBeat(now);
+            if (_combatTransitionPending && now - _combatBeatStartedAt >= CombatBeatDuration)
+            {
+                _combatTransitionPending = false;
+                _activeCombat = null;
+                RefreshDungeon();
+            }
             RefreshStageBanner(now);
 
             if (_lootPanel != null)
@@ -539,16 +565,27 @@ namespace EquipmentIdle.UI
             float now = Time.realtimeSinceStartup;
             _combatBeatStartedAt = now;
             _battlePulseUntil = now + 0.7f;
-            _nextCombatBeatAt = now + CombatBeatInterval;
         }
 
         private void RefreshCombatBeat(float now)
         {
             if (_stageMonsterHealthFill == null) return;
             float elapsed = now - _combatBeatStartedAt;
-            var beat = EquipmentPresenter.BuildCombatBeatState(_gameState.Floor, _gameState.Power, elapsed, CombatBeatDuration);
-            var stage = EquipmentPresenter.BuildBattleStageState(_gameState.Floor, _gameState.Power);
+            int floor = _activeCombat != null ? _activeCombat.floor : _gameState.Floor;
+            float playerPower = _activeCombat != null ? _activeCombat.player_power : _gameState.Power;
+            var beat = EquipmentPresenter.BuildCombatBeatState(floor, playerPower, elapsed, CombatBeatDuration);
+            if (_activeCombat != null && _activeCombat.events != null && _activeCombat.events.Length > 0)
+            {
+                RefreshServerCombatBeat(elapsed, beat);
+                return;
+            }
+            var stage = EquipmentPresenter.BuildBattleStageState(floor, playerPower);
             float monsterHealth = beat.Active ? beat.MonsterHealth : stage.MonsterHealth;
+            if (_activeCombat != null && _activeCombat.win && elapsed >= CombatBeatDuration * 0.62f)
+            {
+                float deathProgress = Mathf.Clamp01((elapsed - CombatBeatDuration * 0.62f) / (CombatBeatDuration * 0.38f));
+                monsterHealth = Mathf.Lerp(monsterHealth, 0f, deathProgress);
+            }
             _stageMonsterHealthFill.style.width = Length.Percent(monsterHealth * 100f);
 
             if (_stageHeroSpriteImage != null)
@@ -557,13 +594,58 @@ namespace EquipmentIdle.UI
             }
             if (_stageBossSpriteImage != null)
             {
-                _stageBossSpriteImage.style.right = 28 - beat.MonsterOffset;
+                float enemyRight = _activeCombat != null && _activeCombat.enemy_kind == "minion" ? 18f : -8f;
+                _stageBossSpriteImage.style.right = enemyRight - beat.MonsterOffset;
+                if (_activeCombat != null && _activeCombat.win && elapsed >= CombatBeatDuration * 0.62f)
+                {
+                    float deathProgress = Mathf.Clamp01((elapsed - CombatBeatDuration * 0.62f) / (CombatBeatDuration * 0.38f));
+                    _stageBossSpriteImage.style.opacity = Mathf.Lerp(1f, 0.18f, deathProgress);
+                }
             }
             if (_stageImpactText != null)
             {
-                _stageImpactText.text = beat.Active ? beat.DamageText : "";
+                string hitLabel = _activeCombat != null && _activeCombat.enemy_kind == "boss" ? "重击" : "斩击";
+                _stageImpactText.text = beat.Active ? $"{hitLabel} {beat.DamageText}" : "";
                 _stageImpactText.style.opacity = beat.ImpactOpacity;
                 _stageImpactText.style.top = 172 - beat.HeroOffset * 0.65f;
+            }
+        }
+
+        private void RefreshServerCombatBeat(float elapsed, CombatBeatState beat)
+        {
+            float progress = Mathf.Clamp01(elapsed / CombatBeatDuration);
+            int eventIndex = Mathf.Clamp(Mathf.FloorToInt(progress * _activeCombat.events.Length), 0, _activeCombat.events.Length - 1);
+            CombatEventData evt = _activeCombat.events[eventIndex];
+            float playerMax = Mathf.Max(1f, _activeCombat.player_start_hp + _activeCombat.player_start_shield);
+            float enemyMax = Mathf.Max(1f, _activeCombat.enemy_start_hp + _activeCombat.enemy_start_shield);
+            float playerCurrent = Mathf.Max(0f, evt.player_hp + evt.player_shield);
+            float enemyCurrent = Mathf.Max(0f, evt.enemy_hp + evt.enemy_shield);
+            _stageHeroHealthFill.style.width = Length.Percent(Mathf.Clamp01(playerCurrent / playerMax) * 100f);
+            _stageMonsterHealthFill.style.width = Length.Percent(Mathf.Clamp01(enemyCurrent / enemyMax) * 100f);
+
+            bool playerHit = evt.actor == "player";
+            if (_stageHeroSpriteImage != null)
+            {
+                _stageHeroSpriteImage.style.left = 34 + (playerHit ? beat.HeroOffset : -beat.MonsterOffset * 0.35f);
+            }
+            if (_stageBossSpriteImage != null)
+            {
+                float enemyRight = _activeCombat.enemy_kind == "minion" ? 18f : -8f;
+                _stageBossSpriteImage.style.right = enemyRight - (playerHit ? beat.MonsterOffset : beat.HeroOffset * 0.35f);
+                if (_activeCombat.win && progress >= 0.88f)
+                {
+                    float deathProgress = Mathf.Clamp01((progress - 0.88f) / 0.12f);
+                    _stageBossSpriteImage.style.opacity = Mathf.Lerp(1f, 0.18f, deathProgress);
+                }
+            }
+            if (_stageImpactText != null)
+            {
+                string verb = playerHit ? (_activeCombat.enemy_kind == "boss" ? "重击" : "斩击") : "受击";
+                string critical = evt.critical ? " 暴击" : "";
+                _stageImpactText.text = $"{verb}{critical} {evt.damage:F0}";
+                _stageImpactText.style.opacity = Mathf.Max(beat.ImpactOpacity, 0.35f);
+                _stageImpactText.style.top = playerHit ? 172 - beat.HeroOffset * 0.65f : 188 + beat.MonsterOffset * 0.45f;
+                _stageImpactText.style.color = new StyleColor(playerHit ? new Color32(255, 224, 137, 255) : new Color32(248, 113, 113, 255));
             }
         }
     }

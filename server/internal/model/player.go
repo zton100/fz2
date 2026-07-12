@@ -19,6 +19,7 @@ type Player struct {
 	LastOnline time.Time                 // 上次在线时间（离线结算用）
 	MaxFloor   int                       // 历史最高层数（决定转生魂点）
 	Talents    map[string]int            // 天赋等级 {damage,quality,drop,offline_gain}
+	FloorKills int                       // 当前楼层已击杀的小兵数
 }
 
 // NewPlayer 创建新玩家，默认第 1 层、0 魂、空背包。

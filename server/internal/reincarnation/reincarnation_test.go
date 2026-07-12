@@ -26,6 +26,7 @@ func TestCanReincarn_EnoughFloor(t *testing.T) {
 func TestReincarnate_ResetsProgressGivesSouls(t *testing.T) {
 	p := model.NewPlayer("t")
 	p.Floor = 15
+	p.FloorKills = 2
 	p.MaxFloor = 15
 	p.Equipped[data.SlotWeapon] = &model.Equipment{UID: "e1"}
 	p.AddEquipment(&model.Equipment{UID: "e2"})
@@ -38,6 +39,9 @@ func TestReincarnate_ResetsProgressGivesSouls(t *testing.T) {
 	}
 	if p.Floor != 1 {
 		t.Fatalf("floor = %d, want 1", p.Floor)
+	}
+	if p.FloorKills != 0 {
+		t.Fatalf("floor kills = %d, want 0", p.FloorKills)
 	}
 	if len(p.EquipBag) != 0 {
 		t.Fatalf("bag = %d, want 0", len(p.EquipBag))
@@ -126,6 +130,46 @@ func TestDropBonus(t *testing.T) {
 	bonus := DropBonus(p)
 	if bonus != 0.09 {
 		t.Fatalf("drop bonus = %.2f, want 0.09", bonus)
+	}
+}
+
+func TestDropBonus_IncludesEquippedDropRate(t *testing.T) {
+	p := model.NewPlayer("t")
+	p.Talents["drop"] = 2
+	p.Equipped[data.SlotRing1] = &model.Equipment{
+		Affixes: []model.AffixInstance{{Type: data.ATDropRate, Value: 0.12}},
+	}
+	if bonus := DropBonus(p); bonus != 0.18 {
+		t.Fatalf("drop bonus = %.2f, want talent 0.06 + equipment 0.12", bonus)
+	}
+}
+
+func TestApplyResourceGain_UsesEquippedAffix(t *testing.T) {
+	p := model.NewPlayer("t")
+	p.Equipped[data.SlotNeck] = &model.Equipment{
+		Affixes: []model.AffixInstance{{Type: data.ATResourceGain, Value: 0.50}},
+	}
+	if got := ApplyResourceGain(p, 10); got != 15 {
+		t.Fatalf("resource gain = %d, want 15", got)
+	}
+}
+
+func TestApplyBossRewardCombinesResourceAndLegendaryBonuses(t *testing.T) {
+	p := model.NewPlayer("legendary-reward")
+	p.Equipped[data.SlotArmor] = &model.Equipment{
+		LegendaryID: "legendary_ash_mantle",
+		Slot:        data.SlotArmor,
+		BaseStats:   map[data.AffixType]float64{},
+	}
+	p.Equipped[data.SlotNeck] = &model.Equipment{
+		LegendaryID: "legendary_harvest_seal",
+		Slot:        data.SlotNeck,
+		BaseStats:   map[data.AffixType]float64{},
+	}
+
+	// 15% fixed resource gain + 25% and 20% boss bonuses = 60% total.
+	if got := ApplyBossReward(p, 100); got != 160 {
+		t.Fatalf("boss reward = %d, want 160", got)
 	}
 }
 

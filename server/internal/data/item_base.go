@@ -1,37 +1,88 @@
-﻿package data
+package data
 
-import "equipment-idle-server/internal/locale"
+import (
+	_ "embed"
+	"encoding/json"
+	"fmt"
+)
 
-// ItemBase 装备基底：某槽位的白板装备定义。
+// ItemBase is a versioned equipment base definition loaded from embedded JSON.
 type ItemBase struct {
-	ID        string
-	Name      string
-	Slot      Slot
-	BaseStats map[AffixType]float64
+	ID        string                `json:"id"`
+	Name      string                `json:"name"`
+	Slot      Slot                  `json:"slot"`
+	BaseStats map[AffixType]float64 `json:"base_stats"`
 }
 
-// AllBases returns all 8 item bases with names from current locale.
-func AllBases() []ItemBase {
-	l := locale.Current()
-	return []ItemBase{
-		{ID: "base_weapon", Name: l.ItemIronSword, Slot: SlotWeapon, BaseStats: map[AffixType]float64{ATStrength: 5}},
-		{ID: "base_helmet", Name: l.ItemLeatherHelm, Slot: SlotHelmet, BaseStats: map[AffixType]float64{ATArmor: 3}},
-		{ID: "base_armor", Name: l.ItemChainArmor, Slot: SlotArmor, BaseStats: map[AffixType]float64{ATMaxHP: 5}},
-		{ID: "base_gloves", Name: l.ItemLeatherGlove, Slot: SlotGloves, BaseStats: map[AffixType]float64{ATAgility: 3}},
-		{ID: "base_boots", Name: l.ItemLeatherBoot, Slot: SlotBoots, BaseStats: map[AffixType]float64{ATAgility: 3}},
-		{ID: "base_ring", Name: l.ItemIronRing, Slot: SlotRing1, BaseStats: map[AffixType]float64{ATIntellect: 2}},
-		{ID: "base_ring2", Name: l.ItemIronRing, Slot: SlotRing2, BaseStats: map[AffixType]float64{ATIntellect: 2}},
-		{ID: "base_neck", Name: l.ItemAmulet, Slot: SlotNeck, BaseStats: map[AffixType]float64{ATVitality: 2}},
+type equipmentBaseFile struct {
+	Version int        `json:"version"`
+	Bases   []ItemBase `json:"bases"`
+}
+
+//go:embed equipment_bases.json
+var equipmentBasesJSON []byte
+
+var equipmentBases equipmentBaseFile
+
+func init() {
+	if err := json.Unmarshal(equipmentBasesJSON, &equipmentBases); err != nil {
+		panic(fmt.Errorf("decode equipment bases: %w", err))
 	}
-}
-
-// BaseBySlot returns the item base for a given slot.
-func BaseBySlot(slot Slot) ItemBase {
-	bases := AllBases()
-	for _, b := range bases {
-		if b.Slot == slot {
-			return b
+	if equipmentBases.Version <= 0 {
+		panic("equipment data version must be positive")
+	}
+	ids := map[string]bool{}
+	counts := map[Slot]int{}
+	for _, base := range equipmentBases.Bases {
+		if base.ID == "" || base.Name == "" {
+			panic("equipment base id and name are required")
+		}
+		if ids[base.ID] {
+			panic("duplicate equipment base id: " + base.ID)
+		}
+		ids[base.ID] = true
+		counts[base.Slot]++
+	}
+	for _, slot := range AllSlots() {
+		if counts[slot] == 0 {
+			panic(fmt.Sprintf("equipment slot %d has no bases", slot))
 		}
 	}
-	return bases[0]
+}
+
+func EquipmentDataVersion() int {
+	return equipmentBases.Version
+}
+
+func AllBases() []ItemBase {
+	out := make([]ItemBase, len(equipmentBases.Bases))
+	copy(out, equipmentBases.Bases)
+	return out
+}
+
+func BasesBySlot(slot Slot) []ItemBase {
+	var out []ItemBase
+	for _, base := range equipmentBases.Bases {
+		if base.Slot == slot {
+			out = append(out, base)
+		}
+	}
+	return out
+}
+
+func BaseByID(id string) (ItemBase, bool) {
+	for _, base := range equipmentBases.Bases {
+		if base.ID == id {
+			return base, true
+		}
+	}
+	return ItemBase{}, false
+}
+
+func BaseBySlot(slot Slot) ItemBase {
+	bases := BasesBySlot(slot)
+	if len(bases) > 0 {
+		return bases[0]
+	}
+	return equipmentBases.Bases[0]
 }

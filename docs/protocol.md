@@ -137,7 +137,7 @@
 
 ### sync — 全量同步
 
-登录响应或转生后推送。包含账号、当前层数、魂点。
+登录响应或转生后推送。包含账号、当前层数、当前层小兵进度和魂点。
 
 ```json
 {
@@ -146,8 +146,52 @@
   "data": {
     "account": "hero",
     "floor": 1,
+    "floor_kills": 0,
+    "minions_total": 3,
+    "equipment_data_version": 1,
+	"legendary_data_version": 1,
     "souls": 0,
     "inventory": []
+  }
+}
+```
+
+### combat — 战斗事件
+
+每个服务端战斗 tick 推送一次，客户端据此播放攻击、受击、死亡和关卡切换动效。事件顺序早于同一场战斗产生的 `loot`、`bag` 和 `floor`。
+
+`enemy_kind` 为 `minion`、`guardian` 或 `boss`。每层先清理 3 个小兵，随后挑战守关敌人；每 5 层的守关敌人为 Boss。
+服务端会在一个 tick 内完成本次遭遇结算，并返回 `events` 逐击时间线，客户端只负责播放，不自行重算伤害。
+
+```json
+{
+  "t": "combat",
+  "data": {
+    "floor": 5,
+    "enemy_kind": "boss",
+    "win": true,
+    "player_power": 125.5,
+    "enemy_power": 117.6,
+    "minions_killed": 3,
+    "minions_total": 3,
+    "floor_advanced": true,
+    "player_start_hp": 260,
+    "enemy_start_hp": 194.1,
+    "player_start_shield": 30,
+    "player_end_hp": 208.5,
+    "enemy_end_hp": 0,
+    "events": [
+      {
+        "index": 1,
+        "actor": "player",
+        "kind": "hit",
+        "damage": 43.9,
+        "critical": false,
+        "player_hp": 260,
+        "enemy_hp": 150.2,
+        "player_shield": 30
+      }
+    ]
   }
 }
 ```
@@ -155,6 +199,8 @@
 ### bag — 背包全量
 
 推送背包中所有未穿戴装备。穿戴/卸下/分解/合成/重铸/强化/掉落后推送。
+`power_score` 是该装备在玩家当前构筑中相对空槽产生的权威战力贡献；同槽候选的分数差等于实际换装战力变化。`power_score_valid` 用于区分权威零分和旧客户端回退数据。
+固定传奇额外包含 `legendary_id`、效果说明、固定属性、全局战力倍率和 Boss 首通材料倍率。没有对应效果的字段会省略。
 
 ```json
 {
@@ -163,12 +209,20 @@
     "items": [
       {
         "uid": "eq_1",
-        "base_id": "iron_sword",
-        "name": "铁剑",
+		"base_id": "weapon_ember_axe",
+		"legendary_id": "legendary_ember_cleaver",
+		"legendary_description": "余烬吞噬战意，全面提升伤害。",
+		"legendary_bonuses": [
+		  { "type": "fire_dmg", "tier": 0, "value": 18 }
+		],
+		"legendary_power_bonus": 0.12,
+		"name": "焚城者之誓",
         "slot": 0,
-        "rarity": 2,
+		"rarity": 3,
         "upgrade": 3,
         "locked": false,
+        "power_score": 48.2,
+        "power_score_valid": true,
         "affixes": [
           { "type": "strength", "tier": 2, "value": 12.5 }
         ]
@@ -188,7 +242,7 @@
 
 ### loot — 掉落装备
 
-在线战斗胜利时推送单件掉落装备。随后紧跟 `bag` 推送刷新背包。
+击败守关敌人时推送单件掉落装备。随后紧跟 `bag` 推送刷新背包；小兵不会直接掉落整件装备。
 
 ```json
 {
@@ -297,6 +351,7 @@
 | `sync` | S→C | 全量同步（响应登录/转生） |
 | `bag` | S→C | 背包全量推送 |
 | `power` | S→C | 当前战力推送 |
+| `combat` | S→C | 权威战斗 tick 与小兵/守关进度 |
 | `loot` | S→C | 单件掉落装备推送 |
 | `floor` | S→C | 层数推进推送 |
 | `equip` | C→S | 穿戴请求 |

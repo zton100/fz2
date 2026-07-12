@@ -151,7 +151,7 @@ namespace EquipmentIdle.UI
                 case EquipmentBagFilter.Rare:
                     return eq.rarity >= 2;
                 case EquipmentBagFilter.Decompose:
-                    return !locked && eq.rarity <= 1 && delta <= 0f;
+                    return !locked && !HasEconomyAffix(eq) && eq.rarity <= 1 && delta <= 0f;
                 default:
                     return true;
             }
@@ -160,6 +160,7 @@ namespace EquipmentIdle.UI
         public static float Score(EquipmentDTO eq)
         {
             if (eq == null) return 0f;
+            if (eq.power_score_valid) return eq.power_score;
             float score = (eq.rarity + 1) * 100f + eq.upgrade * 20f;
             if (eq.affixes == null) return score;
             foreach (var affix in eq.affixes)
@@ -170,11 +171,36 @@ namespace EquipmentIdle.UI
             return score;
         }
 
+        public static bool HasEconomyAffix(EquipmentDTO eq)
+        {
+			if (eq == null) return false;
+			if (ContainsEconomyAffix(eq.affixes)) return true;
+			return ContainsEconomyAffix(eq.legendary_bonuses);
+		}
+
+		private static bool ContainsEconomyAffix(AffixData[] affixes)
+		{
+			if (affixes == null) return false;
+			foreach (var affix in affixes)
+            {
+                if (affix == null) continue;
+                if (affix.type == "drop_rate" || affix.type == "resource_gain") return true;
+            }
+            return false;
+        }
+
+		public static string IconResourceKey(EquipmentDTO eq)
+		{
+			if (eq == null) return "";
+			if (!string.IsNullOrEmpty(eq.legendary_id)) return eq.legendary_id;
+			return eq.base_id ?? "";
+		}
+
         public static string FormatAffix(AffixData affix)
         {
             if (affix == null) return "";
             string name = AffixName(affix.type);
-            if (affix.type == "crit_rate" || affix.type == "attack_speed")
+            if (IsPercentAffix(affix.type))
             {
                 return $"{name} +{affix.value * 100f:F1}%";
             }
@@ -189,9 +215,10 @@ namespace EquipmentIdle.UI
             string text = $"{eq.name} +{eq.upgrade}\n";
             text += $"部位：{SlotName(eq.slot)}\n";
             text += $"品质：{RarityName(eq.rarity)}\n";
-            text += $"评分：{score:F0}\n";
+            text += $"战力贡献：{score:F0}\n";
             if (current != null) text += $"对比：{delta:+0;-0;0}\n";
             text += "\n";
+			text += BuildLegendaryEffect(eq);
 
             if (eq.affixes == null || eq.affixes.Length == 0)
             {
@@ -208,12 +235,29 @@ namespace EquipmentIdle.UI
             return text;
         }
 
+		public static string BuildLegendaryEffect(EquipmentDTO eq)
+		{
+			if (eq == null || string.IsNullOrEmpty(eq.legendary_id)) return "";
+			string text = "传奇特效：\n";
+			if (!string.IsNullOrEmpty(eq.legendary_description)) text += eq.legendary_description + "\n";
+			if (eq.legendary_bonuses != null)
+			{
+				foreach (var bonus in eq.legendary_bonuses)
+				{
+					text += "固定加成：" + FormatAffix(bonus) + "\n";
+				}
+			}
+			if (eq.legendary_power_bonus > 0f) text += $"全局战力 +{eq.legendary_power_bonus * 100f:F1}%\n";
+			if (eq.boss_reward_bonus > 0f) text += $"守关首通材料 +{eq.boss_reward_bonus * 100f:F1}%\n";
+			return text + "\n";
+		}
+
         public static string BuildSelectedSummary(EquipmentDTO eq)
         {
             if (eq == null) return "选择一件装备查看属性和操作。";
             return $"{eq.name} +{eq.upgrade}\n"
                 + $"{SlotName(eq.slot)} · {RarityName(eq.rarity)}\n"
-                + $"评分 {Score(eq):F0}\n"
+                + $"战力贡献 {Score(eq):F0}\n"
                 + BuildAffixSummary(eq);
         }
 
@@ -222,7 +266,7 @@ namespace EquipmentIdle.UI
             if (current == null) return "当前部位未穿戴装备。\n穿戴后会直接补齐新部位。";
             return $"{current.name} +{current.upgrade}\n"
                 + $"{SlotName(current.slot)} · {RarityName(current.rarity)}\n"
-                + $"评分 {Score(current):F0}\n"
+                + $"战力贡献 {Score(current):F0}\n"
                 + BuildAffixSummary(current);
         }
 
@@ -233,7 +277,7 @@ namespace EquipmentIdle.UI
 
             float selectedScore = Score(selected);
             float currentScore = Score(current);
-            rows.Add(new EquipmentComparisonRow("评分", $"{selectedScore:F0}", current != null ? $"{currentScore:F0}" : "-", FormatSigned(selectedScore - currentScore), selectedScore - currentScore));
+            rows.Add(new EquipmentComparisonRow("战力贡献", $"{selectedScore:F0}", current != null ? $"{currentScore:F0}" : "-", FormatSigned(selectedScore - currentScore), selectedScore - currentScore));
             rows.Add(new EquipmentComparisonRow("强化", $"+{selected.upgrade}", current != null ? $"+{current.upgrade}" : "-", FormatSigned(selected.upgrade - (current != null ? current.upgrade : 0)), selected.upgrade - (current != null ? current.upgrade : 0)));
             rows.Add(new EquipmentComparisonRow("品质", RarityName(selected.rarity), current != null ? RarityName(current.rarity) : "-", FormatSigned(selected.rarity - (current != null ? current.rarity : -1)), selected.rarity - (current != null ? current.rarity : -1)));
 
@@ -259,7 +303,7 @@ namespace EquipmentIdle.UI
             float beforeTargetScore = Score(target);
             float inheritedTargetScore = ProjectedScoreWithUpgrade(target, source.upgrade);
             rows.Add(new EquipmentComparisonRow(
-                "继承后评分",
+                "继承后贡献",
                 $"{inheritedTargetScore:F0}",
                 $"{beforeTargetScore:F0}",
                 FormatSigned(inheritedTargetScore - beforeTargetScore),
@@ -573,7 +617,7 @@ namespace EquipmentIdle.UI
             string cleanupLine = weakCount > 0
                 ? $"可清理弱装 {weakCount} 件；分解强化装会返还部分基础材料。"
                 : equipBestDelta > 0f
-                    ? $"一键穿戴预计评分 +{equipBestDelta:F0}。"
+                    ? $"一键穿戴预计战力贡献 +{equipBestDelta:F0}。"
                     : "当前没有明显弱装；替换旧强化装后可分解回收部分材料。";
 
             return new CraftPlanState
@@ -606,7 +650,7 @@ namespace EquipmentIdle.UI
             }
             float beforeTargetScore = Score(target);
             float inheritedTargetScore = ProjectedScoreWithUpgrade(target, source.upgrade);
-            return $"继承强化：{source.name} +{source.upgrade} -> {target.name} +{source.upgrade}，评分 {beforeTargetScore:F0}->{inheritedTargetScore:F0}（+{inheritedTargetScore - beforeTargetScore:F0}），旧装回到 +{target.upgrade}。";
+            return $"继承强化：{source.name} +{source.upgrade} -> {target.name} +{source.upgrade}，战力贡献 {beforeTargetScore:F0}->{inheritedTargetScore:F0}（+{inheritedTargetScore - beforeTargetScore:F0}），旧装回到 +{target.upgrade}。";
         }
 
         public static ReincarnationPlanState BuildReincarnationPlan(int floor, int souls, int maxFloor, bool canReincarn, string nextTalentName)
@@ -647,7 +691,7 @@ namespace EquipmentIdle.UI
             if (bag == null) return candidates;
             foreach (var eq in bag)
             {
-                if (eq == null || eq.rarity > 1) continue;
+                if (eq == null || eq.rarity > 1 || HasEconomyAffix(eq)) continue;
                 float delta = Score(eq) - Score(CurrentForSlot(currentBySlot, eq.slot));
                 if (delta <= 0f) candidates.Add(eq);
             }
@@ -736,7 +780,7 @@ namespace EquipmentIdle.UI
             if (Math.Abs(delta) < 0.0001f) return "持平";
             string prefix = delta > 0f ? "↑ +" : "↓ ";
             float value = delta;
-            if (type == "crit_rate" || type == "attack_speed")
+            if (IsPercentAffix(type))
             {
                 return $"{prefix}{value * 100f:F1}%";
             }
@@ -745,7 +789,7 @@ namespace EquipmentIdle.UI
 
         private static string FormatComparableValue(string type, float value)
         {
-            if (type == "crit_rate" || type == "attack_speed")
+            if (IsPercentAffix(type))
             {
                 return $"{value * 100f:F1}%";
             }
@@ -775,6 +819,28 @@ namespace EquipmentIdle.UI
             if (targetLevel < 0) return 0;
             if (targetLevel >= costs.Length) return costs[costs.Length - 1];
             return costs[targetLevel];
+        }
+
+        private static bool IsPercentAffix(string type)
+        {
+            switch (type)
+            {
+                case "crit_rate":
+                case "crit_damage":
+                case "attack_speed":
+                case "lifesteal":
+                case "accuracy":
+                case "evasion":
+                case "drop_rate":
+                case "exp_bonus":
+                case "move_speed":
+                case "cooldown_red":
+                case "reflect":
+                case "resource_gain":
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         private static string AffixName(string type)

@@ -11,17 +11,51 @@ import (
 // PowerFunc 计算玩家战力的函数（默认用 reincarnation.ComputePlayerPower，含 damage 天赋）。
 type PowerFunc func(*model.Player) float64
 
+// EncounterKind identifies the enemy currently blocking floor progression.
+type EncounterKind string
+
+const (
+	EncounterMinion   EncounterKind = "minion"
+	EncounterGuardian EncounterKind = "guardian"
+	EncounterBoss     EncounterKind = "boss"
+	MinionsPerFloor                 = 3
+)
+
+// TickResult describes the observable outcome of one combat tick.
+type TickResult struct {
+	Win               bool
+	EnemyKind         EncounterKind
+	Floor             int
+	PlayerPower       float64
+	EnemyPower        float64
+	MinionsKilled     int
+	MinionsTotal      int
+	FloorAdvanced     bool
+	PlayerStartHP     float64
+	EnemyStartHP      float64
+	PlayerStartShield float64
+	EnemyStartShield  float64
+	PlayerEndHP       float64
+	EnemyEndHP        float64
+	PlayerEndShield   float64
+	EnemyEndShield    float64
+	Events            []combat.HitEvent
+}
+
 // Runner 单玩家地下城推进器。
 type Runner struct {
 	player  *model.Player
 	powerFn PowerFunc
 	drop    *loot.DropTable
+	dropMod *loot.DropModifier
 	// LootCallback 每次掉落时回调（用于 ws 层 push 给客户端）。
 	LootCallback func(eq *model.Equipment)
 	// FloorCallback 每次推进层数时回调。
 	FloorCallback func(newFloor int)
 	// BossRewardCallback 首次击败历史最高 Boss 层时回调。
 	BossRewardCallback func(floor int, amount int)
+	// CombatCallback emits the authoritative tick before loot/floor callbacks.
+	CombatCallback func(result TickResult)
 }
 
 // NewRunner 创建推进器。powerFn 传 nil 时默认用统一战力函数（含 damage 天赋）。
@@ -32,36 +66,96 @@ func NewRunner(player *model.Player, powerFn PowerFunc, drop *loot.DropTable) *R
 	return &Runner{player: player, powerFn: powerFn, drop: drop}
 }
 
-// Tick 执行一次战斗 tick：算战力 → 战斗 → 胜则掉落+推进 → 负则停留。
-func (r *Runner) Tick() {
+// NewRunnerWithDropModifier creates a runner with a fixed drop modifier. It is
+// used by offline settlement, which snapshots talent bonuses at login time.
+func NewRunnerWithDropModifier(player *model.Player, powerFn PowerFunc, drop *loot.DropTable, mod loot.DropModifier) *Runner {
+	runner := NewRunner(player, powerFn, drop)
+	runner.dropMod = &mod
+	return runner
+}
+
+// Tick executes one combat tick. Players clear minions before fighting the
+// floor guardian; every fifth guardian is a boss.
+func (r *Runner) Tick() TickResult {
 	playerPower := r.powerFn(r.player)
 	monster := data.MonsterAt(r.player.Floor)
-	result := combat.Battle(playerPower, monster.Power)
+	kind := EncounterGuardian
+	monsterPower := monster.Power
+	if r.player.FloorKills < MinionsPerFloor {
+		kind = EncounterMinion
+		monsterPower *= 0.5
+	} else if monster.IsBoss {
+		kind = EncounterBoss
+	}
+	outcome := TickResult{
+		EnemyKind:     kind,
+		Floor:         r.player.Floor,
+		PlayerPower:   playerPower,
+		EnemyPower:    monsterPower,
+		MinionsKilled: r.player.FloorKills,
+		MinionsTotal:  MinionsPerFloor,
+	}
+	result := combat.ResolveBattle(combat.BattleInput{
+		PlayerPower: playerPower,
+		EnemyPower:  monsterPower,
+		PlayerStats: combat.AggregateStats(r.player.EquippedList()),
+	})
+	outcome.Win = result.Win
+	outcome.PlayerStartHP = result.PlayerStartHP
+	outcome.EnemyStartHP = result.EnemyStartHP
+	outcome.PlayerStartShield = result.PlayerStartShield
+	outcome.EnemyStartShield = result.EnemyStartShield
+	outcome.PlayerEndHP = result.PlayerEndHP
+	outcome.EnemyEndHP = result.EnemyEndHP
+	outcome.PlayerEndShield = result.PlayerEndShield
+	outcome.EnemyEndShield = result.EnemyEndShield
+	outcome.Events = result.Events
 	if !result.Win {
-		return
+		r.emitCombat(outcome)
+		return outcome
 	}
+	if kind == EncounterMinion {
+		r.player.FloorKills++
+		outcome.MinionsKilled = r.player.FloorKills
+		r.emitCombat(outcome)
+		return outcome
+	}
+	outcome.FloorAdvanced = true
+	r.emitCombat(outcome)
 	// 胜利：掉落装备（使用 drop/quality 天赋加成）
-	mod := loot.DropModifier{
-		DropBonus:    reincarnation.DropBonus(r.player),
-		QualityFloor: reincarnation.QualityFloor(r.player),
+	mod := r.dropMod
+	if mod == nil {
+		mod = &loot.DropModifier{
+			DropBonus:    reincarnation.DropBonus(r.player),
+			QualityFloor: reincarnation.QualityFloor(r.player),
+		}
 	}
-	eq := r.drop.DropRandomSlotModified(r.player.Floor, mod)
+	eq := r.drop.DropRandomSlotModified(r.player.Floor, *mod)
 	if eq != nil {
 		r.player.AddEquipment(eq)
 		if r.LootCallback != nil {
 			r.LootCallback(eq)
 		}
 	}
-	if reward := BossFirstClearReward(r.player.Floor, r.player.MaxFloor); reward > 0 {
+	if baseReward := BossFirstClearReward(r.player.Floor, r.player.MaxFloor); baseReward > 0 {
+		reward := reincarnation.ApplyBossReward(r.player, baseReward)
 		r.player.AddMaterial(data.MatBase, reward)
 		if r.BossRewardCallback != nil {
 			r.BossRewardCallback(r.player.Floor, reward)
 		}
 	}
 	// 推进下一层（同时更新 MaxFloor）
+	r.player.FloorKills = 0
 	reincarnation.AdvanceFloor(r.player)
 	if r.FloorCallback != nil {
 		r.FloorCallback(r.player.Floor)
+	}
+	return outcome
+}
+
+func (r *Runner) emitCombat(result TickResult) {
+	if r.CombatCallback != nil {
+		r.CombatCallback(result)
 	}
 }
 

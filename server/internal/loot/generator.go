@@ -1,4 +1,4 @@
-﻿package loot
+package loot
 
 import (
 	"crypto/rand"
@@ -11,29 +11,56 @@ import (
 
 // Generator 装备生成器。注入 *mathrand.Rand 便于测试确定性。
 type Generator struct {
-	rng  *mathrand.Rand
-	pool []data.AffixDef
+	rng             *mathrand.Rand
+	pool            []data.AffixDef
+	baseCursor      map[data.Slot]int
+	legendaryCursor map[data.Slot]int
 }
 
 // NewGenerator 创建生成器。
 func NewGenerator(rng *mathrand.Rand) *Generator {
 	return &Generator{
-		rng:  rng,
-		pool: data.BuildAffixPool(),
+		rng:             rng,
+		pool:            data.BuildAffixPool(),
+		baseCursor:      map[data.Slot]int{},
+		legendaryCursor: map[data.Slot]int{},
 	}
 }
 
 // Generate 按槽位、稀有度和楼层生成一件装备实例。
 func (g *Generator) Generate(slot data.Slot, rarity data.Rarity, floor int) *model.Equipment {
+	bases := data.BasesBySlot(slot)
 	base := data.BaseBySlot(slot)
+	legendaryID := ""
+	name := ""
+	if rarity == data.RarityLegendary {
+		defs := data.LegendariesBySlot(slot)
+		if len(defs) > 0 {
+			def := defs[g.legendaryCursor[slot]%len(defs)]
+			g.legendaryCursor[slot]++
+			legendaryID = def.ID
+			name = def.Name
+			if selected, ok := data.BaseByID(def.BaseID); ok {
+				base = selected
+			}
+		}
+	} else if len(bases) > 0 {
+		index := g.baseCursor[slot] % len(bases)
+		base = bases[index]
+		g.baseCursor[slot]++
+	}
+	if name == "" {
+		name = base.Name
+	}
 	eq := &model.Equipment{
-		UID:       nextUID(),
-		BaseID:    base.ID,
-		Name:      base.Name,
-		Slot:      slot,
-		Rarity:    rarity,
-		BaseStats: copyStats(base.BaseStats),
-		Upgrade:   0,
+		UID:         nextUID(),
+		BaseID:      base.ID,
+		LegendaryID: legendaryID,
+		Name:        name,
+		Slot:        slot,
+		Rarity:      rarity,
+		BaseStats:   copyStats(base.BaseStats),
+		Upgrade:     0,
 	}
 	rule := data.RarityAffixCount[rarity]
 	prefixes := g.filteredPool(data.PosPrefix, floor)
@@ -103,4 +130,3 @@ func copyStats(src map[data.AffixType]float64) map[data.AffixType]float64 {
 	}
 	return dst
 }
-

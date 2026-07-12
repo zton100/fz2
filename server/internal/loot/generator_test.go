@@ -1,4 +1,4 @@
-﻿package loot
+package loot
 
 import (
 	mathrand "math/rand"
@@ -61,6 +61,57 @@ func TestGenerate_UIDUnique(t *testing.T) {
 			t.Fatalf("duplicate UID: %s", eq.UID)
 		}
 		uids[eq.UID] = true
+	}
+}
+
+func TestGenerate_SameSlotUsesMultipleItemBases(t *testing.T) {
+	g := NewGenerator(mathrand.New(mathrand.NewSource(17)))
+	baseIDs := map[string]bool{}
+	for i := 0; i < 100; i++ {
+		baseIDs[g.Generate(data.SlotWeapon, data.RarityCommon, 10).BaseID] = true
+	}
+	if len(baseIDs) < 3 {
+		t.Fatalf("generated weapon base ids = %v, want at least 3 distinct bases", baseIDs)
+	}
+}
+
+func TestGenerate_LegendaryUsesFixedDefinitionForSlot(t *testing.T) {
+	g := NewGenerator(mathrand.New(mathrand.NewSource(23)))
+	eq := g.Generate(data.SlotWeapon, data.RarityLegendary, 80)
+
+	if eq.LegendaryID == "" {
+		t.Fatal("legendary drop has no fixed legendary identity")
+	}
+	def, ok := data.LegendaryByID(eq.LegendaryID)
+	if !ok {
+		t.Fatalf("legendary id %q has no data definition", eq.LegendaryID)
+	}
+	if eq.Name != def.Name || eq.BaseID != def.BaseID || eq.Slot != def.Slot {
+		t.Fatalf("generated legendary = %+v, want definition %+v", eq, def)
+	}
+}
+
+func TestGenerate_LegendaryRotationReachesEveryDefinition(t *testing.T) {
+	g := NewGenerator(mathrand.New(mathrand.NewSource(29)))
+	for _, slot := range data.AllSlots() {
+		want := data.LegendariesBySlot(slot)
+		seen := map[string]bool{}
+		for range want {
+			seen[g.Generate(slot, data.RarityLegendary, 80).LegendaryID] = true
+		}
+		for _, def := range want {
+			if !seen[def.ID] {
+				t.Fatalf("slot %d never generated legendary %q", slot, def.ID)
+			}
+		}
+	}
+}
+
+func TestGenerate_ArtifactDoesNotBorrowLegendaryIdentity(t *testing.T) {
+	g := NewGenerator(mathrand.New(mathrand.NewSource(31)))
+	eq := g.Generate(data.SlotWeapon, data.RarityArtifact, 120)
+	if eq.LegendaryID != "" {
+		t.Fatalf("artifact borrowed legendary id %q", eq.LegendaryID)
 	}
 }
 

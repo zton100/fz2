@@ -65,6 +65,7 @@ go run ./cmd/verifyclient
 ```bash
 ./scripts/verify-flow.sh
 ```
+该流程同时校验 40 个装备基底和 12 件传奇装备的图标覆盖率。
 
 客户端自动化验证（需 Unity Editor）：
 ```bash
@@ -82,16 +83,18 @@ Unity -batchmode -projectPath client -executeMethod PlayModeRunner.Run
 - **客户端**：Unity 6 LTS (C#)，零第三方依赖
   - WebSocket：.NET 内置 `System.Net.WebSockets.ClientWebSocket`
   - JSON：Unity 内置 `JsonUtility` + 轻量手写解析
-  - UI：IMGUI (OnGUI)，无需 uGUI 包
+  - UI：UI Toolkit，运行时 C# 组件构建
 - **通讯**：WebSocket 长连接，JSON 信封 `{ "t", "id", "data" }`
-- **持久化**：JSON 文件存档（原子写入），关键操作后自动保存 + 5 分钟定期保存
+- **持久化**：JSON 文件存档（原子写入），关键操作后自动保存 + 30 秒定期保存
 
 > 注：原计划用 NativeWebSocket + Newtonsoft.Json，因当前环境无法访问 packages.unity.com 与 github.com，改为零第三方依赖方案。功能等价。
 
 ## 核心系统
 
-- **战斗**：每 2 秒自动战斗，玩家战力 > 怪物战力即胜，推进下一层
-- **装备**：8 槽位，5 稀有度，23 种词缀 × 5 Tier，强化 +0~+10
+- **战斗**：每 2 秒自动战斗；每层先清理 3 个小兵，再挑战守关精英，每 5 层为 Boss
+- **战斗表现**：服务端 `combat` 事件驱动攻击突进、受击、飘字、死亡和关卡切换反馈
+- **装备**：版本化数据包含 8 槽位 × 5 基底、12 件固定传奇及 52 个独立图标；5 稀有度，20 种当前生效词缀 × 5 Tier，强化 +0~+10；另保留 3 种旧存档兼容词缀
+- **传奇**：固定名称、基底与效果，覆盖战斗倍率、固定属性、掉落经济和 Boss 首通材料；在线、离线和权威装备评分共用同一效果定义
 - **养成**：分解获材料 → 合成新装备 → 重铸词缀 → 强化属性
 - **锁定**：背包装备锁定状态服务端持久化，锁定后禁止手动/一键分解
 - **离线**：断线后自动结算，8h 封顶，模拟战斗+掉落+推层

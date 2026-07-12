@@ -5,6 +5,7 @@ import (
 
 	"equipment-idle-server/internal/data"
 	"equipment-idle-server/internal/model"
+	"equipment-idle-server/internal/reincarnation"
 )
 
 // Decompose 分解一件装备：返回产出材料并加入玩家库存。
@@ -23,7 +24,9 @@ func Decompose(p *model.Player, eq *model.Equipment) (map[data.MaterialType]int,
 		yield[mt]++
 	}
 	for mt, n := range yield {
-		p.AddMaterial(mt, n)
+		adjusted := reincarnation.ApplyResourceGain(p, n)
+		yield[mt] = adjusted
+		p.AddMaterial(mt, adjusted)
 	}
 	return yield, nil
 }

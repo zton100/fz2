@@ -16,6 +16,7 @@ func TestStore_SaveAndLoad_BasicFields(t *testing.T) {
 	// Create player with specific data
 	p := s.LoadOrCreate("hero")
 	p.Floor = 12
+	p.FloorKills = 2
 	p.Souls = 3
 	p.MaxFloor = 20
 	p.Talents["damage"] = 2
@@ -32,6 +33,9 @@ func TestStore_SaveAndLoad_BasicFields(t *testing.T) {
 
 	if p2.Floor != 12 {
 		t.Errorf("Floor = %d, want 12", p2.Floor)
+	}
+	if p2.FloorKills != 2 {
+		t.Errorf("FloorKills = %d, want 2", p2.FloorKills)
 	}
 	if p2.Souls != 3 {
 		t.Errorf("Souls = %d, want 3", p2.Souls)

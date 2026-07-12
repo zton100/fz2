@@ -7,7 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"equipment-idle-server/internal/combat"
 	"equipment-idle-server/internal/data"
+	"equipment-idle-server/internal/dungeon"
 	"equipment-idle-server/internal/model"
 	"equipment-idle-server/internal/protocol"
 	"equipment-idle-server/internal/reincarnation"
@@ -38,6 +40,12 @@ func TestHandleLogin_NewAccount_SendsSync(t *testing.T) {
 		json.Unmarshal(got.Data, &sd)
 		if sd.Account != "hero" || sd.Floor != 1 {
 			t.Fatalf("sync data = %+v, want account=hero floor=1", sd)
+		}
+		if sd.EquipmentDataVersion != data.EquipmentDataVersion() {
+			t.Fatalf("equipment data version = %d, want %d", sd.EquipmentDataVersion, data.EquipmentDataVersion())
+		}
+		if sd.LegendaryDataVersion != data.LegendaryDataVersion() {
+			t.Fatalf("legendary data version = %d, want %d", sd.LegendaryDataVersion, data.LegendaryDataVersion())
 		}
 	default:
 		t.Fatal("no sync message sent")
@@ -73,6 +81,100 @@ func TestHandleLogin_NewAccount_GrantsStarterLoadout(t *testing.T) {
 	}
 	if len(pushedBag.Equipped) != len(data.AllSlots()) {
 		t.Fatalf("pushed equipped count = %d, want %d", len(pushedBag.Equipped), len(data.AllSlots()))
+	}
+}
+
+func TestPushBagIncludesAuthoritativeProjectedPower(t *testing.T) {
+	store := save.NewMemoryStore()
+	hub := NewHub(store)
+	sess := &Session{Account: "hero", Send: make(chan []byte, 8)}
+	store.WithPlayer("hero", func(p *model.Player) {
+		p.Equipped[data.SlotWeapon] = &model.Equipment{
+			UID: "current", Slot: data.SlotWeapon,
+			BaseStats: map[data.AffixType]float64{data.ATStrength: 10},
+		}
+		p.EquipBag = append(p.EquipBag, &model.Equipment{
+			UID: "upgrade", Slot: data.SlotWeapon,
+			BaseStats: map[data.AffixType]float64{data.ATStrength: 20},
+		})
+		hub.pushBag(sess, p)
+	})
+
+	var bag protocol.BagData
+	if !readEnvelope(sess.Send, protocol.TypeBag, &bag) {
+		t.Fatal("no bag message sent")
+	}
+	if len(bag.Items) != 1 || len(bag.Equipped) != 1 {
+		t.Fatalf("bag = %+v, want one item and one equipped item", bag)
+	}
+	if bag.Items[0].PowerScore <= bag.Equipped[0].PowerScore {
+		t.Fatalf("upgrade power score = %.1f, want above current %.1f", bag.Items[0].PowerScore, bag.Equipped[0].PowerScore)
+	}
+}
+
+func TestPushBagIncludesLegendaryIdentityAndDescription(t *testing.T) {
+	store := save.NewMemoryStore()
+	hub := NewHub(store)
+	sess := &Session{Account: "hero", Send: make(chan []byte, 8)}
+	store.WithPlayer("hero", func(p *model.Player) {
+		p.EquipBag = append(p.EquipBag, &model.Equipment{
+			UID:         "legendary",
+			LegendaryID: "legendary_gale_grasp",
+			Slot:        data.SlotGloves,
+			Rarity:      data.RarityLegendary,
+			BaseStats:   map[data.AffixType]float64{},
+		})
+		hub.pushBag(sess, p)
+	})
+
+	var bag protocol.BagData
+	if !readEnvelope(sess.Send, protocol.TypeBag, &bag) || len(bag.Items) != 1 {
+		t.Fatal("no legendary bag item sent")
+	}
+	item := bag.Items[0]
+	if item.LegendaryID != "legendary_gale_grasp" || item.LegendaryDescription == "" {
+		t.Fatalf("legendary DTO = %+v, want identity and description", item)
+	}
+}
+
+func TestPushCombatIncludesHitTimeline(t *testing.T) {
+	store := save.NewMemoryStore()
+	hub := NewHub(store)
+	sess := &Session{Account: "hero", Send: make(chan []byte, 8)}
+
+	hub.pushCombat(sess, dungeon.TickResult{
+		Win:               true,
+		EnemyKind:         dungeon.EncounterMinion,
+		Floor:             3,
+		PlayerPower:       120,
+		EnemyPower:        60,
+		MinionsKilled:     1,
+		MinionsTotal:      dungeon.MinionsPerFloor,
+		PlayerStartHP:     220,
+		EnemyStartHP:      148,
+		PlayerStartShield: 30,
+		PlayerEndHP:       210,
+		EnemyEndHP:        0,
+		Events: []combat.HitEvent{{
+			Index:        1,
+			Actor:        combat.ActorPlayer,
+			Kind:         combat.EventHit,
+			Damage:       42,
+			PlayerHP:     220,
+			EnemyHP:      106,
+			PlayerShield: 30,
+		}},
+	})
+
+	var cd protocol.CombatData
+	if !readEnvelope(sess.Send, protocol.TypeCombat, &cd) {
+		t.Fatal("no combat message sent")
+	}
+	if cd.PlayerStartHP != 220 || cd.PlayerStartShield != 30 || len(cd.Events) != 1 {
+		t.Fatalf("combat data = %+v, want hp, shield and events", cd)
+	}
+	if cd.Events[0].Actor != combat.ActorPlayer || cd.Events[0].Damage != 42 {
+		t.Fatalf("combat event = %+v, want player hit", cd.Events[0])
 	}
 }
 

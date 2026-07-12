@@ -39,6 +39,7 @@ func Reincarnate(p *model.Player) error {
 	}
 	// 重置进度
 	p.Floor = 1
+	p.FloorKills = 0
 	p.EquipBag = []*model.Equipment{}
 	p.Equipped = map[data.Slot]*model.Equipment{}
 	p.Locked = map[string]bool{}
@@ -79,7 +80,7 @@ func DamageBonus(p *model.Player) float64 {
 
 // DropBonus 掉落率加成（0.03/级）。
 func DropBonus(p *model.Player) float64 {
-	return 0.03 * float64(p.Talents["drop"])
+	return 0.03*float64(p.Talents["drop"]) + EquipmentStatTotal(p, data.ATDropRate)
 }
 
 // OfflineGainBonus 离线收益加成（0.10/级）。

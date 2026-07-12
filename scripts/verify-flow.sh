@@ -16,7 +16,8 @@ trap cleanup EXIT
 
 cd "$ROOT/server"
 go run ./cmd/smokebalance
-FZ2_ADDR="$FZ2_ADDR" go run ./cmd/server >"$SERVER_LOG" 2>&1 &
+"$ROOT/scripts/verify-equipment-icons.sh"
+FZ2_ADDR="$FZ2_ADDR" FZ2_BATTLE_INTERVAL="${FZ2_BATTLE_INTERVAL:-25ms}" go run ./cmd/server >"$SERVER_LOG" 2>&1 &
 SERVER_PID=$!
 
 for _ in {1..40}; do

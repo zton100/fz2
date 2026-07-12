@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"equipment-idle-server/internal/data"
+	"equipment-idle-server/internal/dungeon"
 	"equipment-idle-server/internal/protocol"
 
 	"github.com/gorilla/websocket"
@@ -36,6 +37,10 @@ type verifyState struct {
 	bag               []protocol.EquipmentDTO
 	equipped          []protocol.EquipmentDTO
 	messageCounts     map[string]int
+	minionProgress    map[int]int
+	sawMinion         bool
+	sawGuardian       bool
+	sawBoss           bool
 }
 
 const (
@@ -57,8 +62,9 @@ func main() {
 	}
 	account := fmt.Sprintf("verifyhero_%d", time.Now().UnixNano())
 	st := verifyState{
-		account:       account,
-		messageCounts: map[string]int{},
+		account:        account,
+		messageCounts:  map[string]int{},
+		minionProgress: map[int]int{},
 	}
 
 	conn, _, err := websocket.DefaultDialer.Dial(serverURL, nil)
@@ -91,7 +97,7 @@ func main() {
 		if err := handleMessage(conn, &st, env); err != nil {
 			log.Fatal(err)
 		}
-		if st.transferDone && st.reincarnSynced && st.postReincEquipped == len(data.AllSlots()) {
+		if st.transferDone && st.reincarnSynced && st.postReincEquipped == len(data.AllSlots()) && st.sawMinion && st.sawGuardian && st.sawBoss {
 			printSummary(st)
 			fmt.Println("VERIFY_OK: login, starter loadout, battle loot, transfer upgrade, decompose old gear, floor 10, and reincarnation flow passed")
 			return
@@ -133,6 +139,37 @@ func handleMessage(conn *websocket.Conn, st *verifyState, env protocol.Envelope)
 			return err
 		}
 		st.power = pd.Power
+	case protocol.TypeCombat:
+		var cd protocol.CombatData
+		if err := json.Unmarshal(env.Data, &cd); err != nil {
+			return err
+		}
+		if cd.MinionsKilled < 0 || cd.MinionsKilled > cd.MinionsTotal {
+			return fmt.Errorf("VERIFY_FAIL: invalid minion progress %+v", cd)
+		}
+		if cd.PlayerStartHP <= 0 || cd.EnemyStartHP <= 0 || len(cd.Events) == 0 {
+			return fmt.Errorf("VERIFY_FAIL: combat missing authoritative hp or events %+v", cd)
+		}
+		firstEvent := cd.Events[0]
+		if firstEvent.Actor == "" || firstEvent.Kind == "" || firstEvent.Damage <= 0 {
+			return fmt.Errorf("VERIFY_FAIL: invalid combat event %+v", firstEvent)
+		}
+		switch cd.EnemyKind {
+		case string(dungeon.EncounterMinion):
+			st.sawMinion = true
+			if cd.MinionsKilled > st.minionProgress[cd.Floor] {
+				st.minionProgress[cd.Floor] = cd.MinionsKilled
+			}
+		case string(dungeon.EncounterGuardian), string(dungeon.EncounterBoss):
+			if st.minionProgress[cd.Floor] < cd.MinionsTotal {
+				return fmt.Errorf("VERIFY_FAIL: guardian arrived before minions cleared: %+v", cd)
+			}
+			if cd.EnemyKind == string(dungeon.EncounterBoss) {
+				st.sawBoss = true
+			} else {
+				st.sawGuardian = true
+			}
+		}
 	case protocol.TypeLoot:
 		st.lootCount++
 	case protocol.TypeFloor:
@@ -304,8 +341,8 @@ func mustMarshal(v interface{}) json.RawMessage {
 }
 
 func printSummary(st verifyState) {
-	fmt.Printf("[summary] account=%s floor=%d power=%.1f loot=%d initial_equipped=%d transfer_done=%v transfer_phase=%s source=%s target=%s post_reinc_equipped=%d reincarn_sent=%v reincarn_synced=%v\n",
-		st.account, st.floor, st.power, st.lootCount, st.initialEquipped, st.transferDone, st.transferPhase, st.sourceUID, st.targetUID, st.postReincEquipped, st.reincarnSent, st.reincarnSynced)
+	fmt.Printf("[summary] account=%s floor=%d power=%.1f loot=%d initial_equipped=%d transfer_done=%v transfer_phase=%s source=%s target=%s post_reinc_equipped=%d reincarn_sent=%v reincarn_synced=%v minion=%v guardian=%v boss=%v\n",
+		st.account, st.floor, st.power, st.lootCount, st.initialEquipped, st.transferDone, st.transferPhase, st.sourceUID, st.targetUID, st.postReincEquipped, st.reincarnSent, st.reincarnSynced, st.sawMinion, st.sawGuardian, st.sawBoss)
 	fmt.Println("--- message type counts ---")
 	for t, c := range st.messageCounts {
 		fmt.Printf("%s: %d\n", t, c)

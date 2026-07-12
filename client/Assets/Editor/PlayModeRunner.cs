@@ -169,6 +169,11 @@ public static class PlayModeRunner
         texture.ReadPixels(new Rect(0, 0, _visualCaptureTexture.width, _visualCaptureTexture.height), 0, 0);
         texture.Apply();
         RenderTexture.active = previous;
+		if (!HasVisualVariation(texture.GetPixels32()))
+		{
+			UnityEngine.Object.DestroyImmediate(texture);
+			throw new Exception("capture is blank or single-color: " + tabName);
+		}
 
         string path = Path.Combine(_visualCaptureDirectory, tabName.ToLowerInvariant() + ".png");
         File.WriteAllBytes(path, texture.EncodeToPNG());
@@ -177,6 +182,23 @@ public static class PlayModeRunner
             throw new Exception("capture missing or empty: " + tabName);
         Debug.Log("[PlayModeRunner] captured " + path);
     }
+
+	private static bool HasVisualVariation(Color32[] pixels)
+	{
+		if (pixels == null || pixels.Length == 0) return false;
+		int minLuminance = 255;
+		int maxLuminance = 0;
+		for (int i = 0; i < pixels.Length; i += 97)
+		{
+			Color32 pixel = pixels[i];
+			if (pixel.a < 8) continue;
+			int luminance = (pixel.r * 3 + pixel.g * 6 + pixel.b) / 10;
+			if (luminance < minLuminance) minLuminance = luminance;
+			if (luminance > maxLuminance) maxLuminance = luminance;
+			if (maxLuminance - minLuminance >= 24) return true;
+		}
+		return false;
+	}
 
     private static void ScrollToTop(VisualElement root)
     {
@@ -222,24 +244,41 @@ public static class PlayModeRunner
         {
             Equipment("equipped-weapon", "精铸烈焰长剑", 0, 2, 7, false, Affix("strength", 3, 84), Affix("crit_rate", 2, 0.075f)),
             Equipment("equipped-helm", "守夜人的战盔", 1, 2, 5, false, Affix("armor", 3, 96), Affix("max_hp", 2, 140)),
-            Equipment("equipped-armor", "熔岩锻造胸甲", 2, 3, 6, false, Affix("vitality", 4, 110), Affix("reflect", 3, 24)),
+            Equipment("equipped-armor", "熔岩锻造胸甲", 2, 3, 6, false, Affix("vitality", 4, 110), Affix("reflect", 3, 0.24f)),
             Equipment("equipped-gloves", "猎魔者铁手", 3, 1, 4, false, Affix("attack_speed", 2, 0.12f)),
-            Equipment("equipped-boots", "灰烬疾行战靴", 4, 2, 5, false, Affix("agility", 3, 72), Affix("move_speed", 2, 18)),
-            Equipment("equipped-ring-1", "赤焰指环", 5, 3, 8, true, Affix("fire_dmg", 4, 132), Affix("crit_damage", 3, 48)),
+            Equipment("equipped-boots", "灰烬疾行战靴", 4, 2, 5, false, Affix("agility", 3, 72), Affix("move_speed", 2, 0.18f)),
+            Equipment("equipped-ring-1", "赤焰指环", 5, 3, 8, true, Affix("fire_dmg", 4, 132), Affix("crit_damage", 3, 0.48f)),
             Equipment("equipped-ring-2", "寒霜誓约", 6, 2, 5, false, Affix("cold_dmg", 3, 96), Affix("shield", 2, 120)),
-            Equipment("equipped-neck", "远古守护者护符", 7, 4, 9, true, Affix("resource_gain", 5, 38), Affix("cooldown_red", 4, 22)),
+            Equipment("equipped-neck", "远古守护者护符", 7, 4, 9, true, Affix("resource_gain", 5, 0.38f), Affix("cooldown_red", 4, 0.22f)),
         };
         var bag = new[]
         {
-            Equipment("bag-legendary-weapon", "焚城者的远古双手巨剑", 0, 4, 2, false, Affix("strength", 5, 260), Affix("crit_rate", 4, 0.145f), Affix("fire_dmg", 5, 310), Affix("attack_speed", 3, 0.18f)),
-            Equipment("bag-rare-helm", "永夜守望者的不朽冠冕", 1, 3, 3, false, Affix("armor", 4, 180), Affix("max_hp", 4, 280), Affix("lifesteal", 3, 16)),
-            Equipment("bag-artifact-ring", "星陨回响之戒", 5, 4, 10, true, Affix("lightning_dmg", 5, 340), Affix("crit_damage", 5, 82), Affix("drop_rate", 4, 26)),
+			Equipment("bag-legendary-weapon", "焚城者的远古双手巨剑", 0, 3, 2, false, Affix("strength", 5, 260), Affix("crit_rate", 4, 0.145f), Affix("fire_dmg", 5, 310), Affix("attack_speed", 3, 0.18f)),
+            Equipment("bag-rare-helm", "永夜守望者的不朽冠冕", 1, 3, 3, false, Affix("armor", 4, 180), Affix("max_hp", 4, 280), Affix("lifesteal", 3, 0.16f)),
+            Equipment("bag-artifact-ring", "星陨回响之戒", 5, 4, 10, true, Affix("lightning_dmg", 5, 340), Affix("crit_damage", 5, 0.82f), Affix("drop_rate", 4, 0.26f)),
             Equipment("bag-magic-armor", "符文刻印重甲", 2, 1, 1, false, Affix("armor", 2, 64), Affix("vitality", 2, 44)),
             Equipment("bag-rare-gloves", "风暴追猎者手甲", 3, 2, 4, false, Affix("agility", 3, 78), Affix("attack_speed", 3, 0.13f)),
             Equipment("bag-common-boots", "磨损的远征靴", 4, 0, 0, false),
-            Equipment("bag-legendary-neck", "深渊君王的猩红吊坠", 7, 3, 6, false, Affix("kill_heal", 4, 96), Affix("drop_rate", 3, 18), Affix("resource_gain", 3, 24)),
+            Equipment("bag-legendary-neck", "深渊君王的猩红吊坠", 7, 3, 6, false, Affix("kill_heal", 4, 96), Affix("drop_rate", 3, 0.18f), Affix("resource_gain", 3, 0.24f)),
             Equipment("bag-magic-ring", "旅法师的青蓝指环", 6, 1, 2, false, Affix("intellect", 2, 58), Affix("cold_dmg", 2, 66)),
         };
+		string[] equippedBaseIds =
+		{
+			"weapon_iron_sword", "helmet_iron_guard", "armor_ember_garb", "gloves_gladiator",
+			"boots_shadowstep", "ring1_flame", "ring2_focus", "neck_bulwark",
+		};
+		string[] bagBaseIds =
+		{
+			"weapon_ember_axe", "helmet_arcane_crown", "ring1_treasure", "armor_bulwark_plate",
+			"gloves_gale", "boots_expedition", "neck_blood_charm", "ring2_precision",
+		};
+		for (int i = 0; i < equipped.Length; i++) equipped[i].base_id = equippedBaseIds[i];
+		for (int i = 0; i < bag.Length; i++) bag[i].base_id = bagBaseIds[i];
+		bag[0].name = "焚城者的远古战斧";
+		bag[0].legendary_id = "legendary_ember_cleaver";
+		bag[0].legendary_description = "余烬吞噬战意，全面提升伤害。";
+		bag[0].legendary_bonuses = new[] { Affix("fire_dmg", 0, 18) };
+		bag[0].legendary_power_bonus = 0.12f;
 
         PushStateMessage(state, Message.TypeSync, new SyncData
         {
@@ -279,6 +318,11 @@ public static class PlayModeRunner
         {
             uid = bag[0].uid,
             base_id = bag[0].base_id,
+			legendary_id = bag[0].legendary_id,
+			legendary_description = bag[0].legendary_description,
+			legendary_bonuses = bag[0].legendary_bonuses,
+			legendary_power_bonus = bag[0].legendary_power_bonus,
+			boss_reward_bonus = bag[0].boss_reward_bonus,
             name = bag[0].name,
             slot = bag[0].slot,
             rarity = bag[0].rarity,

@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "bases": [
+    {"id":"weapon_iron_sword","name":"铁制长剑","slot":0,"base_stats":{"strength":5}},
+    {"id":"weapon_hunter_sabre","name":"猎手弯刀","slot":0,"base_stats":{"agility":5}},
+    {"id":"weapon_apprentice_staff","name":"学徒法杖","slot":0,"base_stats":{"intellect":5}},
+    {"id":"weapon_ember_axe","name":"余烬战斧","slot":0,"base_stats":{"fire_dmg":5}},
+    {"id":"weapon_frost_hammer","name":"霜痕战锤","slot":0,"base_stats":{"cold_dmg":5}},
+
+    {"id":"helmet_leather_hood","name":"皮革兜帽","slot":1,"base_stats":{"evasion":0.01}},
+    {"id":"helmet_iron_guard","name":"铁卫战盔","slot":1,"base_stats":{"armor":3}},
+    {"id":"helmet_barbarian","name":"蛮族角盔","slot":1,"base_stats":{"vitality":3}},
+    {"id":"helmet_arcane_crown","name":"秘术冠冕","slot":1,"base_stats":{"intellect":3}},
+    {"id":"helmet_oath_mask","name":"守誓面甲","slot":1,"base_stats":{"shield":5}},
+
+    {"id":"armor_chainmail","name":"锁链胸甲","slot":2,"base_stats":{"armor":4}},
+    {"id":"armor_ranger_leather","name":"游侠皮甲","slot":2,"base_stats":{"agility":4}},
+    {"id":"armor_arcane_robe","name":"秘法长袍","slot":2,"base_stats":{"intellect":4}},
+    {"id":"armor_bulwark_plate","name":"壁垒板甲","slot":2,"base_stats":{"shield":8}},
+    {"id":"armor_ember_garb","name":"余烬战衣","slot":2,"base_stats":{"fire_dmg":4}},
+
+    {"id":"gloves_leather","name":"皮革手套","slot":3,"base_stats":{"agility":3}},
+    {"id":"gloves_gladiator","name":"斗士护手","slot":3,"base_stats":{"strength":3}},
+    {"id":"gloves_eagle_eye","name":"鹰眼手甲","slot":3,"base_stats":{"accuracy":0.02}},
+    {"id":"gloves_runic","name":"符文手套","slot":3,"base_stats":{"crit_rate":0.01}},
+    {"id":"gloves_gale","name":"疾风拳套","slot":3,"base_stats":{"attack_speed":0.02}},
+
+    {"id":"boots_expedition","name":"远征皮靴","slot":4,"base_stats":{"vitality":3}},
+    {"id":"boots_iron_tread","name":"铁踏战靴","slot":4,"base_stats":{"armor":2}},
+    {"id":"boots_shadowstep","name":"影行长靴","slot":4,"base_stats":{"evasion":0.01}},
+    {"id":"boots_guard_greaves","name":"守卫胫甲","slot":4,"base_stats":{"max_hp":4}},
+    {"id":"boots_wildwalker","name":"荒野行者","slot":4,"base_stats":{"agility":3}},
+
+    {"id":"ring1_iron","name":"铁铸指环","slot":5,"base_stats":{"strength":2}},
+    {"id":"ring1_flame","name":"焰纹戒指","slot":5,"base_stats":{"fire_dmg":2}},
+    {"id":"ring1_frost","name":"霜语指环","slot":5,"base_stats":{"cold_dmg":2}},
+    {"id":"ring1_eagle","name":"鹰眼印戒","slot":5,"base_stats":{"crit_rate":0.01}},
+    {"id":"ring1_treasure","name":"寻宝者戒指","slot":5,"base_stats":{"drop_rate":0.01}},
+
+    {"id":"ring2_thunder","name":"雷鸣指环","slot":6,"base_stats":{"lightning_dmg":2}},
+    {"id":"ring2_might","name":"蛮力指环","slot":6,"base_stats":{"strength":2}},
+    {"id":"ring2_ruin","name":"毁灭印戒","slot":6,"base_stats":{"crit_damage":0.05}},
+    {"id":"ring2_focus","name":"聚能指环","slot":6,"base_stats":{"resource_gain":0.01}},
+    {"id":"ring2_precision","name":"精准指环","slot":6,"base_stats":{"accuracy":0.01}},
+
+    {"id":"neck_plain_amulet","name":"朴素护符","slot":7,"base_stats":{"vitality":2}},
+    {"id":"neck_life_pendant","name":"生命坠饰","slot":7,"base_stats":{"max_hp":5}},
+    {"id":"neck_blood_charm","name":"鲜血吊坠","slot":7,"base_stats":{"lifesteal":0.005}},
+    {"id":"neck_bulwark","name":"壁垒项链","slot":7,"base_stats":{"shield":5}},
+    {"id":"neck_abundance","name":"丰饶徽记","slot":7,"base_stats":{"resource_gain":0.01}}
+  ]
+}

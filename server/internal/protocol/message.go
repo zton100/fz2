@@ -19,6 +19,7 @@ const (
 	TypeUnequip       = "unequip"          // 请求：卸下
 	TypeBag           = "bag"              // 推送：背包全量
 	TypePower         = "power"            // 推送：当前战力
+	TypeCombat        = "combat"           // 推送：战斗 tick 结果
 	TypeDecompose     = "decompose"        // 请求：分解
 	TypeCompose       = "compose"          // 请求：合成
 	TypeReforge       = "reforge"          // 请求：重铸
@@ -40,21 +41,64 @@ type LoginRequest struct {
 
 // SyncData 全量同步消息体。阶段 0 最小字段，后续阶段扩充。
 type SyncData struct {
-	Account   string   `json:"account"`   // 账号
-	Floor     int      `json:"floor"`     // 当前层数
-	Souls     int      `json:"souls"`     // 魂点
-	Inventory []string `json:"inventory"` // 背包物品 ID 占位
+	Account              string   `json:"account"`                // 账号
+	Floor                int      `json:"floor"`                  // 当前层数
+	FloorKills           int      `json:"floor_kills"`            // 当前层小兵击杀数
+	MinionsTotal         int      `json:"minions_total"`          // 每层小兵总数
+	EquipmentDataVersion int      `json:"equipment_data_version"` // 装备基底数据版本
+	LegendaryDataVersion int      `json:"legendary_data_version"` // 传奇定义数据版本
+	Souls                int      `json:"souls"`                  // 魂点
+	Inventory            []string `json:"inventory"`              // 背包物品 ID 占位
+}
+
+// CombatData describes one authoritative combat tick for client animation.
+type CombatData struct {
+	Floor             int              `json:"floor"`
+	EnemyKind         string           `json:"enemy_kind"`
+	Win               bool             `json:"win"`
+	PlayerPower       float64          `json:"player_power"`
+	EnemyPower        float64          `json:"enemy_power"`
+	MinionsKilled     int              `json:"minions_killed"`
+	MinionsTotal      int              `json:"minions_total"`
+	FloorAdvanced     bool             `json:"floor_advanced"`
+	PlayerStartHP     float64          `json:"player_start_hp,omitempty"`
+	EnemyStartHP      float64          `json:"enemy_start_hp,omitempty"`
+	PlayerStartShield float64          `json:"player_start_shield,omitempty"`
+	EnemyStartShield  float64          `json:"enemy_start_shield,omitempty"`
+	PlayerEndHP       float64          `json:"player_end_hp,omitempty"`
+	EnemyEndHP        float64          `json:"enemy_end_hp,omitempty"`
+	PlayerEndShield   float64          `json:"player_end_shield,omitempty"`
+	EnemyEndShield    float64          `json:"enemy_end_shield,omitempty"`
+	Events            []CombatEventDTO `json:"events,omitempty"`
+}
+
+// CombatEventDTO is one server-authored animation event inside a combat tick.
+type CombatEventDTO struct {
+	Index        int     `json:"index"`
+	Actor        string  `json:"actor"`
+	Kind         string  `json:"kind"`
+	Damage       float64 `json:"damage,omitempty"`
+	Critical     bool    `json:"critical,omitempty"`
+	PlayerHP     float64 `json:"player_hp"`
+	EnemyHP      float64 `json:"enemy_hp"`
+	PlayerShield float64 `json:"player_shield,omitempty"`
+	EnemyShield  float64 `json:"enemy_shield,omitempty"`
 }
 
 // LootData 掉落推送消息体。
 type LootData struct {
-	UID     string     `json:"uid"`     // 装备唯一 ID
-	BaseID  string     `json:"base_id"` // 基底 ID
-	Name    string     `json:"name"`    // 装备名
-	Slot    int        `json:"slot"`    // 槽位
-	Rarity  int        `json:"rarity"`  // 稀有度
-	Upgrade int        `json:"upgrade"` // 强化等级
-	Affixes []AffixDTO `json:"affixes"` // 词缀列表
+	UID                  string     `json:"uid"`     // 装备唯一 ID
+	BaseID               string     `json:"base_id"` // 基底 ID
+	LegendaryID          string     `json:"legendary_id,omitempty"`
+	LegendaryDescription string     `json:"legendary_description,omitempty"`
+	LegendaryBonuses     []AffixDTO `json:"legendary_bonuses,omitempty"`
+	LegendaryPowerBonus  float64    `json:"legendary_power_bonus,omitempty"`
+	BossRewardBonus      float64    `json:"boss_reward_bonus,omitempty"`
+	Name                 string     `json:"name"`    // 装备名
+	Slot                 int        `json:"slot"`    // 槽位
+	Rarity               int        `json:"rarity"`  // 稀有度
+	Upgrade              int        `json:"upgrade"` // 强化等级
+	Affixes              []AffixDTO `json:"affixes"` // 词缀列表
 }
 
 // AffixDTO 词缀传输对象。
@@ -87,14 +131,21 @@ type BagData struct {
 
 // EquipmentDTO 装备传输对象（背包与已穿戴通用）。
 type EquipmentDTO struct {
-	UID     string     `json:"uid"`
-	BaseID  string     `json:"base_id"`
-	Name    string     `json:"name"`
-	Slot    int        `json:"slot"`
-	Rarity  int        `json:"rarity"`
-	Upgrade int        `json:"upgrade"`
-	Locked  bool       `json:"locked"`
-	Affixes []AffixDTO `json:"affixes"`
+	UID                  string     `json:"uid"`
+	BaseID               string     `json:"base_id"`
+	LegendaryID          string     `json:"legendary_id,omitempty"`
+	LegendaryDescription string     `json:"legendary_description,omitempty"`
+	LegendaryBonuses     []AffixDTO `json:"legendary_bonuses,omitempty"`
+	LegendaryPowerBonus  float64    `json:"legendary_power_bonus,omitempty"`
+	BossRewardBonus      float64    `json:"boss_reward_bonus,omitempty"`
+	Name                 string     `json:"name"`
+	Slot                 int        `json:"slot"`
+	Rarity               int        `json:"rarity"`
+	Upgrade              int        `json:"upgrade"`
+	Locked               bool       `json:"locked"`
+	PowerScore           float64    `json:"power_score"`
+	PowerScoreValid      bool       `json:"power_score_valid"`
+	Affixes              []AffixDTO `json:"affixes"`
 }
 
 // PowerData 战力推送。

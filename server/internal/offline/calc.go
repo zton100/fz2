@@ -7,7 +7,6 @@ import (
 	"equipment-idle-server/internal/dungeon"
 	"equipment-idle-server/internal/loot"
 	"equipment-idle-server/internal/model"
-	"equipment-idle-server/internal/reincarnation"
 )
 
 // MaxOfflineDuration 离线收益上限 8 小时。
@@ -37,9 +36,6 @@ func Calc(
 	dropBonus float64,
 	qualityFloor data.Rarity,
 ) OfflineResult {
-	if powerFn == nil {
-		powerFn = reincarnation.ComputePlayerPower
-	}
 	if rawDuration > MaxOfflineDuration {
 		rawDuration = MaxOfflineDuration
 	}
@@ -50,23 +46,19 @@ func Calc(
 	baseTicks := int(rawDuration / TickInterval)
 	ticks := int(float64(baseTicks) * (1.0 + offlineBonus))
 	result := OfflineResult{Duration: rawDuration, TicksSimulated: ticks}
+	runner := dungeon.NewRunnerWithDropModifier(p, powerFn, drop, loot.DropModifier{
+		DropBonus:    dropBonus,
+		QualityFloor: qualityFloor,
+	})
+	runner.LootCallback = func(*model.Equipment) {
+		result.LootCount++
+	}
 
 	for i := 0; i < ticks; i++ {
-		playerPower := powerFn(p)
-		monster := data.MonsterAt(p.Floor)
-		if playerPower <= monster.Power {
-			continue // 打不过，停留
+		outcome := runner.Tick()
+		if outcome.FloorAdvanced {
+			result.FloorsAdvanced++
 		}
-		eq := drop.DropRandomSlotWithBonus(p.Floor, dropBonus, qualityFloor)
-		if eq != nil {
-			p.AddEquipment(eq)
-			result.LootCount++
-		}
-		if reward := dungeon.BossFirstClearReward(p.Floor, p.MaxFloor); reward > 0 {
-			p.AddMaterial(data.MatBase, reward)
-		}
-		reincarnation.AdvanceFloor(p)
-		result.FloorsAdvanced++
 	}
 	return result
 }

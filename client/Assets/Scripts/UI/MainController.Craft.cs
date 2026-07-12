@@ -204,7 +204,7 @@ namespace EquipmentIdle.UI
 
             float delta = EquipmentPresenter.Score(updated) - _pendingCraftScore;
             if (Mathf.Abs(delta) < 0.1f) return;
-            AddToast($"{_pendingCraftAction}完成：评分 {delta:+0;-0;0}", ToastDuration + 1f);
+            AddToast($"{_pendingCraftAction}完成：战力贡献 {delta:+0;-0;0}", ToastDuration + 1f);
             ClearPendingCraft();
         }
 

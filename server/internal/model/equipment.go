@@ -11,14 +11,15 @@ type AffixInstance struct {
 
 // Equipment 装备实例：基底 + 稀有度 + 词缀实例列表 + 强化等级。
 type Equipment struct {
-	UID       string                     // 全局唯一 ID（生成时分配）
-	BaseID    string                     // 基底 ID
-	Name      string                     // 显示名（基底名，稀有度前缀在展示层加）
-	Slot      data.Slot                  // 槽位
-	Rarity    data.Rarity                // 稀有度
-	Affixes   []AffixInstance            // 生成的词缀实例
-	BaseStats map[data.AffixType]float64 // 白板基础属性（复制自基底）
-	Upgrade   int                        // 强化等级 0~10
+	UID         string                     // 全局唯一 ID（生成时分配）
+	BaseID      string                     // 基底 ID
+	LegendaryID string                     // 固定传奇定义 ID；非传奇为空
+	Name        string                     // 显示名（基底名，稀有度前缀在展示层加）
+	Slot        data.Slot                  // 槽位
+	Rarity      data.Rarity                // 稀有度
+	Affixes     []AffixInstance            // 生成的词缀实例
+	BaseStats   map[data.AffixType]float64 // 白板基础属性（复制自基底）
+	Upgrade     int                        // 强化等级 0~10
 }
 
 // AllStats 聚合白板基础属性 + 词缀数值，并应用强化倍率。
@@ -30,6 +31,11 @@ func (e *Equipment) AllStats() map[data.AffixType]float64 {
 	}
 	for _, a := range e.Affixes {
 		out[a.Type] += a.Value * multiplier
+	}
+	if def, ok := data.LegendaryByID(e.LegendaryID); ok {
+		for stat, value := range def.BonusStats {
+			out[stat] += value
+		}
 	}
 	return out
 }

@@ -18,6 +18,7 @@ namespace EquipmentIdle.Net
         public const string TypeUnequip = "unequip";
         public const string TypeBag = "bag";
         public const string TypePower = "power";
+        public const string TypeCombat = "combat";
         public const string TypeDecompose = "decompose";
         public const string TypeCompose = "compose";
         public const string TypeReforge = "reforge";
@@ -205,8 +206,49 @@ namespace EquipmentIdle.Net
     {
         public string account;
         public int floor;
+        public int floor_kills;
+        public int minions_total;
+        public int equipment_data_version;
+        public int legendary_data_version;
         public int souls;
         public string[] inventory;
+    }
+
+    /// <summary>服务端权威战斗 tick，用于驱动关卡进度和客户端动画。</summary>
+    [Serializable]
+    public class CombatData
+    {
+        public int floor;
+        public string enemy_kind;
+        public bool win;
+        public float player_power;
+        public float enemy_power;
+        public int minions_killed;
+        public int minions_total;
+        public bool floor_advanced;
+        public float player_start_hp;
+        public float enemy_start_hp;
+        public float player_start_shield;
+        public float enemy_start_shield;
+        public float player_end_hp;
+        public float enemy_end_hp;
+        public float player_end_shield;
+        public float enemy_end_shield;
+        public CombatEventData[] events;
+    }
+
+    [Serializable]
+    public class CombatEventData
+    {
+        public int index;
+        public string actor;
+        public string kind;
+        public float damage;
+        public bool critical;
+        public float player_hp;
+        public float enemy_hp;
+        public float player_shield;
+        public float enemy_shield;
     }
 
     /// <summary>login 消息的 data 结构。</summary>
@@ -222,6 +264,11 @@ namespace EquipmentIdle.Net
     {
         public string uid;
         public string base_id;
+        public string legendary_id;
+        public string legendary_description;
+        public AffixData[] legendary_bonuses;
+        public float legendary_power_bonus;
+        public float boss_reward_bonus;
         public string name;
         public int slot;
         public int rarity;
@@ -243,11 +290,18 @@ namespace EquipmentIdle.Net
     {
         public string uid;
         public string base_id;
+        public string legendary_id;
+        public string legendary_description;
+        public AffixData[] legendary_bonuses;
+        public float legendary_power_bonus;
+        public float boss_reward_bonus;
         public string name;
         public int slot;
         public int rarity;
         public int upgrade;
         public bool locked;
+        public float power_score;
+        public bool power_score_valid;
         public AffixData[] affixes;
     }
 

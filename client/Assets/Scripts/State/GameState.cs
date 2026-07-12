@@ -15,6 +15,7 @@ namespace EquipmentIdle.State
         public event System.Action<SyncData> OnSyncReceived;
         public event System.Action<List<EquipmentDTO>, List<EquipmentDTO>> OnBagReceived;
         public event System.Action<float> OnPowerReceived;
+        public event System.Action<CombatData> OnCombatReceived;
         public event System.Action<EquipmentDTO> OnLootReceived;
         public event System.Action<int> OnFloorReceived;
         public event System.Action<Dictionary<string, int>> OnMaterialsReceived;
@@ -24,6 +25,10 @@ namespace EquipmentIdle.State
 
         public string Account { get; private set; } = "";
         public int Floor { get; private set; } = 1;
+        public int FloorKills { get; private set; } = 0;
+        public int MinionsTotal { get; private set; } = 3;
+        public int EquipmentDataVersion { get; private set; } = 0;
+        public int LegendaryDataVersion { get; private set; } = 0;
         public int Souls { get; private set; } = 0;
         public int MaxFloor { get; private set; } = 1;
         public bool CanReincarn { get; private set; } = false;
@@ -34,6 +39,7 @@ namespace EquipmentIdle.State
         public Dictionary<string, int> Materials { get; private set; } = new Dictionary<string, int>();
         public Dictionary<string, int> Talents { get; private set; } = new Dictionary<string, int>();
         public OfflineResultData LastOfflineResult { get; private set; }
+        public CombatData LastCombat { get; private set; }
 
         private WSClient _ws;
         private int _reqSeq = 1;
@@ -119,8 +125,22 @@ namespace EquipmentIdle.State
                     {
                         Account = sd.account ?? Account;
                         Floor = sd.floor != 0 ? sd.floor : Floor;
+                        FloorKills = sd.floor_kills;
+                        MinionsTotal = sd.minions_total > 0 ? sd.minions_total : MinionsTotal;
+                        EquipmentDataVersion = sd.equipment_data_version;
+                        LegendaryDataVersion = sd.legendary_data_version;
                         Souls = sd.souls;
                         OnSyncReceived?.Invoke(sd);
+                    }
+                    break;
+                case Message.TypeCombat:
+                    var combat = JsonUtility.FromJson<CombatData>(msg.dataJson);
+                    if (combat != null)
+                    {
+                        LastCombat = combat;
+                        FloorKills = combat.floor_advanced ? 0 : combat.minions_killed;
+                        if (combat.minions_total > 0) MinionsTotal = combat.minions_total;
+                        OnCombatReceived?.Invoke(combat);
                     }
                     break;
                 case Message.TypeBag:
@@ -148,6 +168,11 @@ namespace EquipmentIdle.State
                         {
                             uid = ld.uid,
                             base_id = ld.base_id,
+                            legendary_id = ld.legendary_id,
+                            legendary_description = ld.legendary_description,
+                            legendary_bonuses = ld.legendary_bonuses,
+                            legendary_power_bonus = ld.legendary_power_bonus,
+                            boss_reward_bonus = ld.boss_reward_bonus,
                             name = ld.name,
                             slot = ld.slot,
                             rarity = ld.rarity,
