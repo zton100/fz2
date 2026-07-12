@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "artifacts": [
+    {
+      "id": "artifact_echo_blade",
+      "name": "回响刃",
+      "base_id": "weapon_hunter_sabre",
+      "slot": 0,
+      "description": "每三次玩家命中触发一次回响斩，造成额外伤害。",
+      "trigger": "echo_strike",
+      "bonus_stats": {"attack_speed": 0.10, "crit_rate": 0.04},
+      "value": 0.45
+    },
+    {
+      "id": "artifact_aegis_heart",
+      "name": "庇护之心",
+      "base_id": "armor_bulwark_plate",
+      "slot": 2,
+      "description": "开战时获得额外护盾，护盾会参与本次逐击结算。",
+      "trigger": "opening_shield",
+      "bonus_stats": {"armor": 18, "shield": 40},
+      "value": 0.25
+    },
+    {
+      "id": "artifact_cull_signet",
+      "name": "裁决玺戒",
+      "base_id": "ring2_ruin",
+      "slot": 6,
+      "description": "敌人生命低于阈值时触发裁决，直接终结普通残血目标。",
+      "trigger": "execute",
+      "bonus_stats": {"crit_damage": 0.20, "lightning_dmg": 18},
+      "value": 0.18
+    },
+    {
+      "id": "artifact_blood_well",
+      "name": "血源坠饰",
+      "base_id": "neck_blood_charm",
+      "slot": 7,
+      "description": "玩家命中后按伤害治疗自身，适合持久推进。",
+      "trigger": "hit_heal",
+      "bonus_stats": {"lifesteal": 0.06, "max_hp": 80},
+      "value": 0.12
+    }
+  ]
+}

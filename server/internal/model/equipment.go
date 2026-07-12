@@ -14,6 +14,7 @@ type Equipment struct {
 	UID         string                     // 全局唯一 ID（生成时分配）
 	BaseID      string                     // 基底 ID
 	LegendaryID string                     // 固定传奇定义 ID；非传奇为空
+	ArtifactID  string                     // 固定神器定义 ID；非神器为空
 	Name        string                     // 显示名（基底名，稀有度前缀在展示层加）
 	Slot        data.Slot                  // 槽位
 	Rarity      data.Rarity                // 稀有度
@@ -33,6 +34,11 @@ func (e *Equipment) AllStats() map[data.AffixType]float64 {
 		out[a.Type] += a.Value * multiplier
 	}
 	if def, ok := data.LegendaryByID(e.LegendaryID); ok {
+		for stat, value := range def.BonusStats {
+			out[stat] += value
+		}
+	}
+	if def, ok := data.ArtifactByID(e.ArtifactID); ok {
 		for stat, value := range def.BonusStats {
 			out[stat] += value
 		}

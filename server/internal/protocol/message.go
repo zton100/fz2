@@ -47,6 +47,7 @@ type SyncData struct {
 	MinionsTotal         int      `json:"minions_total"`          // 每层小兵总数
 	EquipmentDataVersion int      `json:"equipment_data_version"` // 装备基底数据版本
 	LegendaryDataVersion int      `json:"legendary_data_version"` // 传奇定义数据版本
+	ArtifactDataVersion  int      `json:"artifact_data_version"`  // 神器定义数据版本
 	Souls                int      `json:"souls"`                  // 魂点
 	Inventory            []string `json:"inventory"`              // 背包物品 ID 占位
 }
@@ -55,9 +56,12 @@ type SyncData struct {
 type CombatData struct {
 	Floor             int              `json:"floor"`
 	EnemyKind         string           `json:"enemy_kind"`
+	EnemyFamily       string           `json:"enemy_family,omitempty"`
+	EnemyElement      string           `json:"enemy_element,omitempty"`
 	Win               bool             `json:"win"`
 	PlayerPower       float64          `json:"player_power"`
 	EnemyPower        float64          `json:"enemy_power"`
+	EnemyResistances  []ResistanceDTO  `json:"enemy_resistances,omitempty"`
 	MinionsKilled     int              `json:"minions_killed"`
 	MinionsTotal      int              `json:"minions_total"`
 	FloorAdvanced     bool             `json:"floor_advanced"`
@@ -70,6 +74,12 @@ type CombatData struct {
 	PlayerEndShield   float64          `json:"player_end_shield,omitempty"`
 	EnemyEndShield    float64          `json:"enemy_end_shield,omitempty"`
 	Events            []CombatEventDTO `json:"events,omitempty"`
+}
+
+// ResistanceDTO describes one elemental resistance or vulnerability.
+type ResistanceDTO struct {
+	Type  string  `json:"type"`
+	Value float64 `json:"value"`
 }
 
 // CombatEventDTO is one server-authored animation event inside a combat tick.
@@ -90,10 +100,15 @@ type LootData struct {
 	UID                  string     `json:"uid"`     // 装备唯一 ID
 	BaseID               string     `json:"base_id"` // 基底 ID
 	LegendaryID          string     `json:"legendary_id,omitempty"`
+	ArtifactID           string     `json:"artifact_id,omitempty"`
 	LegendaryDescription string     `json:"legendary_description,omitempty"`
+	ArtifactDescription  string     `json:"artifact_description,omitempty"`
 	LegendaryBonuses     []AffixDTO `json:"legendary_bonuses,omitempty"`
+	ArtifactBonuses      []AffixDTO `json:"artifact_bonuses,omitempty"`
 	LegendaryPowerBonus  float64    `json:"legendary_power_bonus,omitempty"`
 	BossRewardBonus      float64    `json:"boss_reward_bonus,omitempty"`
+	ArtifactTrigger      string     `json:"artifact_trigger,omitempty"`
+	ArtifactValue        float64    `json:"artifact_value,omitempty"`
 	Name                 string     `json:"name"`    // 装备名
 	Slot                 int        `json:"slot"`    // 槽位
 	Rarity               int        `json:"rarity"`  // 稀有度
@@ -134,10 +149,15 @@ type EquipmentDTO struct {
 	UID                  string     `json:"uid"`
 	BaseID               string     `json:"base_id"`
 	LegendaryID          string     `json:"legendary_id,omitempty"`
+	ArtifactID           string     `json:"artifact_id,omitempty"`
 	LegendaryDescription string     `json:"legendary_description,omitempty"`
+	ArtifactDescription  string     `json:"artifact_description,omitempty"`
 	LegendaryBonuses     []AffixDTO `json:"legendary_bonuses,omitempty"`
+	ArtifactBonuses      []AffixDTO `json:"artifact_bonuses,omitempty"`
 	LegendaryPowerBonus  float64    `json:"legendary_power_bonus,omitempty"`
 	BossRewardBonus      float64    `json:"boss_reward_bonus,omitempty"`
+	ArtifactTrigger      string     `json:"artifact_trigger,omitempty"`
+	ArtifactValue        float64    `json:"artifact_value,omitempty"`
 	Name                 string     `json:"name"`
 	Slot                 int        `json:"slot"`
 	Rarity               int        `json:"rarity"`

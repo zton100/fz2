@@ -210,6 +210,7 @@ namespace EquipmentIdle.Net
         public int minions_total;
         public int equipment_data_version;
         public int legendary_data_version;
+        public int artifact_data_version;
         public int souls;
         public string[] inventory;
     }
@@ -220,9 +221,12 @@ namespace EquipmentIdle.Net
     {
         public int floor;
         public string enemy_kind;
+        public string enemy_family;
+        public string enemy_element;
         public bool win;
         public float player_power;
         public float enemy_power;
+        public ResistanceData[] enemy_resistances;
         public int minions_killed;
         public int minions_total;
         public bool floor_advanced;
@@ -251,6 +255,13 @@ namespace EquipmentIdle.Net
         public float enemy_shield;
     }
 
+    [Serializable]
+    public class ResistanceData
+    {
+        public string type;
+        public float value;
+    }
+
     /// <summary>login 消息的 data 结构。</summary>
     [Serializable]
     public class LoginData
@@ -265,10 +276,15 @@ namespace EquipmentIdle.Net
         public string uid;
         public string base_id;
         public string legendary_id;
+        public string artifact_id;
         public string legendary_description;
+        public string artifact_description;
         public AffixData[] legendary_bonuses;
+        public AffixData[] artifact_bonuses;
         public float legendary_power_bonus;
         public float boss_reward_bonus;
+        public string artifact_trigger;
+        public float artifact_value;
         public string name;
         public int slot;
         public int rarity;
@@ -291,10 +307,15 @@ namespace EquipmentIdle.Net
         public string uid;
         public string base_id;
         public string legendary_id;
+        public string artifact_id;
         public string legendary_description;
+        public string artifact_description;
         public AffixData[] legendary_bonuses;
+        public AffixData[] artifact_bonuses;
         public float legendary_power_bonus;
         public float boss_reward_bonus;
+        public string artifact_trigger;
+        public float artifact_value;
         public string name;
         public int slot;
         public int rarity;

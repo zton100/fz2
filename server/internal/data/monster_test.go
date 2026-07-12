@@ -92,3 +92,38 @@ func TestMonsterPower_Floor20IsTransitionPoint(t *testing.T) {
 		}
 	}
 }
+
+func TestMonsterAt_AssignsFamilyAndElementalResistances(t *testing.T) {
+	tests := []struct {
+		floor       int
+		wantFamily  string
+		wantElement string
+		wantResist  AffixType
+	}{
+		{floor: 1, wantFamily: MonsterFamilyUndead, wantElement: "cold", wantResist: ATColdDmg},
+		{floor: 6, wantFamily: MonsterFamilyBeast, wantElement: "fire", wantResist: ATFireDmg},
+		{floor: 11, wantFamily: MonsterFamilyCultist, wantElement: "lightning", wantResist: ATLightningDmg},
+	}
+	for _, tt := range tests {
+		t.Run(tt.wantFamily, func(t *testing.T) {
+			monster := MonsterAt(tt.floor)
+			if monster.Family != tt.wantFamily || monster.Element != tt.wantElement {
+				t.Fatalf("monster = %+v, want family %q element %q", monster, tt.wantFamily, tt.wantElement)
+			}
+			if monster.Resistances[tt.wantResist] <= 0 {
+				t.Fatalf("monster resistances = %+v, want positive %s", monster.Resistances, tt.wantResist)
+			}
+		})
+	}
+}
+
+func TestMonsterAt_BossHasStrongerResistance(t *testing.T) {
+	normal := MonsterAt(4)
+	boss := MonsterAt(5)
+	if !boss.IsBoss {
+		t.Fatal("floor 5 should be boss")
+	}
+	if boss.Resistances[ATColdDmg] <= normal.Resistances[ATColdDmg] {
+		t.Fatalf("boss cold resistance %.2f should exceed normal %.2f", boss.Resistances[ATColdDmg], normal.Resistances[ATColdDmg])
+	}
+}

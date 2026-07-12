@@ -10,15 +10,20 @@ const (
 	ActorPlayer = "player"
 	ActorEnemy  = "enemy"
 
-	EventHit    = "hit"
-	EventShield = "shield"
+	EventHit     = "hit"
+	EventShield  = "shield"
+	EventEcho    = "echo"
+	EventExecute = "execute"
+	EventHeal    = "heal"
 )
 
 // BattleInput describes one authoritative encounter settlement.
 type BattleInput struct {
-	PlayerPower float64
-	EnemyPower  float64
-	PlayerStats Stats
+	PlayerPower      float64
+	EnemyPower       float64
+	PlayerStats      Stats
+	EnemyResistances map[data.AffixType]float64
+	Artifacts        []data.ArtifactDefinition
 }
 
 // HitEvent is one animation-ready combat event emitted by the server.
@@ -63,7 +68,12 @@ func ResolveBattle(input BattleInput) BattleResult {
 	enemyHP := math.Max(1, 100+enemyPower*0.8)
 	playerShield := math.Max(0, stats[data.ATShield])
 	enemyShield := 0.0
-	playerDamage := math.Max(1, playerPower*0.35+elementalDamage(stats)*0.2)
+	playerMaxHP := playerHP
+	enemyStartHP := enemyHP
+	if openingShield := artifactValue(input.Artifacts, data.ArtifactOpeningShield); openingShield > 0 {
+		playerShield += playerMaxHP * openingShield
+	}
+	playerDamage := math.Max(1, playerPower*0.35+elementalDamage(stats, input.EnemyResistances)*0.2)
 	enemyDamage := math.Max(1, enemyPower*0.30)
 	if armor := stats[data.ATArmor]; armor > 0 {
 		enemyDamage /= 1 + armor/120
@@ -88,11 +98,11 @@ func ResolveBattle(input BattleInput) BattleResult {
 		EnemyStartShield:  enemyShield,
 	}
 	events := make([]HitEvent, 0, 12)
-	nextEvent := func(actor string, damage float64, critical bool) {
+	appendEvent := func(actor string, kind string, damage float64, critical bool) {
 		events = append(events, HitEvent{
 			Index:        len(events) + 1,
 			Actor:        actor,
-			Kind:         EventHit,
+			Kind:         kind,
 			Damage:       round2(damage),
 			Critical:     critical,
 			PlayerHP:     round2(math.Max(0, playerHP)),
@@ -101,6 +111,10 @@ func ResolveBattle(input BattleInput) BattleResult {
 			EnemyShield:  round2(math.Max(0, enemyShield)),
 		})
 	}
+	if artifactValue(input.Artifacts, data.ArtifactOpeningShield) > 0 {
+		appendEvent(ActorPlayer, EventShield, 0, false)
+	}
+	playerHitCount := 0
 	for round := 1; round <= 40 && playerHP > 0 && enemyHP > 0; round++ {
 		for hit := 1; hit <= playerHitsPerRound && enemyHP > 0; hit++ {
 			critical := shouldCrit(round, hit, critRate)
@@ -109,7 +123,23 @@ func ResolveBattle(input BattleInput) BattleResult {
 				damage *= 1 + critDamage
 			}
 			enemyHP -= damage
-			nextEvent(ActorPlayer, damage, critical)
+			playerHitCount++
+			appendEvent(ActorPlayer, EventHit, damage, critical)
+			if healValue := artifactValue(input.Artifacts, data.ArtifactHitHeal); healValue > 0 {
+				heal := damage * healValue
+				playerHP = math.Min(playerMaxHP, playerHP+heal)
+				appendEvent(ActorPlayer, EventHeal, heal, false)
+			}
+			if echoValue := artifactValue(input.Artifacts, data.ArtifactEchoStrike); echoValue > 0 && playerHitCount%3 == 0 && enemyHP > 0 {
+				echoDamage := playerDamage * echoValue
+				enemyHP -= echoDamage
+				appendEvent(ActorPlayer, EventEcho, echoDamage, false)
+			}
+			if executeValue := artifactValue(input.Artifacts, data.ArtifactExecute); executeValue > 0 && enemyHP > 0 && enemyHP/enemyStartHP <= executeValue {
+				executeDamage := enemyHP
+				enemyHP = 0
+				appendEvent(ActorPlayer, EventExecute, executeDamage, false)
+			}
 		}
 		if enemyHP <= 0 {
 			break
@@ -121,7 +151,7 @@ func ResolveBattle(input BattleInput) BattleResult {
 			damage -= absorbed
 		}
 		playerHP -= damage
-		nextEvent(ActorEnemy, damage, false)
+		appendEvent(ActorEnemy, EventHit, damage, false)
 	}
 	if enemyHP <= 0 {
 		enemyHP = 0
@@ -142,8 +172,24 @@ func ResolveBattle(input BattleInput) BattleResult {
 	return result
 }
 
-func elementalDamage(stats Stats) float64 {
-	return stats[data.ATFireDmg] + stats[data.ATColdDmg] + stats[data.ATLightningDmg]
+func artifactValue(artifacts []data.ArtifactDefinition, trigger string) float64 {
+	for _, artifact := range artifacts {
+		if artifact.Trigger == trigger {
+			return artifact.Value
+		}
+	}
+	return 0
+}
+
+func elementalDamage(stats Stats, resistances map[data.AffixType]float64) float64 {
+	return elementalDamageFor(stats, resistances, data.ATFireDmg) +
+		elementalDamageFor(stats, resistances, data.ATColdDmg) +
+		elementalDamageFor(stats, resistances, data.ATLightningDmg)
+}
+
+func elementalDamageFor(stats Stats, resistances map[data.AffixType]float64, affix data.AffixType) float64 {
+	resistance := clamp(resistances[affix], -0.75, 0.85)
+	return stats[affix] * (1 - resistance)
 }
 
 func shouldCrit(round int, hit int, critRate float64) bool {

@@ -115,6 +115,44 @@ func TestGenerate_ArtifactDoesNotBorrowLegendaryIdentity(t *testing.T) {
 	}
 }
 
+func TestGenerate_ArtifactUsesFixedDefinitionForSlot(t *testing.T) {
+	g := NewGenerator(mathrand.New(mathrand.NewSource(37)))
+	eq := g.Generate(data.SlotWeapon, data.RarityArtifact, 120)
+
+	if eq.ArtifactID == "" {
+		t.Fatal("artifact drop has no fixed artifact identity")
+	}
+	def, ok := data.ArtifactByID(eq.ArtifactID)
+	if !ok {
+		t.Fatalf("artifact id %q has no data definition", eq.ArtifactID)
+	}
+	if eq.LegendaryID != "" {
+		t.Fatalf("artifact borrowed legendary id %q", eq.LegendaryID)
+	}
+	if eq.Name != def.Name || eq.BaseID != def.BaseID || eq.Slot != def.Slot {
+		t.Fatalf("generated artifact = %+v, want definition %+v", eq, def)
+	}
+}
+
+func TestGenerate_ArtifactRotationReachesEveryDefinition(t *testing.T) {
+	g := NewGenerator(mathrand.New(mathrand.NewSource(41)))
+	for _, slot := range data.AllSlots() {
+		want := data.ArtifactsBySlot(slot)
+		if len(want) == 0 {
+			continue
+		}
+		seen := map[string]bool{}
+		for range want {
+			seen[g.Generate(slot, data.RarityArtifact, 120).ArtifactID] = true
+		}
+		for _, def := range want {
+			if !seen[def.ID] {
+				t.Fatalf("slot %d never generated artifact %q", slot, def.ID)
+			}
+		}
+	}
+}
+
 // ── Task 7: UID tests ──
 
 func TestUID_Uniqueness(t *testing.T) {

@@ -71,6 +71,7 @@ namespace EquipmentIdle.UI
         private VisualElement _stageMonsterHealthFill;
         private Label _stageSlash;
         private Label _stageImpactText;
+        private Label _stageArtifactText;
         private Label _stageBannerText;
         private Image _stageHeroSpriteImage;
         private Image _stageBossSpriteImage;

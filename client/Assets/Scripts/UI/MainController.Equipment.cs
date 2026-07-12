@@ -508,6 +508,21 @@ namespace EquipmentIdle.UI
 				if (eq.boss_reward_bonus > 0f)
 					column.Add(DetailStatLine("传奇增幅", $"首通材料 +{eq.boss_reward_bonus * 100f:F1}%", GoldText));
 			}
+			if (!string.IsNullOrEmpty(eq.artifact_id))
+			{
+				column.Add(DetailTextBlock("神器触发", eq.artifact_description, new Color32(248, 113, 113, 255)));
+				if (eq.artifact_bonuses != null)
+				{
+					foreach (var bonus in eq.artifact_bonuses)
+					{
+						column.Add(DetailStatLine("固定加成", EquipmentPresenter.FormatAffix(bonus), GoldText));
+					}
+				}
+				if (!string.IsNullOrEmpty(eq.artifact_trigger))
+					column.Add(DetailStatLine("触发类型", EquipmentPresenter.ArtifactTriggerName(eq.artifact_trigger), new Color32(248, 113, 113, 255)));
+				if (eq.artifact_value > 0f)
+					column.Add(DetailStatLine("触发强度", $"+{eq.artifact_value * 100f:F1}%", GoldText));
+			}
             if (eq.affixes == null || eq.affixes.Length == 0)
             {
                 column.Add(DetailStatLine("词缀", "无", TextMuted));

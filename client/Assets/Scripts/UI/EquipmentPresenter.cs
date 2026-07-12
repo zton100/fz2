@@ -192,6 +192,7 @@ namespace EquipmentIdle.UI
 		public static string IconResourceKey(EquipmentDTO eq)
 		{
 			if (eq == null) return "";
+			if (!string.IsNullOrEmpty(eq.artifact_id)) return eq.artifact_id;
 			if (!string.IsNullOrEmpty(eq.legendary_id)) return eq.legendary_id;
 			return eq.base_id ?? "";
 		}
@@ -217,8 +218,9 @@ namespace EquipmentIdle.UI
             text += $"品质：{RarityName(eq.rarity)}\n";
             text += $"战力贡献：{score:F0}\n";
             if (current != null) text += $"对比：{delta:+0;-0;0}\n";
-            text += "\n";
+			text += "\n";
 			text += BuildLegendaryEffect(eq);
+			text += BuildArtifactEffect(eq);
 
             if (eq.affixes == null || eq.affixes.Length == 0)
             {
@@ -251,6 +253,79 @@ namespace EquipmentIdle.UI
 			if (eq.boss_reward_bonus > 0f) text += $"守关首通材料 +{eq.boss_reward_bonus * 100f:F1}%\n";
 			return text + "\n";
 		}
+
+		public static string BuildArtifactEffect(EquipmentDTO eq)
+		{
+			if (eq == null || string.IsNullOrEmpty(eq.artifact_id)) return "";
+			string text = "神器触发：\n";
+			if (!string.IsNullOrEmpty(eq.artifact_description)) text += eq.artifact_description + "\n";
+			if (eq.artifact_bonuses != null)
+			{
+				foreach (var bonus in eq.artifact_bonuses)
+				{
+					text += "固定加成：" + FormatAffix(bonus) + "\n";
+				}
+			}
+			if (!string.IsNullOrEmpty(eq.artifact_trigger)) text += "触发类型：" + ArtifactTriggerName(eq.artifact_trigger) + "\n";
+			if (eq.artifact_value > 0f) text += $"触发强度 +{eq.artifact_value * 100f:F1}%\n";
+			return text + "\n";
+		}
+
+        public static string ArtifactTriggerName(string trigger)
+        {
+			switch (trigger)
+			{
+				case "echo_strike": return "回响追加";
+				case "opening_shield": return "开场护盾";
+				case "execute": return "残血裁决";
+				case "hit_heal": return "命中治疗";
+				default: return trigger ?? "";
+			}
+		}
+
+        public static string MonsterTraitLine(CombatData combat)
+        {
+            if (combat == null || string.IsNullOrEmpty(combat.enemy_family)) return "";
+            string text = $"{MonsterFamilyName(combat.enemy_family)} · {ElementName(combat.enemy_element)}";
+            string resistanceText = ResistanceSummary(combat.enemy_resistances);
+            if (!string.IsNullOrEmpty(resistanceText)) text += "\n" + resistanceText;
+            return text;
+        }
+
+        public static string MonsterFamilyName(string family)
+        {
+            switch (family)
+            {
+                case "undead": return "亡灵";
+                case "beast": return "野兽";
+                case "cultist": return "秘教徒";
+                default: return family ?? "";
+            }
+        }
+
+        public static string ElementName(string element)
+        {
+            switch (element)
+            {
+                case "fire": return "火焰倾向";
+                case "cold": return "寒冰倾向";
+                case "lightning": return "雷电倾向";
+                default: return element ?? "";
+            }
+        }
+
+        public static string ResistanceSummary(ResistanceData[] resistances)
+        {
+            if (resistances == null || resistances.Length == 0) return "";
+            var parts = new List<string>();
+            foreach (var resistance in resistances)
+            {
+                if (resistance == null || Math.Abs(resistance.value) < 0.001f) continue;
+                string label = resistance.value > 0 ? "抗性" : "易伤";
+                parts.Add($"{AffixName(resistance.type)}{label} {Math.Abs(resistance.value) * 100f:F0}%");
+            }
+            return string.Join(" · ", parts);
+        }
 
         public static string BuildSelectedSummary(EquipmentDTO eq)
         {
@@ -511,6 +586,23 @@ namespace EquipmentIdle.UI
                 ImpactOpacity = active ? 1f - progress : 0f,
                 Active = active,
             };
+        }
+
+        public static string CombatEventLabel(string kind, float damage)
+        {
+            switch (kind)
+            {
+                case "shield":
+                    return "神器 · 开场护盾";
+                case "echo":
+                    return $"神器 · 回响斩 {damage:F0}";
+                case "execute":
+                    return $"神器 · 裁决 {damage:F0}";
+                case "heal":
+                    return $"神器 · 治疗 {damage:F0}";
+                default:
+                    return "";
+            }
         }
 
         public static int BossRewardAtFloor(int floor)

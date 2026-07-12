@@ -47,6 +47,9 @@ func TestHandleLogin_NewAccount_SendsSync(t *testing.T) {
 		if sd.LegendaryDataVersion != data.LegendaryDataVersion() {
 			t.Fatalf("legendary data version = %d, want %d", sd.LegendaryDataVersion, data.LegendaryDataVersion())
 		}
+		if sd.ArtifactDataVersion != data.ArtifactDataVersion() {
+			t.Fatalf("artifact data version = %d, want %d", sd.ArtifactDataVersion, data.ArtifactDataVersion())
+		}
 	default:
 		t.Fatal("no sync message sent")
 	}
@@ -137,6 +140,31 @@ func TestPushBagIncludesLegendaryIdentityAndDescription(t *testing.T) {
 	}
 }
 
+func TestPushBagIncludesArtifactIdentityAndTrigger(t *testing.T) {
+	store := save.NewMemoryStore()
+	hub := NewHub(store)
+	sess := &Session{Account: "hero", Send: make(chan []byte, 8)}
+	store.WithPlayer("hero", func(p *model.Player) {
+		p.EquipBag = append(p.EquipBag, &model.Equipment{
+			UID:        "artifact",
+			ArtifactID: "artifact_echo_blade",
+			Slot:       data.SlotWeapon,
+			Rarity:     data.RarityArtifact,
+			BaseStats:  map[data.AffixType]float64{},
+		})
+		hub.pushBag(sess, p)
+	})
+
+	var bag protocol.BagData
+	if !readEnvelope(sess.Send, protocol.TypeBag, &bag) || len(bag.Items) != 1 {
+		t.Fatal("no artifact bag item sent")
+	}
+	item := bag.Items[0]
+	if item.ArtifactID != "artifact_echo_blade" || item.ArtifactDescription == "" || item.ArtifactTrigger == "" || item.ArtifactValue <= 0 {
+		t.Fatalf("artifact DTO = %+v, want identity, description and trigger", item)
+	}
+}
+
 func TestPushCombatIncludesHitTimeline(t *testing.T) {
 	store := save.NewMemoryStore()
 	hub := NewHub(store)
@@ -145,9 +173,12 @@ func TestPushCombatIncludesHitTimeline(t *testing.T) {
 	hub.pushCombat(sess, dungeon.TickResult{
 		Win:               true,
 		EnemyKind:         dungeon.EncounterMinion,
+		EnemyFamily:       data.MonsterFamilyBeast,
+		EnemyElement:      "fire",
 		Floor:             3,
 		PlayerPower:       120,
 		EnemyPower:        60,
+		EnemyResistances:  map[data.AffixType]float64{data.ATFireDmg: 0.18},
 		MinionsKilled:     1,
 		MinionsTotal:      dungeon.MinionsPerFloor,
 		PlayerStartHP:     220,
@@ -172,6 +203,9 @@ func TestPushCombatIncludesHitTimeline(t *testing.T) {
 	}
 	if cd.PlayerStartHP != 220 || cd.PlayerStartShield != 30 || len(cd.Events) != 1 {
 		t.Fatalf("combat data = %+v, want hp, shield and events", cd)
+	}
+	if cd.EnemyFamily != data.MonsterFamilyBeast || cd.EnemyElement != "fire" || len(cd.EnemyResistances) != 1 {
+		t.Fatalf("combat monster data = %+v, want family, element and resistances", cd)
 	}
 	if cd.Events[0].Actor != combat.ActorPlayer || cd.Events[0].Damage != 42 {
 		t.Fatalf("combat event = %+v, want player hit", cd.Events[0])

@@ -149,7 +149,8 @@
     "floor_kills": 0,
     "minions_total": 3,
     "equipment_data_version": 1,
-	"legendary_data_version": 1,
+    "legendary_data_version": 1,
+    "artifact_data_version": 1,
     "souls": 0,
     "inventory": []
   }
@@ -169,9 +170,15 @@
   "data": {
     "floor": 5,
     "enemy_kind": "boss",
+    "enemy_family": "undead",
+    "enemy_element": "cold",
     "win": true,
     "player_power": 125.5,
     "enemy_power": 117.6,
+    "enemy_resistances": [
+      { "type": "cold_dmg", "value": 0.26 },
+      { "type": "fire_dmg", "value": -0.08 }
+    ],
     "minions_killed": 3,
     "minions_total": 3,
     "floor_advanced": true,
@@ -200,7 +207,7 @@
 
 推送背包中所有未穿戴装备。穿戴/卸下/分解/合成/重铸/强化/掉落后推送。
 `power_score` 是该装备在玩家当前构筑中相对空槽产生的权威战力贡献；同槽候选的分数差等于实际换装战力变化。`power_score_valid` 用于区分权威零分和旧客户端回退数据。
-固定传奇额外包含 `legendary_id`、效果说明、固定属性、全局战力倍率和 Boss 首通材料倍率。没有对应效果的字段会省略。
+固定传奇额外包含 `legendary_id`、效果说明、固定属性、全局战力倍率和 Boss 首通材料倍率。固定神器额外包含 `artifact_id`、效果说明、固定属性、触发类型和触发强度。没有对应效果的字段会省略。
 
 ```json
 {
@@ -209,16 +216,17 @@
     "items": [
       {
         "uid": "eq_1",
-		"base_id": "weapon_ember_axe",
-		"legendary_id": "legendary_ember_cleaver",
-		"legendary_description": "余烬吞噬战意，全面提升伤害。",
-		"legendary_bonuses": [
-		  { "type": "fire_dmg", "tier": 0, "value": 18 }
-		],
-		"legendary_power_bonus": 0.12,
-		"name": "焚城者之誓",
+        "base_id": "weapon_hunter_sabre",
+        "artifact_id": "artifact_echo_blade",
+        "artifact_description": "每三次玩家命中触发一次回响斩，造成额外伤害。",
+        "artifact_bonuses": [
+          { "type": "attack_speed", "tier": 0, "value": 0.10 }
+        ],
+        "artifact_trigger": "echo_strike",
+        "artifact_value": 0.45,
+        "name": "回响刃",
         "slot": 0,
-		"rarity": 3,
+        "rarity": 4,
         "upgrade": 3,
         "locked": false,
         "power_score": 48.2,

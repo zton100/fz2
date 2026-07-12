@@ -25,9 +25,12 @@ const (
 type TickResult struct {
 	Win               bool
 	EnemyKind         EncounterKind
+	EnemyFamily       string
+	EnemyElement      string
 	Floor             int
 	PlayerPower       float64
 	EnemyPower        float64
+	EnemyResistances  map[data.AffixType]float64
 	MinionsKilled     int
 	MinionsTotal      int
 	FloorAdvanced     bool
@@ -88,17 +91,22 @@ func (r *Runner) Tick() TickResult {
 		kind = EncounterBoss
 	}
 	outcome := TickResult{
-		EnemyKind:     kind,
-		Floor:         r.player.Floor,
-		PlayerPower:   playerPower,
-		EnemyPower:    monsterPower,
-		MinionsKilled: r.player.FloorKills,
-		MinionsTotal:  MinionsPerFloor,
+		EnemyKind:        kind,
+		EnemyFamily:      monster.Family,
+		EnemyElement:     monster.Element,
+		Floor:            r.player.Floor,
+		PlayerPower:      playerPower,
+		EnemyPower:       monsterPower,
+		EnemyResistances: copyResistances(monster.Resistances),
+		MinionsKilled:    r.player.FloorKills,
+		MinionsTotal:     MinionsPerFloor,
 	}
 	result := combat.ResolveBattle(combat.BattleInput{
-		PlayerPower: playerPower,
-		EnemyPower:  monsterPower,
-		PlayerStats: combat.AggregateStats(r.player.EquippedList()),
+		PlayerPower:      playerPower,
+		EnemyPower:       monsterPower,
+		PlayerStats:      combat.AggregateStats(r.player.EquippedList()),
+		EnemyResistances: monster.Resistances,
+		Artifacts:        equippedArtifacts(r.player),
 	})
 	outcome.Win = result.Win
 	outcome.PlayerStartHP = result.PlayerStartHP
@@ -151,6 +159,27 @@ func (r *Runner) Tick() TickResult {
 		r.FloorCallback(r.player.Floor)
 	}
 	return outcome
+}
+
+func equippedArtifacts(player *model.Player) []data.ArtifactDefinition {
+	var out []data.ArtifactDefinition
+	for _, eq := range player.EquippedList() {
+		if def, ok := data.ArtifactByID(eq.ArtifactID); ok {
+			out = append(out, def)
+		}
+	}
+	return out
+}
+
+func copyResistances(src map[data.AffixType]float64) map[data.AffixType]float64 {
+	if len(src) == 0 {
+		return nil
+	}
+	dst := make(map[data.AffixType]float64, len(src))
+	for affix, value := range src {
+		dst[affix] = value
+	}
+	return dst
 }
 
 func (r *Runner) emitCombat(result TickResult) {

@@ -69,6 +69,23 @@ process_sheet "$SOURCE_DIR/legendary-equipment-b-v1-source.png" \
 process_sheet "$SOURCE_DIR/legendary-equipment-c-v1-source.png" \
   legendary_sun_brand legendary_tempest_eye legendary_blood_covenant legendary_harvest_seal
 
+derive_artifact_icon() {
+  local source_id="$1"
+  local artifact_id="$2"
+  magick "$OUTPUT_DIR/${source_id}.png" \
+    -fill '#ef4444' -colorize 12 \
+    \( -size 256x256 xc:none -fill none -stroke '#ef4444' -strokewidth 7 -draw 'roundrectangle 10,10 246,246 28,28' \) \
+    -compose SrcOver -composite \
+    \( -size 256x256 xc:none -fill none -stroke '#fbbf24' -strokewidth 2 -draw 'roundrectangle 20,20 236,236 22,22' \) \
+    -compose SrcOver -composite \
+    "$OUTPUT_DIR/${artifact_id}.png"
+}
+
+derive_artifact_icon weapon_hunter_sabre artifact_echo_blade
+derive_artifact_icon armor_bulwark_plate artifact_aegis_heart
+derive_artifact_icon ring2_ruin artifact_cull_signet
+derive_artifact_icon neck_blood_charm artifact_blood_well
+
 # Generated subjects occasionally cross a cell boundary; keep deterministic
 # cleanup here so rebuilding the icon set does not restore neighboring debris.
 magick "$OUTPUT_DIR/armor_arcane_robe.png" -channel A -fx 'i>229?0:u' \

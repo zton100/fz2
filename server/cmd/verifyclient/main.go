@@ -150,6 +150,9 @@ func handleMessage(conn *websocket.Conn, st *verifyState, env protocol.Envelope)
 		if cd.PlayerStartHP <= 0 || cd.EnemyStartHP <= 0 || len(cd.Events) == 0 {
 			return fmt.Errorf("VERIFY_FAIL: combat missing authoritative hp or events %+v", cd)
 		}
+		if cd.EnemyFamily == "" || cd.EnemyElement == "" || len(cd.EnemyResistances) == 0 {
+			return fmt.Errorf("VERIFY_FAIL: combat missing monster family or resistances %+v", cd)
+		}
 		firstEvent := cd.Events[0]
 		if firstEvent.Actor == "" || firstEvent.Kind == "" || firstEvent.Damage <= 0 {
 			return fmt.Errorf("VERIFY_FAIL: invalid combat event %+v", firstEvent)

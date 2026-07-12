@@ -29,6 +29,7 @@ namespace EquipmentIdle.State
         public int MinionsTotal { get; private set; } = 3;
         public int EquipmentDataVersion { get; private set; } = 0;
         public int LegendaryDataVersion { get; private set; } = 0;
+        public int ArtifactDataVersion { get; private set; } = 0;
         public int Souls { get; private set; } = 0;
         public int MaxFloor { get; private set; } = 1;
         public bool CanReincarn { get; private set; } = false;
@@ -129,6 +130,7 @@ namespace EquipmentIdle.State
                         MinionsTotal = sd.minions_total > 0 ? sd.minions_total : MinionsTotal;
                         EquipmentDataVersion = sd.equipment_data_version;
                         LegendaryDataVersion = sd.legendary_data_version;
+                        ArtifactDataVersion = sd.artifact_data_version;
                         Souls = sd.souls;
                         OnSyncReceived?.Invoke(sd);
                     }
@@ -169,10 +171,15 @@ namespace EquipmentIdle.State
                             uid = ld.uid,
                             base_id = ld.base_id,
                             legendary_id = ld.legendary_id,
+                            artifact_id = ld.artifact_id,
                             legendary_description = ld.legendary_description,
+                            artifact_description = ld.artifact_description,
                             legendary_bonuses = ld.legendary_bonuses,
+                            artifact_bonuses = ld.artifact_bonuses,
                             legendary_power_bonus = ld.legendary_power_bonus,
                             boss_reward_bonus = ld.boss_reward_bonus,
+                            artifact_trigger = ld.artifact_trigger,
+                            artifact_value = ld.artifact_value,
                             name = ld.name,
                             slot = ld.slot,
                             rarity = ld.rarity,

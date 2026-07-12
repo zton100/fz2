@@ -59,7 +59,7 @@ func defaultBalanceConfig() balanceConfig {
 		LateStartFloor:                       50,
 		LateTargetFloor:                      80,
 		LateTicks:                            tickRange{Min: 25, Max: 1500},
-		LateMinArtifactDrops:                 1,
+		LateMinArtifactDrops:                 0,
 		EndgameStartFloor:                    80,
 		EndgameTargetFloor:                   120,
 		EndgameTicks:                         tickRange{Min: 35, Max: 3000},

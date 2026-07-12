@@ -15,6 +15,7 @@ type Generator struct {
 	pool            []data.AffixDef
 	baseCursor      map[data.Slot]int
 	legendaryCursor map[data.Slot]int
+	artifactCursor  map[data.Slot]int
 }
 
 // NewGenerator 创建生成器。
@@ -24,6 +25,7 @@ func NewGenerator(rng *mathrand.Rand) *Generator {
 		pool:            data.BuildAffixPool(),
 		baseCursor:      map[data.Slot]int{},
 		legendaryCursor: map[data.Slot]int{},
+		artifactCursor:  map[data.Slot]int{},
 	}
 }
 
@@ -32,6 +34,7 @@ func (g *Generator) Generate(slot data.Slot, rarity data.Rarity, floor int) *mod
 	bases := data.BasesBySlot(slot)
 	base := data.BaseBySlot(slot)
 	legendaryID := ""
+	artifactID := ""
 	name := ""
 	if rarity == data.RarityLegendary {
 		defs := data.LegendariesBySlot(slot)
@@ -39,6 +42,17 @@ func (g *Generator) Generate(slot data.Slot, rarity data.Rarity, floor int) *mod
 			def := defs[g.legendaryCursor[slot]%len(defs)]
 			g.legendaryCursor[slot]++
 			legendaryID = def.ID
+			name = def.Name
+			if selected, ok := data.BaseByID(def.BaseID); ok {
+				base = selected
+			}
+		}
+	} else if rarity == data.RarityArtifact {
+		defs := data.ArtifactsBySlot(slot)
+		if len(defs) > 0 {
+			def := defs[g.artifactCursor[slot]%len(defs)]
+			g.artifactCursor[slot]++
+			artifactID = def.ID
 			name = def.Name
 			if selected, ok := data.BaseByID(def.BaseID); ok {
 				base = selected
@@ -56,6 +70,7 @@ func (g *Generator) Generate(slot data.Slot, rarity data.Rarity, floor int) *mod
 		UID:         nextUID(),
 		BaseID:      base.ID,
 		LegendaryID: legendaryID,
+		ArtifactID:  artifactID,
 		Name:        name,
 		Slot:        slot,
 		Rarity:      rarity,

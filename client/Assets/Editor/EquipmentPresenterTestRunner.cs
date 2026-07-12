@@ -15,7 +15,8 @@ public static class EquipmentPresenterTestRunner
             PrefersAuthoritativePowerScoreWhenAvailable();
             FormatsAffixesForPlayers();
             DescribesFixedLegendaryEffects();
-            PrefersLegendaryIconIdentity();
+            DescribesArtifactTriggerEffects();
+            PrefersFixedEquipmentIconIdentity();
             RecognizesLegendaryEconomyEffects();
             SummarizesEquipmentWithSlotComparison();
             FiltersBagItemsByUserModeAndLockState();
@@ -26,6 +27,7 @@ public static class EquipmentPresenterTestRunner
             EncodesLockEquipmentRequests();
             EncodesTransferUpgradeRequests();
             ParsesAuthoritativeCombatEvents();
+            DescribesMonsterTraitsAndResistances();
             DescribesDungeonStateWithServerMonsterCurve();
             RecommendsNextGoalFromProgressState();
             LabelsEquipmentRowsWithUpgradeContext();
@@ -38,6 +40,7 @@ public static class EquipmentPresenterTestRunner
             BuildsCraftAndReincarnationPlans();
             BuildsBattleStageStateForVisualCombat();
             BuildsCombatBeatStateForHitFeedback();
+            LabelsArtifactCombatEvents();
             NamesDungeonZonesAndMonsters();
             Debug.Log("[EquipmentPresenterTestRunner] OK");
             EditorApplication.Exit(0);
@@ -88,8 +91,31 @@ public static class EquipmentPresenterTestRunner
         AssertContains(detail, "全局战力 +12.0%", "legendary detail should show its global power multiplier");
     }
 
-    private static void PrefersLegendaryIconIdentity()
+    private static void DescribesArtifactTriggerEffects()
     {
+        var eq = Equipment("artifact", 0, 4, 0, Affix("strength", 5, 120));
+        eq.name = "回响刃";
+        eq.artifact_id = "artifact_echo_blade";
+        eq.artifact_description = "每三次玩家命中触发一次回响斩，造成额外伤害。";
+        eq.artifact_bonuses = new[] { Affix("attack_speed", 0, 0.10f) };
+        eq.artifact_trigger = "echo_strike";
+        eq.artifact_value = 0.45f;
+
+        string detail = EquipmentPresenter.BuildDetail(eq, null);
+        AssertContains(detail, "神器触发", "artifact detail should identify its trigger effect");
+        AssertContains(detail, eq.artifact_description, "artifact detail should show its description");
+        AssertContains(detail, "固定加成：攻击速度 +10.0%", "artifact detail should show fixed stat bonuses");
+        AssertContains(detail, "触发类型：回响追加", "artifact detail should localize trigger type");
+        AssertContains(detail, "触发强度 +45.0%", "artifact detail should show trigger strength");
+    }
+
+    private static void PrefersFixedEquipmentIconIdentity()
+    {
+        var artifact = Equipment("artifact", 0, 4, 0);
+        artifact.base_id = "weapon_hunter_sabre";
+        artifact.artifact_id = "artifact_echo_blade";
+        AssertEqual("artifact_echo_blade", EquipmentPresenter.IconResourceKey(artifact), "artifact icon identity");
+
         var legendary = Equipment("legendary", 0, 3, 0);
         legendary.base_id = "weapon_ember_axe";
         legendary.legendary_id = "legendary_ember_cleaver";
@@ -260,7 +286,7 @@ public static class EquipmentPresenterTestRunner
 
     private static void ParsesAuthoritativeCombatEvents()
     {
-        const string json = "{\"t\":\"combat\",\"data\":{\"floor\":7,\"enemy_kind\":\"minion\",\"win\":true,\"player_power\":42.5,\"enemy_power\":18.0,\"minions_killed\":2,\"minions_total\":3,\"floor_advanced\":false,\"player_start_hp\":160,\"enemy_start_hp\":120,\"player_start_shield\":20,\"events\":[{\"index\":1,\"actor\":\"player\",\"kind\":\"hit\",\"damage\":36,\"player_hp\":160,\"enemy_hp\":84,\"player_shield\":20}]}}";
+        const string json = "{\"t\":\"combat\",\"data\":{\"floor\":7,\"enemy_kind\":\"minion\",\"enemy_family\":\"beast\",\"enemy_element\":\"fire\",\"enemy_resistances\":[{\"type\":\"fire_dmg\",\"value\":0.18},{\"type\":\"lightning_dmg\",\"value\":-0.08}],\"win\":true,\"player_power\":42.5,\"enemy_power\":18.0,\"minions_killed\":2,\"minions_total\":3,\"floor_advanced\":false,\"player_start_hp\":160,\"enemy_start_hp\":120,\"player_start_shield\":20,\"events\":[{\"index\":1,\"actor\":\"player\",\"kind\":\"hit\",\"damage\":36,\"player_hp\":160,\"enemy_hp\":84,\"player_shield\":20}]}}";
         var parsed = Message.Parse(json);
         AssertEqual(Message.TypeCombat, parsed.t, "combat event type");
         var combat = JsonUtility.FromJson<CombatData>(parsed.dataJson);
@@ -268,8 +294,29 @@ public static class EquipmentPresenterTestRunner
             throw new Exception("combat event should preserve authoritative encounter progress");
         if (combat.player_start_hp != 160f || combat.player_start_shield != 20f || combat.events == null || combat.events.Length != 1)
             throw new Exception("combat event should preserve hp, shield and hit timeline");
+        if (combat.enemy_family != "beast" || combat.enemy_resistances == null || combat.enemy_resistances.Length != 2)
+            throw new Exception("combat event should preserve monster family and resistances");
         if (combat.events[0].actor != "player" || combat.events[0].damage != 36f)
             throw new Exception("combat hit event should preserve actor and damage");
+    }
+
+    private static void DescribesMonsterTraitsAndResistances()
+    {
+        var combat = new CombatData
+        {
+            enemy_family = "beast",
+            enemy_element = "fire",
+            enemy_resistances = new[]
+            {
+                new ResistanceData { type = "fire_dmg", value = 0.18f },
+                new ResistanceData { type = "lightning_dmg", value = -0.08f },
+            }
+        };
+        string text = EquipmentPresenter.MonsterTraitLine(combat);
+        AssertContains(text, "野兽", "monster trait should localize family");
+        AssertContains(text, "火焰倾向", "monster trait should localize element");
+        AssertContains(text, "火焰伤害抗性 18%", "monster trait should show resistance");
+        AssertContains(text, "闪电伤害易伤 8%", "monster trait should show vulnerability");
     }
 
     private static void DescribesDungeonStateWithServerMonsterCurve()
@@ -450,6 +497,15 @@ public static class EquipmentPresenterTestRunner
 
         var boss = EquipmentPresenter.BuildCombatBeatState(5, 100f, 0.2f, 0.5f);
         AssertContains(boss.DamageText, "重击", "boss hit should have stronger feedback copy");
+    }
+
+    private static void LabelsArtifactCombatEvents()
+    {
+        AssertContains(EquipmentPresenter.CombatEventLabel("shield", 0f), "开场护盾", "shield artifact event label");
+        AssertContains(EquipmentPresenter.CombatEventLabel("echo", 36f), "回响斩 36", "echo artifact event label");
+        AssertContains(EquipmentPresenter.CombatEventLabel("execute", 88f), "裁决 88", "execute artifact event label");
+        AssertContains(EquipmentPresenter.CombatEventLabel("heal", 24f), "治疗 24", "heal artifact event label");
+        AssertEqual("", EquipmentPresenter.CombatEventLabel("hit", 12f), "ordinary hit should not show artifact label");
     }
 
     private static void NamesDungeonZonesAndMonsters()

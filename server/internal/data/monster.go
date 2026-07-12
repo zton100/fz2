@@ -8,10 +8,19 @@ import (
 
 // Monster 怪物定义。
 type Monster struct {
-	Name   string
-	Power  float64
-	IsBoss bool
+	Name        string
+	Power       float64
+	IsBoss      bool
+	Family      string
+	Element     string
+	Resistances map[AffixType]float64
 }
+
+const (
+	MonsterFamilyUndead  = "undead"
+	MonsterFamilyBeast   = "beast"
+	MonsterFamilyCultist = "cultist"
+)
 
 // MonsterPower 按层数计算怪物强度（非 Boss 基础值）。
 func MonsterPower(floor int) float64 {
@@ -50,9 +59,42 @@ func MonsterAt(floor int) Monster {
 	if isBoss {
 		name = l.MonsterBoss
 	}
+	family, element, resist := monsterFamilyAt(floor)
+	if isBoss {
+		for affix, value := range resist {
+			resist[affix] = value + 0.08
+		}
+	}
 	return Monster{
-		Name:   name,
-		Power:  MonsterPower(floor),
-		IsBoss: isBoss,
+		Name:        name,
+		Power:       MonsterPower(floor),
+		IsBoss:      isBoss,
+		Family:      family,
+		Element:     element,
+		Resistances: resist,
+	}
+}
+
+func monsterFamilyAt(floor int) (string, string, map[AffixType]float64) {
+	if floor <= 0 {
+		floor = 1
+	}
+	band := ((floor - 1) / 5) % 3
+	switch band {
+	case 1:
+		return MonsterFamilyBeast, "fire", map[AffixType]float64{
+			ATFireDmg:      0.18,
+			ATLightningDmg: -0.08,
+		}
+	case 2:
+		return MonsterFamilyCultist, "lightning", map[AffixType]float64{
+			ATLightningDmg: 0.18,
+			ATColdDmg:      -0.08,
+		}
+	default:
+		return MonsterFamilyUndead, "cold", map[AffixType]float64{
+			ATColdDmg: 0.18,
+			ATFireDmg: -0.08,
+		}
 	}
 }

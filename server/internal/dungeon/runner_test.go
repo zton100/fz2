@@ -4,6 +4,7 @@ import (
 	"math/rand"
 	"testing"
 
+	"equipment-idle-server/internal/combat"
 	"equipment-idle-server/internal/data"
 	"equipment-idle-server/internal/loot"
 	"equipment-idle-server/internal/model"
@@ -110,6 +111,52 @@ func TestRunner_CombatResultIncludesHitTimeline(t *testing.T) {
 	}
 	if result.PlayerStartShield <= 0 {
 		t.Fatalf("player start shield = %.2f, want equipped shield to contribute", result.PlayerStartShield)
+	}
+}
+
+func TestRunner_EquippedArtifactTriggersInCombatTimeline(t *testing.T) {
+	p := makePlayer()
+	p.Floor = 80
+	p.Equipped[data.SlotWeapon] = &model.Equipment{
+		ArtifactID: "artifact_echo_blade",
+		BaseStats: map[data.AffixType]float64{
+			data.ATStrength: 200,
+			data.ATMaxHP:    2000,
+		},
+	}
+	gen := loot.NewGenerator(rand.New(rand.NewSource(1)))
+	r := NewRunner(p, func(*model.Player) float64 { return 200 }, loot.NewDropTable(gen))
+
+	result := r.Tick()
+
+	found := false
+	for _, event := range result.Events {
+		if event.Kind == combat.EventEcho {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("events = %+v, want artifact echo trigger", result.Events)
+	}
+}
+
+func TestRunner_CombatResultIncludesMonsterFamilyAndResistances(t *testing.T) {
+	p := makePlayer()
+	p.Floor = 6
+	p.Equipped[data.SlotWeapon] = &model.Equipment{
+		BaseStats: map[data.AffixType]float64{data.ATStrength: 200},
+	}
+	gen := loot.NewGenerator(rand.New(rand.NewSource(1)))
+	r := NewRunner(p, nil, loot.NewDropTable(gen))
+
+	result := r.Tick()
+
+	if result.EnemyFamily != data.MonsterFamilyBeast || result.EnemyElement != "fire" {
+		t.Fatalf("enemy family=%q element=%q, want beast fire", result.EnemyFamily, result.EnemyElement)
+	}
+	if result.EnemyResistances[data.ATFireDmg] <= 0 {
+		t.Fatalf("enemy resistances = %+v, want fire resistance", result.EnemyResistances)
 	}
 }
 

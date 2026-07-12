@@ -186,6 +186,25 @@ namespace EquipmentIdle.UI
             _stageImpactText.style.color = new StyleColor(new Color32(255, 224, 137, 255));
             _stageImpactText.style.opacity = 0f;
             stage.Add(_stageImpactText);
+            _stageArtifactText = Text("", 17, true);
+            _stageArtifactText.style.position = Position.Absolute;
+            _stageArtifactText.style.left = 58;
+            _stageArtifactText.style.right = 58;
+            _stageArtifactText.style.top = 126;
+            _stageArtifactText.style.height = 32;
+            _stageArtifactText.style.unityTextAlign = TextAnchor.MiddleCenter;
+            _stageArtifactText.style.color = new StyleColor(new Color32(255, 209, 102, 255));
+            _stageArtifactText.style.backgroundColor = new StyleColor(new Color32(92, 18, 18, 210));
+            _stageArtifactText.style.borderTopWidth = 1;
+            _stageArtifactText.style.borderRightWidth = 1;
+            _stageArtifactText.style.borderBottomWidth = 1;
+            _stageArtifactText.style.borderLeftWidth = 1;
+            _stageArtifactText.style.borderTopColor = new StyleColor(new Color32(248, 113, 113, 255));
+            _stageArtifactText.style.borderRightColor = new StyleColor(new Color32(248, 113, 113, 255));
+            _stageArtifactText.style.borderBottomColor = new StyleColor(new Color32(251, 191, 36, 255));
+            _stageArtifactText.style.borderLeftColor = new StyleColor(new Color32(248, 113, 113, 255));
+            _stageArtifactText.style.opacity = 0f;
+            stage.Add(_stageArtifactText);
             _stageBannerText = Text("", 19, true);
             _stageBannerText.style.position = Position.Absolute;
             _stageBannerText.style.left = 34;
@@ -369,7 +388,10 @@ namespace EquipmentIdle.UI
                 : boss ? $"第 {displayFloor} 层 Boss 关 · {dungeon.Zone}" : $"第 {displayFloor} 层守关战 · {dungeon.Zone}";
             float encounterPower = showingCombatEvent ? _activeCombat.enemy_power : clearingMinions ? dungeon.MonsterPower * 0.5f : dungeon.MonsterPower;
             string encounterName = clearingMinions ? "地牢爪牙" : boss ? "守层 Boss" : "守关精英";
-            _monsterText.text = $"{encounterName}\n战力 {encounterPower:F1}";
+            string traits = showingCombatEvent ? EquipmentPresenter.MonsterTraitLine(_activeCombat) : "";
+            _monsterText.text = string.IsNullOrEmpty(traits)
+                ? $"{encounterName}\n战力 {encounterPower:F1}"
+                : $"{encounterName}\n战力 {encounterPower:F1}\n{traits}";
             _battleText.text = clearingMinions
                 ? $"小兵进度 {minionsKilled}/{minionsTotal}，清剿完成后进入守关战。"
                 : dungeon.Battle;
@@ -438,6 +460,11 @@ namespace EquipmentIdle.UI
             _stageHeroPowerText.text = stage.HeroPower;
             _stageMonsterNameText.text = encounterName;
             _stageMonsterPowerText.text = $"战力 {encounterPower:F1}";
+            if (_activeCombat != null && !string.IsNullOrEmpty(_activeCombat.enemy_family))
+            {
+                _stageMonsterNameText.text = $"{encounterName} · {EquipmentPresenter.MonsterFamilyName(_activeCombat.enemy_family)}";
+                _stageMonsterPowerText.text = $"战力 {encounterPower:F1} · {EquipmentPresenter.ElementName(_activeCombat.enemy_element)}";
+            }
             _stageStatusText.text = clearingMinions ? $"清剿小兵：{minionsKilled}/{minionsTotal}" : boss ? $"Boss 战：{stage.Status}" : $"守关战：{stage.Status}";
             _stageStatusText.style.color = new StyleColor(stage.Status == "受阻" ? new Color32(248, 113, 113, 255) : GoldText);
             if (_stageSlash != null)
@@ -447,6 +474,7 @@ namespace EquipmentIdle.UI
             }
             _stageHeroHealthFill.style.width = Length.Percent(stage.HeroHealth * 100f);
             _stageMonsterHealthFill.style.width = Length.Percent(stage.MonsterHealth * 100f);
+            if (_stageArtifactText != null) _stageArtifactText.style.opacity = 0f;
             _stageMonsterHealthFill.style.backgroundColor = new StyleColor(boss ? new Color32(220, 38, 38, 255) : clearingMinions ? new Color32(234, 179, 8, 255) : new Color32(245, 158, 11, 255));
             if (_stageBossSpriteImage != null)
             {
@@ -609,6 +637,7 @@ namespace EquipmentIdle.UI
                 _stageImpactText.style.opacity = beat.ImpactOpacity;
                 _stageImpactText.style.top = 172 - beat.HeroOffset * 0.65f;
             }
+            if (_stageArtifactText != null) _stageArtifactText.style.opacity = 0f;
         }
 
         private void RefreshServerCombatBeat(float elapsed, CombatBeatState beat)
@@ -642,10 +671,17 @@ namespace EquipmentIdle.UI
             {
                 string verb = playerHit ? (_activeCombat.enemy_kind == "boss" ? "重击" : "斩击") : "受击";
                 string critical = evt.critical ? " 暴击" : "";
-                _stageImpactText.text = $"{verb}{critical} {evt.damage:F0}";
+                string artifactLabel = EquipmentPresenter.CombatEventLabel(evt.kind, evt.damage);
+                bool artifactEvent = !string.IsNullOrEmpty(artifactLabel);
+                _stageImpactText.text = artifactEvent ? $"{evt.damage:F0}" : $"{verb}{critical} {evt.damage:F0}";
                 _stageImpactText.style.opacity = Mathf.Max(beat.ImpactOpacity, 0.35f);
-                _stageImpactText.style.top = playerHit ? 172 - beat.HeroOffset * 0.65f : 188 + beat.MonsterOffset * 0.45f;
-                _stageImpactText.style.color = new StyleColor(playerHit ? new Color32(255, 224, 137, 255) : new Color32(248, 113, 113, 255));
+                _stageImpactText.style.top = artifactEvent ? 166 : playerHit ? 172 - beat.HeroOffset * 0.65f : 188 + beat.MonsterOffset * 0.45f;
+                _stageImpactText.style.color = new StyleColor(artifactEvent ? new Color32(255, 209, 102, 255) : playerHit ? new Color32(255, 224, 137, 255) : new Color32(248, 113, 113, 255));
+                if (_stageArtifactText != null)
+                {
+                    _stageArtifactText.text = artifactLabel;
+                    _stageArtifactText.style.opacity = artifactEvent ? Mathf.Max(0.42f, beat.ImpactOpacity) : 0f;
+                }
             }
         }
     }

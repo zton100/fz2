@@ -104,6 +104,7 @@ func (h *Hub) handleLogin(sess *Session, env protocol.Envelope) {
 			Account: player.Account, Floor: player.Floor, FloorKills: player.FloorKills,
 			MinionsTotal: dungeon.MinionsPerFloor, EquipmentDataVersion: data.EquipmentDataVersion(),
 			LegendaryDataVersion: data.LegendaryDataVersion(),
+			ArtifactDataVersion:  data.ArtifactDataVersion(),
 			Souls:                player.Souls, Inventory: player.Inventory,
 		}
 		syncData, _ := json.Marshal(sync)
@@ -203,8 +204,10 @@ func (h *Hub) battleLoop(sess *Session, runner *dungeon.Runner) {
 func (h *Hub) pushCombat(sess *Session, result dungeon.TickResult) {
 	dataBytes, _ := json.Marshal(protocol.CombatData{
 		Floor: result.Floor, EnemyKind: string(result.EnemyKind), Win: result.Win,
+		EnemyFamily: result.EnemyFamily, EnemyElement: result.EnemyElement,
 		PlayerPower: result.PlayerPower, EnemyPower: result.EnemyPower,
-		MinionsKilled: result.MinionsKilled, MinionsTotal: result.MinionsTotal,
+		EnemyResistances: toResistanceDTOs(result.EnemyResistances),
+		MinionsKilled:    result.MinionsKilled, MinionsTotal: result.MinionsTotal,
 		FloorAdvanced: result.FloorAdvanced,
 		PlayerStartHP: result.PlayerStartHP, EnemyStartHP: result.EnemyStartHP,
 		PlayerStartShield: result.PlayerStartShield, EnemyStartShield: result.EnemyStartShield,
@@ -218,6 +221,21 @@ func (h *Hub) pushCombat(sess *Session, result dungeon.TickResult) {
 	case sess.Send <- out:
 	default:
 	}
+}
+
+func toResistanceDTOs(resistances map[data.AffixType]float64) []protocol.ResistanceDTO {
+	if len(resistances) == 0 {
+		return nil
+	}
+	out := make([]protocol.ResistanceDTO, 0, len(resistances))
+	for _, affix := range []data.AffixType{data.ATFireDmg, data.ATColdDmg, data.ATLightningDmg} {
+		value, ok := resistances[affix]
+		if !ok || value == 0 {
+			continue
+		}
+		out = append(out, protocol.ResistanceDTO{Type: string(affix), Value: value})
+	}
+	return out
 }
 
 func toCombatEventDTOs(events []combat.HitEvent) []protocol.CombatEventDTO {
@@ -253,6 +271,13 @@ func (h *Hub) pushLoot(sess *Session, eq *model.Equipment) {
 		ld.LegendaryBonuses = toStatDTOs(def.BonusStats)
 		ld.LegendaryPowerBonus = def.PowerMultiplier
 		ld.BossRewardBonus = def.BossRewardMultiplier
+	}
+	if def, ok := data.ArtifactByID(eq.ArtifactID); ok {
+		ld.ArtifactID = def.ID
+		ld.ArtifactDescription = def.Description
+		ld.ArtifactBonuses = toStatDTOs(def.BonusStats)
+		ld.ArtifactTrigger = def.Trigger
+		ld.ArtifactValue = def.Value
 	}
 	dataBytes, _ := json.Marshal(ld)
 	env := protocol.Envelope{T: protocol.TypeLoot, Data: dataBytes}
@@ -322,6 +347,13 @@ func toEquipmentDTO(eq *model.Equipment, locked map[string]bool, powerScore floa
 		dto.LegendaryBonuses = toStatDTOs(def.BonusStats)
 		dto.LegendaryPowerBonus = def.PowerMultiplier
 		dto.BossRewardBonus = def.BossRewardMultiplier
+	}
+	if def, ok := data.ArtifactByID(eq.ArtifactID); ok {
+		dto.ArtifactID = def.ID
+		dto.ArtifactDescription = def.Description
+		dto.ArtifactBonuses = toStatDTOs(def.BonusStats)
+		dto.ArtifactTrigger = def.Trigger
+		dto.ArtifactValue = def.Value
 	}
 	return dto
 }
@@ -686,7 +718,13 @@ func (h *Hub) pushTalents(sess *Session, player *model.Player) {
 func (h *Hub) pushSync(sess *Session, player *model.Player, id string) {
 	sync := protocol.SyncData{
 		Account: player.Account, Floor: player.Floor,
-		Souls: player.Souls, Inventory: player.Inventory,
+		FloorKills:           player.FloorKills,
+		MinionsTotal:         dungeon.MinionsPerFloor,
+		EquipmentDataVersion: data.EquipmentDataVersion(),
+		LegendaryDataVersion: data.LegendaryDataVersion(),
+		ArtifactDataVersion:  data.ArtifactDataVersion(),
+		Souls:                player.Souls,
+		Inventory:            player.Inventory,
 	}
 	syncData, _ := json.Marshal(sync)
 	resp := protocol.Envelope{T: protocol.TypeSync, ID: id, Data: syncData}
