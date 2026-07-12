@@ -292,6 +292,67 @@ namespace EquipmentIdle.UI
             return text;
         }
 
+        public static string ElementMatchupLine(CombatData combat, IList<EquipmentDTO> equipped)
+        {
+            if (combat == null || equipped == null || equipped.Count == 0) return "";
+            string element = DominantElement(equipped, out float value);
+            if (string.IsNullOrEmpty(element) || value <= 0f)
+            {
+                return "元素克制：当前构筑无元素主攻";
+            }
+            float resistance = ResistanceFor(combat.enemy_resistances, element);
+            string trend = resistance > 0.01f ? "输出受抑" : resistance < -0.01f ? "克制目标" : "正常输出";
+            string sign = resistance >= 0f ? "抗性" : "易伤";
+            return $"元素克制：{AffixName(element)} {value:F0} · 目标{sign} {Math.Abs(resistance) * 100f:F0}% · {trend}";
+        }
+
+        private static string DominantElement(IList<EquipmentDTO> equipped, out float value)
+        {
+            var totals = new Dictionary<string, float>
+            {
+                { "fire_dmg", 0f },
+                { "cold_dmg", 0f },
+                { "lightning_dmg", 0f },
+            };
+            foreach (var eq in equipped)
+            {
+                AddElementTotals(totals, eq != null ? eq.affixes : null);
+                AddElementTotals(totals, eq != null ? eq.legendary_bonuses : null);
+                AddElementTotals(totals, eq != null ? eq.artifact_bonuses : null);
+            }
+            string best = "";
+            value = 0f;
+            foreach (var kv in totals)
+            {
+                if (kv.Value > value)
+                {
+                    best = kv.Key;
+                    value = kv.Value;
+                }
+            }
+            return best;
+        }
+
+        private static void AddElementTotals(Dictionary<string, float> totals, AffixData[] affixes)
+        {
+            if (affixes == null) return;
+            foreach (var affix in affixes)
+            {
+                if (affix == null || !totals.ContainsKey(affix.type)) continue;
+                totals[affix.type] += affix.value;
+            }
+        }
+
+        private static float ResistanceFor(ResistanceData[] resistances, string elementAffix)
+        {
+            if (resistances == null) return 0f;
+            foreach (var resistance in resistances)
+            {
+                if (resistance != null && resistance.type == elementAffix) return resistance.value;
+            }
+            return 0f;
+        }
+
         public static string MonsterFamilyName(string family)
         {
             switch (family)

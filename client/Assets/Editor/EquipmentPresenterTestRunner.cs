@@ -28,6 +28,7 @@ public static class EquipmentPresenterTestRunner
             EncodesTransferUpgradeRequests();
             ParsesAuthoritativeCombatEvents();
             DescribesMonsterTraitsAndResistances();
+            DescribesElementMatchupsAgainstMonsterResistances();
             DescribesDungeonStateWithServerMonsterCurve();
             RecommendsNextGoalFromProgressState();
             LabelsEquipmentRowsWithUpgradeContext();
@@ -317,6 +318,37 @@ public static class EquipmentPresenterTestRunner
         AssertContains(text, "火焰倾向", "monster trait should localize element");
         AssertContains(text, "火焰伤害抗性 18%", "monster trait should show resistance");
         AssertContains(text, "闪电伤害易伤 8%", "monster trait should show vulnerability");
+    }
+
+    private static void DescribesElementMatchupsAgainstMonsterResistances()
+    {
+        var combat = new CombatData
+        {
+            enemy_resistances = new[]
+            {
+                new ResistanceData { type = "fire_dmg", value = 0.18f },
+                new ResistanceData { type = "lightning_dmg", value = -0.08f },
+            }
+        };
+        var lightningBuild = new[]
+        {
+            Equipment("storm", 6, 3, 0, Affix("lightning_dmg", 4, 80)),
+        };
+        string advantage = EquipmentPresenter.ElementMatchupLine(combat, lightningBuild);
+        AssertContains(advantage, "闪电伤害 80", "matchup should find dominant equipped element");
+        AssertContains(advantage, "目标易伤 8%", "matchup should show vulnerability");
+        AssertContains(advantage, "克制目标", "matchup should call out advantage");
+
+        var fireBuild = new[]
+        {
+            Equipment("flame", 0, 3, 0, Affix("fire_dmg", 4, 90)),
+        };
+        string resisted = EquipmentPresenter.ElementMatchupLine(combat, fireBuild);
+        AssertContains(resisted, "目标抗性 18%", "matchup should show resistance");
+        AssertContains(resisted, "输出受抑", "matchup should call out suppression");
+
+        string none = EquipmentPresenter.ElementMatchupLine(combat, new[] { Equipment("plain", 0, 0, 0, Affix("strength", 1, 10)) });
+        AssertContains(none, "无元素主攻", "matchup should explain no elemental build");
     }
 
     private static void DescribesDungeonStateWithServerMonsterCurve()

@@ -395,8 +395,9 @@ namespace EquipmentIdle.UI
             _battleText.text = clearingMinions
                 ? $"小兵进度 {minionsKilled}/{minionsTotal}，清剿完成后进入守关战。"
                 : dungeon.Battle;
-            _bossHintText.text = dungeon.BossHint;
-            _bossHintText.style.color = new StyleColor(boss ? new Color32(255, 92, 64, 255) : EmberText);
+            string matchup = showingCombatEvent ? EquipmentPresenter.ElementMatchupLine(_activeCombat, _gameState.Equipped) : "";
+            _bossHintText.text = !string.IsNullOrEmpty(matchup) ? matchup : dungeon.BossHint;
+            _bossHintText.style.color = new StyleColor(!string.IsNullOrEmpty(matchup) ? new Color32(255, 209, 102, 255) : boss ? new Color32(255, 92, 64, 255) : EmberText);
             RefreshBattleStage(displayFloor, minionsKilled, minionsTotal, clearingMinions, boss, encounterName, encounterPower);
             string nextGoal = EquipmentPresenter.BuildNextGoal(
                 _gameState.Floor,
@@ -406,7 +407,7 @@ namespace EquipmentIdle.UI
                 BaseMaterialCount());
             _goalText.text = nextGoal;
             if (_objectiveCardText != null) _objectiveCardText.text = nextGoal.Replace("目标：", "");
-            if (_bossProgressCardText != null) _bossProgressCardText.text = dungeon.BossHint;
+            if (_bossProgressCardText != null) _bossProgressCardText.text = !string.IsNullOrEmpty(matchup) ? matchup : dungeon.BossHint;
             _bossProgressFill.style.backgroundColor = new StyleColor(boss ? new Color32(220, 38, 38, 255) : clearingMinions ? new Color32(59, 130, 246, 255) : new Color32(217, 119, 6, 255));
             RefreshProgressNodes();
         }
