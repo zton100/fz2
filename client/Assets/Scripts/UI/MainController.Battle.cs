@@ -10,7 +10,7 @@ namespace EquipmentIdle.UI
         {
             var dungeon = Panel("dungeon");
             _dungeonPanel = dungeon;
-            dungeon.style.minHeight = 760;
+            dungeon.style.minHeight = 578;
             dungeon.style.flexGrow = 1;
             dungeon.style.marginBottom = 8;
             dungeon.style.flexDirection = FlexDirection.Column;
@@ -22,12 +22,12 @@ namespace EquipmentIdle.UI
             root.Add(dungeon);
 
             var bossRow = Row();
-            bossRow.style.height = 66;
+            bossRow.style.height = 48;
             bossRow.style.paddingLeft = 18;
             bossRow.style.paddingRight = 18;
             bossRow.style.marginBottom = 0;
             bossRow.style.backgroundColor = new StyleColor(new Color32(9, 7, 6, 235));
-            _dungeonTitleText = Text("", 23, true);
+            _dungeonTitleText = Text("", 20, true);
             _dungeonTitleText.style.flexGrow = 1;
             _dungeonTitleText.style.color = new StyleColor(new Color32(255, 214, 138, 255));
             _dungeonTitleText.style.unityTextAlign = TextAnchor.MiddleLeft;
@@ -39,11 +39,11 @@ namespace EquipmentIdle.UI
             dungeon.Add(bossRow);
 
             var progressFrame = new VisualElement();
-            progressFrame.style.height = 18;
-            progressFrame.style.marginLeft = 20;
-            progressFrame.style.marginRight = 20;
-            progressFrame.style.marginTop = 10;
-            progressFrame.style.marginBottom = 10;
+            progressFrame.style.height = 12;
+            progressFrame.style.marginLeft = 290;
+            progressFrame.style.marginRight = 290;
+            progressFrame.style.marginTop = 6;
+            progressFrame.style.marginBottom = 6;
             progressFrame.style.backgroundColor = new StyleColor(new Color32(10, 8, 7, 255));
             progressFrame.style.borderTopWidth = 2;
             progressFrame.style.borderRightWidth = 2;
@@ -70,14 +70,12 @@ namespace EquipmentIdle.UI
             dungeon.Add(BuildBattleStage());
 
             var combatFooter = Row();
-            combatFooter.style.height = 84;
+            combatFooter.style.height = 30;
             combatFooter.style.paddingLeft = 18;
             combatFooter.style.paddingRight = 18;
-            combatFooter.style.paddingTop = 10;
-            combatFooter.style.paddingBottom = 10;
-            combatFooter.style.backgroundColor = new StyleColor(new Color32(9, 8, 7, 235));
-            combatFooter.style.alignItems = Align.FlexStart;
-            _battleText = Text("", 16, true);
+            combatFooter.style.backgroundColor = new StyleColor(new Color32(7, 6, 5, 238));
+            combatFooter.style.alignItems = Align.Center;
+            _battleText = Text("", 13, true);
             _battleText.style.color = new StyleColor(GoldText);
             _stuckText = Text("", 13, false);
             _stuckText.style.color = new StyleColor(new Color32(248, 113, 113, 255));
@@ -87,14 +85,15 @@ namespace EquipmentIdle.UI
             var left = new VisualElement();
             left.style.flexGrow = 1;
             left.Add(_battleText);
-            left.Add(_stuckText);
-            left.Add(_goalText);
             var right = new VisualElement();
-            right.style.width = 300;
+            right.style.width = 360;
             right.Add(_bossHintText);
             combatFooter.Add(left);
             combatFooter.Add(right);
             dungeon.Add(combatFooter);
+
+            _stuckText.style.display = DisplayStyle.None;
+            _goalText.style.display = DisplayStyle.None;
         }
 
         private void BuildMobileStatusCards(VisualElement root)
@@ -148,8 +147,8 @@ namespace EquipmentIdle.UI
         {
             var stage = new VisualElement();
             stage.style.flexGrow = 1;
-            stage.style.marginLeft = 12;
-            stage.style.marginRight = 12;
+            stage.style.marginLeft = 0;
+            stage.style.marginRight = 0;
             stage.style.paddingLeft = 0;
             stage.style.paddingRight = 0;
             stage.style.paddingTop = 0;
@@ -169,12 +168,12 @@ namespace EquipmentIdle.UI
             }
             if (_heroSprite != null)
             {
-                _stageHeroSpriteImage = StageSprite(_heroSprite, 330, 380, 26, null, ScaleMode.ScaleToFit);
+                _stageHeroSpriteImage = StageSprite(_heroSprite, 310, 340, 250, null, ScaleMode.ScaleToFit);
                 stage.Add(_stageHeroSpriteImage);
             }
             if (_bossSprite != null)
             {
-                _stageBossSpriteImage = StageSprite(_bossSprite, 430, 430, null, -8, ScaleMode.ScaleToFit);
+                _stageBossSpriteImage = StageSprite(_bossSprite, 350, 350, null, 170, ScaleMode.ScaleToFit);
                 stage.Add(_stageBossSpriteImage);
             }
             _stageImpactText = Text("", 24, true);
@@ -248,57 +247,137 @@ namespace EquipmentIdle.UI
             _stageZoneText.style.backgroundColor = new StyleColor(new Color32(13, 10, 8, 190));
             stage.Add(_stageZoneText);
 
-            var combatants = Row();
-            combatants.style.position = Position.Absolute;
-            combatants.style.left = 18;
-            combatants.style.right = 18;
-            combatants.style.bottom = 18;
-            combatants.style.height = 84;
-            combatants.style.alignItems = Align.Stretch;
-
-            VisualElement heroCard = CombatantCard(
-                new Color32(59, 130, 246, 255),
-                out _stageHeroNameText,
-                out _stageHeroPowerText,
-                out _stageHeroHealthFill);
-            combatants.Add(heroCard);
-
-            var center = new VisualElement();
-            center.style.width = 96;
-            center.style.alignItems = Align.Center;
-            center.style.justifyContent = Justify.Center;
-            _stageSlash = Text("VS", 28, true);
-            _stageSlash.style.unityTextAlign = TextAnchor.MiddleCenter;
-            _stageSlash.style.color = new StyleColor(new Color32(255, 202, 112, 255));
-            _stageSlash.style.backgroundColor = new StyleColor(new Color32(55, 21, 13, 205));
-            _stageSlash.style.borderTopWidth = 1;
-            _stageSlash.style.borderRightWidth = 1;
-            _stageSlash.style.borderBottomWidth = 1;
-            _stageSlash.style.borderLeftWidth = 1;
-            _stageSlash.style.borderTopColor = new StyleColor(PanelBorderHot);
-            _stageSlash.style.borderRightColor = new StyleColor(PanelBorderHot);
-            _stageSlash.style.borderBottomColor = new StyleColor(PanelBorderHot);
-            _stageSlash.style.borderLeftColor = new StyleColor(PanelBorderHot);
-            center.Add(_stageSlash);
-            combatants.Add(center);
-
-            VisualElement monsterCard = CombatantCard(
-                new Color32(220, 38, 38, 255),
-                out _stageMonsterNameText,
-                out _stageMonsterPowerText,
-                out _stageMonsterHealthFill);
-            combatants.Add(monsterCard);
-            stage.Add(combatants);
+            stage.Add(BuildPartyRail());
+            stage.Add(BuildEnemyHud());
+            stage.Add(BuildBattleControls());
 
             _stageStatusText = Text("", 14, true);
             _stageStatusText.style.position = Position.Absolute;
             _stageStatusText.style.left = 0;
             _stageStatusText.style.right = 0;
-            _stageStatusText.style.bottom = 112;
+            _stageStatusText.style.bottom = 102;
             _stageStatusText.style.unityTextAlign = TextAnchor.MiddleCenter;
             _stageStatusText.style.color = new StyleColor(GoldText);
             stage.Add(_stageStatusText);
             return stage;
+        }
+
+        private VisualElement BuildPartyRail()
+        {
+            var rail = Row();
+            rail.style.position = Position.Absolute;
+            rail.style.left = 18;
+            rail.style.bottom = 14;
+            rail.style.height = 82;
+            rail.style.alignItems = Align.FlexEnd;
+
+            for (int i = 0; i < 5; i++)
+            {
+                Texture2D portrait = i == 4 ? _heroSprite : _slotIcons[(i * 2) % _slotIcons.Length];
+                var medallion = new VisualElement();
+                medallion.style.width = 76;
+                medallion.style.height = 76;
+                medallion.style.marginRight = 8;
+                medallion.style.backgroundColor = new StyleColor(new Color32(12, 10, 9, 235));
+                medallion.style.borderTopWidth = 3;
+                medallion.style.borderRightWidth = 3;
+                medallion.style.borderBottomWidth = 3;
+                medallion.style.borderLeftWidth = 3;
+                medallion.style.borderTopColor = new StyleColor(new Color32(238, 187, 91, 255));
+                medallion.style.borderRightColor = new StyleColor(new Color32(128, 77, 31, 255));
+                medallion.style.borderBottomColor = new StyleColor(new Color32(76, 42, 22, 255));
+                medallion.style.borderLeftColor = new StyleColor(new Color32(238, 187, 91, 255));
+                medallion.style.borderTopLeftRadius = 38;
+                medallion.style.borderTopRightRadius = 38;
+                medallion.style.borderBottomLeftRadius = 38;
+                medallion.style.borderBottomRightRadius = 38;
+                medallion.style.overflow = Overflow.Hidden;
+                if (portrait != null)
+                {
+                    var image = new Image { image = portrait, scaleMode = ScaleMode.ScaleToFit };
+                    image.style.position = Position.Absolute;
+                    image.style.left = 6;
+                    image.style.right = 6;
+                    image.style.top = 6;
+                    image.style.bottom = 12;
+                    image.style.opacity = i == 4 ? 1f : 0.72f;
+                    medallion.Add(image);
+                }
+                var energy = new VisualElement();
+                energy.style.position = Position.Absolute;
+                energy.style.left = 8;
+                energy.style.right = 8;
+                energy.style.bottom = 5;
+                energy.style.height = 5;
+                energy.style.backgroundColor = new StyleColor(i == 4
+                    ? new Color32(250, 187, 67, 255)
+                    : new Color32(92, 63, 123, 255));
+                medallion.Add(energy);
+                rail.Add(medallion);
+            }
+            return rail;
+        }
+
+        private VisualElement BuildEnemyHud()
+        {
+            var hud = new VisualElement();
+            hud.style.position = Position.Absolute;
+            hud.style.right = 26;
+            hud.style.top = 22;
+            hud.style.width = 280;
+            hud.style.paddingLeft = 12;
+            hud.style.paddingRight = 12;
+            hud.style.paddingTop = 8;
+            hud.style.paddingBottom = 8;
+            hud.style.backgroundColor = new StyleColor(new Color32(18, 8, 8, 210));
+            hud.style.borderLeftWidth = 3;
+            hud.style.borderLeftColor = new StyleColor(new Color32(180, 47, 37, 255));
+
+            _stageMonsterNameText = Text("", 16, true);
+            _stageMonsterNameText.style.color = new StyleColor(new Color32(255, 178, 120, 255));
+            _stageMonsterPowerText = Text("", 11, false);
+            var health = new VisualElement();
+            health.style.height = 7;
+            health.style.marginTop = 5;
+            health.style.backgroundColor = new StyleColor(new Color32(34, 14, 14, 255));
+            _stageMonsterHealthFill = new VisualElement();
+            _stageMonsterHealthFill.style.height = Length.Percent(100);
+            _stageMonsterHealthFill.style.backgroundColor = new StyleColor(new Color32(210, 52, 43, 255));
+            health.Add(_stageMonsterHealthFill);
+            hud.Add(_stageMonsterNameText);
+            hud.Add(_stageMonsterPowerText);
+            hud.Add(health);
+
+            _stageHeroNameText = Text("远征编队", 1, false);
+            _stageHeroPowerText = Text("", 1, false);
+            _stageHeroHealthFill = new VisualElement();
+            _stageSlash = Text("", 1, false);
+            return hud;
+        }
+
+        private VisualElement BuildBattleControls()
+        {
+            var controls = Row();
+            controls.style.position = Position.Absolute;
+            controls.style.right = 18;
+            controls.style.bottom = 16;
+            controls.style.height = 58;
+            controls.style.alignItems = Align.Center;
+
+            var auto = ActionButton("挂机中", () => { }, 104, new Color32(111, 55, 24, 255));
+            auto.style.height = 52;
+            _battleSpeedButton = ActionButton("x1", ToggleBattleSpeed, 64, new Color32(64, 47, 31, 255));
+            _battleSpeedButton.style.height = 52;
+            controls.Add(auto);
+            controls.Add(_battleSpeedButton);
+            return controls;
+        }
+
+        private void ToggleBattleSpeed()
+        {
+            _battleSpeed = _battleSpeed > 1f ? 1f : 2f;
+            Time.timeScale = _battleSpeed;
+            if (_battleSpeedButton != null) _battleSpeedButton.text = _battleSpeed > 1f ? "x2" : "x1";
         }
 
         private static Image StageSprite(Texture2D texture, float width, float height, float? left, float? right, ScaleMode scaleMode)
@@ -307,7 +386,7 @@ namespace EquipmentIdle.UI
             image.style.position = Position.Absolute;
             image.style.width = width;
             image.style.height = height;
-            image.style.bottom = 54;
+            image.style.bottom = 44;
             if (left.HasValue) image.style.left = left.Value;
             if (right.HasValue) image.style.right = right.Value;
             image.style.opacity = 1f;
@@ -481,9 +560,9 @@ namespace EquipmentIdle.UI
             if (_stageBossSpriteImage != null)
             {
                 _stageBossSpriteImage.image = EnemyActionFrame(clearingMinions ? "minion" : boss ? "boss" : "guardian", 0);
-                _stageBossSpriteImage.style.width = clearingMinions ? 330 : boss ? 430 : 380;
-                _stageBossSpriteImage.style.height = clearingMinions ? 360 : boss ? 430 : 410;
-                _stageBossSpriteImage.style.right = clearingMinions ? 18 : -8;
+                _stageBossSpriteImage.style.width = clearingMinions ? 280 : boss ? 350 : 320;
+                _stageBossSpriteImage.style.height = clearingMinions ? 300 : boss ? 350 : 330;
+                _stageBossSpriteImage.style.right = clearingMinions ? 210 : 170;
                 _stageBossSpriteImage.style.opacity = 1f;
             }
         }
@@ -621,16 +700,16 @@ namespace EquipmentIdle.UI
             if (_stageHeroSpriteImage != null)
             {
                 _stageHeroSpriteImage.image = beat.Active ? HeroAttackFrame(Mathf.Clamp01(elapsed / CombatBeatDuration)) : _heroSprite;
-                _stageHeroSpriteImage.style.left = 26 + beat.HeroOffset * 2.2f;
-                _stageHeroSpriteImage.style.bottom = 54 + Mathf.Sin(Mathf.Clamp01(elapsed / CombatBeatDuration) * Mathf.PI) * 10f;
-                _stageHeroSpriteImage.style.width = 330 + beat.HeroOffset * 0.8f;
-                _stageHeroSpriteImage.style.height = 380 + beat.HeroOffset * 0.6f;
+                _stageHeroSpriteImage.style.left = 250 + beat.HeroOffset * 2.2f;
+                _stageHeroSpriteImage.style.bottom = 44 + Mathf.Sin(Mathf.Clamp01(elapsed / CombatBeatDuration) * Mathf.PI) * 10f;
+                _stageHeroSpriteImage.style.width = 310 + beat.HeroOffset * 0.8f;
+                _stageHeroSpriteImage.style.height = 340 + beat.HeroOffset * 0.6f;
             }
             if (_stageBossSpriteImage != null)
             {
-                float enemyRight = _activeCombat != null && _activeCombat.enemy_kind == "minion" ? 18f : -8f;
+                float enemyRight = _activeCombat != null && _activeCombat.enemy_kind == "minion" ? 210f : 170f;
                 _stageBossSpriteImage.style.right = enemyRight - beat.MonsterOffset * 1.6f;
-                _stageBossSpriteImage.style.bottom = 54 - beat.MonsterOffset * 0.35f;
+                _stageBossSpriteImage.style.bottom = 44 - beat.MonsterOffset * 0.35f;
                 if (_activeCombat != null && _activeCombat.win && elapsed >= CombatBeatDuration * 0.62f)
                 {
                     float deathProgress = Mathf.Clamp01((elapsed - CombatBeatDuration * 0.62f) / (CombatBeatDuration * 0.38f));
@@ -668,10 +747,10 @@ namespace EquipmentIdle.UI
             if (_stageHeroSpriteImage != null)
             {
                 _stageHeroSpriteImage.image = playerAttack ? HeroAttackFrame(eventProgress) : _heroSprite;
-                float heroLeft = 26f;
-                float heroBottom = 54f;
-                float heroWidth = 330f;
-                float heroHeight = 380f;
+                float heroLeft = 250f;
+                float heroBottom = 44f;
+                float heroWidth = 310f;
+                float heroHeight = 340f;
                 if (playerAttack)
                 {
                     heroLeft += 96f * strike + 34f * snap;
@@ -699,10 +778,10 @@ namespace EquipmentIdle.UI
             if (_stageBossSpriteImage != null)
             {
                 _stageBossSpriteImage.image = playerAttack ? EnemyActionFrame(_activeCombat.enemy_kind, 2) : enemyAttack ? EnemyActionFrame(_activeCombat.enemy_kind, 1) : EnemyActionFrame(_activeCombat.enemy_kind, 0);
-                float enemyRight = _activeCombat.enemy_kind == "minion" ? 18f : -8f;
-                float enemyBottom = 54f;
-                float enemyWidth = _activeCombat.enemy_kind == "minion" ? 330f : _activeCombat.enemy_kind == "boss" ? 430f : 380f;
-                float enemyHeight = _activeCombat.enemy_kind == "minion" ? 360f : _activeCombat.enemy_kind == "boss" ? 430f : 410f;
+                float enemyRight = _activeCombat.enemy_kind == "minion" ? 210f : 170f;
+                float enemyBottom = 44f;
+                float enemyWidth = _activeCombat.enemy_kind == "minion" ? 280f : _activeCombat.enemy_kind == "boss" ? 350f : 320f;
+                float enemyHeight = _activeCombat.enemy_kind == "minion" ? 300f : _activeCombat.enemy_kind == "boss" ? 350f : 330f;
                 if (playerAttack)
                 {
                     float shake = Mathf.Sin(eventProgress * Mathf.PI * 7f) * 12f * (1f - eventProgress);

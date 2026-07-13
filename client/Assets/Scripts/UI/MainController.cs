@@ -102,6 +102,8 @@ namespace EquipmentIdle.UI
         private float _pendingCraftScore;
         private CombatData _activeCombat;
         private bool _combatTransitionPending;
+        private Button _battleSpeedButton;
+        private float _battleSpeed = 1f;
 
 
         private readonly List<EquipmentDTO> _lootFeed = new List<EquipmentDTO>();
@@ -315,7 +317,10 @@ namespace EquipmentIdle.UI
             };
 
             var panelSettings = ScriptableObject.CreateInstance<PanelSettings>();
-            panelSettings.scaleMode = PanelScaleMode.ConstantPixelSize;
+            panelSettings.scaleMode = PanelScaleMode.ScaleWithScreenSize;
+            panelSettings.referenceResolution = new Vector2Int(1280, 720);
+            panelSettings.screenMatchMode = PanelScreenMatchMode.MatchWidthOrHeight;
+            panelSettings.match = 0.5f;
 
             var doc = gameObject.AddComponent<UIDocument>();
             doc.panelSettings = panelSettings;
@@ -346,7 +351,7 @@ namespace EquipmentIdle.UI
 
             var mobile = new VisualElement { name = "mobile-frame" };
             mobile.style.width = Length.Percent(100);
-            mobile.style.maxWidth = 945;
+            mobile.style.maxWidth = 1280;
             mobile.style.flexGrow = 1;
             mobile.style.flexDirection = FlexDirection.Column;
             mobile.style.paddingLeft = 12;
@@ -371,7 +376,6 @@ namespace EquipmentIdle.UI
             _battleTabContent.style.flexDirection = FlexDirection.Column;
             root.Add(_battleTabContent);
             BuildDungeonPanel(_battleTabContent);
-            BuildMobileStatusCards(_battleTabContent);
 
             _bagTabContent = new VisualElement();
             _bagTabContent.style.flexGrow = 1;
@@ -419,7 +423,7 @@ namespace EquipmentIdle.UI
         private void BuildTopHud(VisualElement root)
         {
             var header = Panel("top-hud");
-            header.style.height = 92;
+            header.style.height = 62;
             header.style.flexDirection = FlexDirection.Row;
             header.style.alignItems = Align.Center;
             header.style.marginBottom = 6;
@@ -431,8 +435,8 @@ namespace EquipmentIdle.UI
             var titleCol = Column(110);
             titleCol.style.alignItems = Align.Center;
             var avatar = new VisualElement();
-            avatar.style.width = 66;
-            avatar.style.height = 66;
+            avatar.style.width = 44;
+            avatar.style.height = 44;
             avatar.style.borderTopWidth = 3;
             avatar.style.borderRightWidth = 3;
             avatar.style.borderBottomWidth = 3;
@@ -441,12 +445,12 @@ namespace EquipmentIdle.UI
             avatar.style.borderRightColor = new StyleColor(PanelBorderHot);
             avatar.style.borderBottomColor = new StyleColor(new Color32(70, 43, 25, 255));
             avatar.style.borderLeftColor = new StyleColor(PanelBorderHot);
-            avatar.style.borderTopLeftRadius = 33;
-            avatar.style.borderTopRightRadius = 33;
-            avatar.style.borderBottomLeftRadius = 33;
-            avatar.style.borderBottomRightRadius = 33;
+            avatar.style.borderTopLeftRadius = 22;
+            avatar.style.borderTopRightRadius = 22;
+            avatar.style.borderBottomLeftRadius = 22;
+            avatar.style.borderBottomRightRadius = 22;
             avatar.style.backgroundColor = new StyleColor(new Color32(25, 18, 15, 255));
-            var title = Text("72", 22, true);
+            var title = Text("72", 17, true);
             title.style.unityTextAlign = TextAnchor.MiddleCenter;
             title.style.color = new StyleColor(GoldText);
             title.style.flexGrow = 1;
@@ -529,16 +533,16 @@ namespace EquipmentIdle.UI
         private void BuildBottomBar(VisualElement root)
         {
             var bottom = Panel("bottom-bar");
-            bottom.style.height = 84;
+            bottom.style.height = 58;
             bottom.style.width = Length.Percent(100);
-            bottom.style.maxWidth = 921;
+            bottom.style.maxWidth = 1256;
             bottom.style.flexShrink = 0;
             bottom.style.marginTop = 8;
             bottom.style.flexDirection = FlexDirection.Column;
             root.Add(bottom);
 
             var log = new VisualElement();
-            log.style.height = 24;
+            log.style.height = 16;
             log.style.paddingLeft = 8;
             log.style.paddingRight = 8;
             log.style.justifyContent = Justify.Center;
@@ -573,7 +577,7 @@ namespace EquipmentIdle.UI
             var button = ActionButton(label, action, -1, color);
             button.style.flexGrow = 1;
             button.style.height = Length.Percent(100);
-            button.style.fontSize = 16;
+            button.style.fontSize = 14;
             button.style.unityFontStyleAndWeight = FontStyle.Bold;
             button.style.marginLeft = 2;
             button.style.marginRight = 2;

@@ -122,7 +122,7 @@ public static class PlayModeRunner
             if (_visualCapturePhase == 0)
             {
                 if (_visualCapturePopulated) SeedPopulatedState();
-                _visualCaptureTexture = new RenderTexture(945, 1672, 24, RenderTextureFormat.ARGB32);
+                _visualCaptureTexture = new RenderTexture(1280, 720, 24, RenderTextureFormat.ARGB32);
                 _visualCaptureTexture.Create();
                 _visualCapturePanelSettings = doc.panelSettings;
                 _visualCapturePanelSettings.targetTexture = _visualCaptureTexture;
